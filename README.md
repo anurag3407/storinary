@@ -28,7 +28,7 @@ A free, self-hosted [Cloudinary](https://cloudinary.com) alternative. Bulk uploa
 - **Prisma + SQLite** — metadata database
 - **sharp** — server-side image processing
 - **@imgly/background-removal** — client-side background removal (WASM)
-- **Vitest + Testing Library** — 268 unit/integration tests
+- **Vitest + Testing Library** — 284 unit/integration tests
 - Vanilla CSS Modules (neobrutalism design system)
 
 ## 🚀 Quickstart
