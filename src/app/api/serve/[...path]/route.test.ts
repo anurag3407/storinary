@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { transformCache } from '@/lib/transform-cache';
 
 const { getFromStorageMock, getPublicUrlMock, transformImageMock } =
   vi.hoisted(() => ({
@@ -32,6 +33,7 @@ describe('GET /api/serve/[...path]', () => {
     getFromStorageMock.mockReset();
     getPublicUrlMock.mockReset();
     transformImageMock.mockReset();
+    transformCache.clear();
   });
 
   it('redirects to the CDN when there are no transforms', async () => {
@@ -84,5 +86,46 @@ describe('GET /api/serve/[...path]', () => {
       context(['2024', '01', 'a.webp'])
     );
     expect(response.status).toBe(404);
+  });
+
+  it('serves repeated transforms from cache without re-processing', async () => {
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('original'),
+      contentType: 'image/webp',
+    });
+    transformImageMock.mockResolvedValue({
+      buffer: Buffer.from('transformed'),
+      contentType: 'image/webp',
+      format: 'webp',
+    });
+
+    const first = await GET(
+      makeRequest(['2024', '01', 'a.webp'], '?w=200&q=70'),
+      context(['2024', '01', 'a.webp'])
+    );
+    expect(first.status).toBe(200);
+    expect(transformImageMock).toHaveBeenCalledTimes(1);
+
+    const second = await GET(
+      makeRequest(['2024', '01', 'a.webp'], '?w=200&q=70'),
+      context(['2024', '01', 'a.webp'])
+    );
+    expect(second.status).toBe(200);
+    expect(transformImageMock).toHaveBeenCalledTimes(1);
+    expect(Buffer.from(await second.arrayBuffer()).toString()).toBe('transformed');
+  });
+
+  it('returns 500 when sharp transformation fails', async () => {
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('corrupt'),
+      contentType: 'image/webp',
+    });
+    transformImageMock.mockRejectedValue(new Error('sharp failed'));
+
+    const response = await GET(
+      makeRequest(['2024', '01', 'a.webp'], '?w=100'),
+      context(['2024', '01', 'a.webp'])
+    );
+    expect(response.status).toBe(500);
   });
 });

@@ -18,18 +18,19 @@ export function getRateLimitRule(
   pathname: string,
   method: string
 ): RateLimitRule | null {
-  // CPU/memory-heavy on-the-fly image processing
+  // CPU/memory-heavy on-the-fly image processing.
+  // The serve limit is generous because gallery thumbnails route through it.
   if (pathname.startsWith('/api/serve')) {
-    return { key: 'serve', limit: 120, windowMs: 60_000 };
+    return { key: 'serve', limit: 300, windowMs: 60_000 };
   }
   if (pathname.endsWith('/transform') && method === 'GET') {
     return { key: 'transform', limit: 120, windowMs: 60_000 };
   }
-  // Write endpoints
+  // Write endpoints (single + bulk delete share a bucket)
   if (pathname === '/api/upload' && method === 'POST') {
     return { key: 'upload', limit: 30, windowMs: 60_000 };
   }
-  if (pathname === '/api/images' && method === 'DELETE') {
+  if (pathname.startsWith('/api/images') && method === 'DELETE') {
     return { key: 'images-delete', limit: 60, windowMs: 60_000 };
   }
   if (pathname === '/api/reset' && method === 'DELETE') {

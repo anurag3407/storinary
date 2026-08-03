@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -23,7 +24,12 @@ export default async function DashboardPage() {
   let stats: StatsResponse | null = null;
 
   try {
-    const response = await fetch(`${base}/api/stats`, { cache: 'no-store' });
+    // Forward the session cookie so /api/stats works when auth is enabled
+    const cookieHeader = (await cookies()).toString();
+    const response = await fetch(`${base}/api/stats`, {
+      cache: 'no-store',
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+    });
     if (response.ok) {
       stats = await response.json();
     }

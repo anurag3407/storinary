@@ -14,9 +14,14 @@ export default function LoginPage() {
   const [nextPath, setNextPath] = useState('/');
 
   useEffect(() => {
-    // Where to return after a successful login (set by middleware redirect)
+    // Where to return after a successful login (set by middleware redirect).
+    // Only allow same-origin paths to prevent open-redirect abuse.
     const next = new URLSearchParams(window.location.search).get('next') || '/';
-    setNextPath(next);
+    setNextPath(
+      next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')
+        ? next
+        : '/'
+    );
 
     fetch('/api/auth/status')
       .then((res) => res.json())
@@ -76,6 +81,7 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Admin password"
           autoFocus
+          required
           autoComplete="current-password"
         />
 

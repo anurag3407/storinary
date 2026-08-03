@@ -2,6 +2,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
+import { transformCache } from '@/lib/transform-cache';
 
 const { findUniqueMock, getFromStorageMock, transformImageMock } =
   vi.hoisted(() => ({
@@ -54,6 +55,7 @@ describe('GET /api/images/:id/transform', () => {
     findUniqueMock.mockReset();
     getFromStorageMock.mockReset();
     transformImageMock.mockReset();
+    transformCache.clear();
   });
 
   it('returns 404 when the image record is missing', async () => {
@@ -104,5 +106,53 @@ describe('GET /api/images/:id/transform', () => {
 
     const response = await GET(makeRequest('?w=50'), context);
     expect(response.status).toBe(404);
+  });
+
+  it('serves repeated transforms from cache without re-processing', async () => {
+    findUniqueMock.mockResolvedValue(ROW);
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('original'),
+      contentType: 'image/webp',
+    });
+    transformImageMock.mockResolvedValue({
+      buffer: Buffer.from('tiny'),
+      contentType: 'image/jpeg',
+      format: 'jpeg',
+    });
+
+    const first = await GET(makeRequest('?w=100&fmt=jpeg&q=50'), context);
+    expect(first.status).toBe(200);
+    expect(transformImageMock).toHaveBeenCalledTimes(1);
+
+    const second = await GET(makeRequest('?w=100&fmt=jpeg&q=50'), context);
+    expect(second.status).toBe(200);
+    expect(transformImageMock).toHaveBeenCalledTimes(1);
+    expect(Buffer.from(await second.arrayBuffer()).toString()).toBe('tiny');
+  });
+
+  it('returns 500 when sharp transformation fails', async () => {
+    findUniqueMock.mockResolvedValue(ROW);
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('corrupt'),
+      contentType: 'image/webp',
+    });
+    transformImageMock.mockRejectedValue(new Error('sharp failed'));
+
+    const response = await GET(makeRequest('?w=50'), context);
+    expect(response.status).toBe(500);
+  });
+
+  it('hardens untransformed SVG responses', async () => {
+    findUniqueMock.mockResolvedValue({ ...ROW, format: 'svg' });
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+      contentType: 'image/svg+xml',
+    });
+
+    const response = await GET(makeRequest(), context);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-disposition')).toContain('attachment');
+    expect(response.headers.get('content-security-policy')).toContain('sandbox');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 });

@@ -18,6 +18,10 @@ describe('getRateLimitRule', () => {
   it('returns a rule for uploads, deletes, resets, and login', () => {
     expect(getRateLimitRule('/api/upload', 'POST')?.key).toBe('upload');
     expect(getRateLimitRule('/api/images', 'DELETE')?.key).toBe('images-delete');
+    // single-image delete shares the bulk-delete bucket
+    expect(getRateLimitRule('/api/images/img-1', 'DELETE')?.key).toBe(
+      'images-delete'
+    );
     expect(getRateLimitRule('/api/reset', 'DELETE')?.key).toBe('reset');
     expect(getRateLimitRule('/api/auth/login', 'POST')?.key).toBe('login');
   });

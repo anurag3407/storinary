@@ -89,7 +89,11 @@ export async function verifySessionToken(
   }
 }
 
-/** Constant-time string comparison for the login password check. */
+/**
+ * Length-aware, otherwise constant-time comparison for the login password
+ * check. The early return on length mismatch reveals only the length, which
+ * is acceptable for an admin password behind a rate limiter.
+ */
 export function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { DetailView } from '@/components/image-detail/DetailView';
@@ -21,10 +21,19 @@ async function getBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
+/** Build fetch options that forward the session cookie (needed for auth). */
+async function authedFetchOptions(): Promise<RequestInit> {
+  const cookieHeader = (await cookies()).toString();
+  return {
+    cache: 'no-store' as const,
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+  };
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const base = await getBaseUrl();
-  const res = await fetch(`${base}/api/images/${id}`, { cache: 'no-store' });
+  const res = await fetch(`${base}/api/images/${id}`, await authedFetchOptions());
   const name = res.ok
     ? ((await res.json()) as ImageDetailResponse).image.originalName
     : 'Image';
@@ -38,7 +47,7 @@ export default async function ImageDetailPage({ params }: PageProps) {
   const { id } = await params;
   const base = await getBaseUrl();
 
-  const response = await fetch(`${base}/api/images/${id}`, { cache: 'no-store' });
+  const response = await fetch(`${base}/api/images/${id}`, await authedFetchOptions());
 
   if (!response.ok) notFound();
 

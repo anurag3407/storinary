@@ -19,7 +19,7 @@ A free, self-hosted [Cloudinary](https://cloudinary.com) alternative. Bulk uploa
 | **Image detail** | Full preview with zoom, metadata, interactive transform controls |
 | **Dashboard** | Storage stats, format distribution, recent uploads, quick actions |
 | **Settings** | Connection test, default upload options, Supabase setup guide, danger zone |
-| **Admin auth** *(optional)* | Set `STORINARY_ADMIN_PASSWORD` to protect uploads, deletes, and settings behind a login |
+| **Admin auth** *(optional)* | Set `STORINARY_ADMIN_PASSWORD` to protect uploads, the library, and settings behind a login |
 
 ## 🧱 Tech Stack
 
@@ -28,7 +28,7 @@ A free, self-hosted [Cloudinary](https://cloudinary.com) alternative. Bulk uploa
 - **Prisma + SQLite** — metadata database
 - **sharp** — server-side image processing
 - **@imgly/background-removal** — client-side background removal (WASM)
-- **Vitest + Testing Library** — 221 unit/integration tests
+- **Vitest + Testing Library** — 268 unit/integration tests
 - Vanilla CSS Modules (neobrutalism design system)
 
 ## 🚀 Quickstart
@@ -72,7 +72,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## 🔒 Security Notes
 
-- **Admin auth**: when `STORINARY_ADMIN_PASSWORD` is set, all write APIs (upload, delete, reset) return `401` without a session cookie, and app pages redirect to `/login`. Leave it unset for open dev mode.
+- **Admin auth**: when `STORINARY_ADMIN_PASSWORD` is set, every API except the public CDN surface (`/api/serve`, `/transform`) and the auth endpoints requires a session cookie, and app pages redirect to `/login`. Leave it unset for open dev mode. Sessions are stateless HMAC tokens valid for 7 days — signing out only clears the cookie (a stolen token stays valid until expiry).
 - **Rate limiting**: middleware limits abuse of expensive endpoints (serve/transform/uploads/reset/login) per IP.
 - **SVG uploads**: SVGs containing scripts or event handlers are rejected at upload; raw SVGs are served with `Content-Disposition: attachment` + a sandbox CSP to prevent stored XSS.
 - **Transform caching**: repeated transforms are served from an in-memory LRU cache with immutable `Cache-Control` + `CDN-Cache-Control` headers.

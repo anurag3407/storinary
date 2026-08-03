@@ -20,6 +20,28 @@ describe('isSafeSvg', () => {
     expect(isSafeSvg(svg('<script>alert(1)</script>'))).toBe(false);
   });
 
+  it('rejects entity-encoded script tags (XML entity bypass)', () => {
+    expect(
+      isSafeSvg(
+        Buffer.from(
+          '<svg>&#x3C;script&#x3E;alert(1)&#x3C;/script&#x3E;</svg>'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isSafeSvg(Buffer.from('<svg>&#60;script&#62;alert(1)</svg>'))
+    ).toBe(false);
+    expect(
+      isSafeSvg(Buffer.from('<svg>&lt;script&gt;alert(1)&lt;/script&gt;</svg>'))
+    ).toBe(false);
+  });
+
+  it('accepts harmless numeric/named entities', () => {
+    expect(
+      isSafeSvg(Buffer.from('<svg><text>&#169; &amp; more</text></svg>'))
+    ).toBe(true);
+  });
+
   it('rejects event handlers', () => {
     expect(isSafeSvg(svg('<rect onload="alert(1)"/>'))).toBe(false);
     expect(isSafeSvg(svg('<rect onclick="alert(1)"/>'))).toBe(false);
@@ -36,6 +58,12 @@ describe('isSafeSvg', () => {
 
   it('rejects CSS @import', () => {
     expect(isSafeSvg(svg('<style>@import url("http://evil");</style>'))).toBe(false);
+  });
+
+  it('rejects event handlers encoded as entities', () => {
+    expect(isSafeSvg(Buffer.from('<svg><rect on&#x6C;oad="x"/></svg>'))).toBe(
+      false
+    );
   });
 });
 

@@ -24,11 +24,35 @@ const UNSAFE_PATTERNS: RegExp[] = [
 ];
 
 /**
+ * Decode XML entities so obfuscated payloads like `&#x3C;script&#x3E;` are
+ * seen as real tags by the pattern scan. SVG is parsed as XML, so the browser
+ * would decode these before executing — the check must do the same.
+ */
+function decodeXmlEntities(text: string): string {
+  const fromCode = (code: number) => {
+    try {
+      return String.fromCodePoint(code);
+    } catch {
+      return '';
+    }
+  };
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => fromCode(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, dec) => fromCode(parseInt(dec, 10)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/**
  * Reject SVGs containing scripts, event handlers, or other active content.
  * Returns true when the SVG looks safe to store.
  */
 export function isSafeSvg(buffer: Buffer | Uint8Array): boolean {
-  const text = Buffer.from(buffer).toString('utf8').toLowerCase();
+  const raw = Buffer.from(buffer).toString('utf8');
+  const text = decodeXmlEntities(raw.toLowerCase());
   return !UNSAFE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
