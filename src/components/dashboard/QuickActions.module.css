@@ -1,0 +1,22 @@
+.actions {
+  display: flex;
+  gap: var(--nb-space-5);
+  margin-top: var(--nb-space-4);
+}
+
+.link {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+  text-decoration: none;
+}
+
+.link:hover {
+  background: none;
+}
+
+@media (max-width: 768px) {
+  .actions {
+    flex-direction: column;
+  }
+}

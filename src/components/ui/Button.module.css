@@ -1,0 +1,112 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--nb-font-body);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  cursor: pointer;
+  transition: var(--nb-transition);
+  user-select: none;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: var(--nb-shadow-none);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Variants ─────────────────────────── */
+.primary {
+  background-color: var(--nb-yellow);
+  color: var(--nb-black);
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.primary:hover:not(:disabled) {
+  box-shadow: var(--nb-shadow-xl);
+}
+
+.secondary {
+  background-color: var(--nb-white);
+  color: var(--nb-black);
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.secondary:hover:not(:disabled) {
+  box-shadow: var(--nb-shadow-xl);
+}
+
+.danger {
+  background-color: var(--nb-pink);
+  color: var(--nb-white);
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.danger:hover:not(:disabled) {
+  box-shadow: var(--nb-shadow-xl);
+}
+
+.outline {
+  background-color: transparent;
+  color: var(--nb-black);
+  box-shadow: var(--nb-shadow-md);
+}
+
+.outline:hover:not(:disabled) {
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.ghost {
+  background-color: transparent;
+  color: var(--nb-black);
+  border: none;
+  box-shadow: none;
+}
+
+.ghost:hover:not(:disabled) {
+  background-color: var(--nb-bg);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ── Sizes ────────────────────────────── */
+.sm {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.md {
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.lg {
+  padding: 16px 32px;
+  font-size: 18px;
+}
+
+/* ── Modifiers ────────────────────────── */
+.fullWidth {
+  width: 100%;
+  justify-content: center;
+}
+
+.loading {
+  cursor: wait;
+}

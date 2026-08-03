@@ -1,0 +1,229 @@
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-6);
+}
+
+.card {
+  background-color: var(--nb-white);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-lg);
+  padding: 24px;
+}
+
+.cardTitle {
+  font-size: var(--nb-text-xl);
+  margin-bottom: var(--nb-space-2);
+}
+
+.cardDescription {
+  font-size: var(--nb-text-sm);
+  color: #666;
+  margin-bottom: var(--nb-space-5);
+}
+
+/* ── Connection status ─────────────────── */
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--nb-space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--nb-space-5);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--nb-space-4);
+}
+
+.infoItem {
+  background-color: var(--nb-bg);
+  border: 2px solid var(--nb-black);
+  border-radius: var(--nb-radius);
+  padding: 12px 16px;
+}
+
+.infoLabel {
+  display: block;
+  font-size: var(--nb-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.infoValue {
+  font-family: var(--nb-font-mono);
+  font-size: var(--nb-text-sm);
+  word-break: break-all;
+}
+
+/* ── Default upload settings ───────────── */
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--nb-space-5);
+  align-items: start;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--nb-text-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.inputGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prefix,
+.suffix {
+  font-family: var(--nb-font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--nb-black);
+}
+
+.saveRow {
+  margin-top: var(--nb-space-6);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Setup guide ───────────────────────── */
+.guideToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-lg);
+  color: var(--nb-black);
+  text-align: left;
+  transition: var(--nb-transition);
+}
+
+.guideToggle:hover {
+  color: #333;
+}
+
+.guideChevron {
+  font-size: var(--nb-text-base);
+}
+
+.guideList {
+  list-style: none;
+  margin-top: var(--nb-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-5);
+  counter-reset: guide;
+}
+
+.guideItem {
+  display: flex;
+  gap: var(--nb-space-4);
+  align-items: flex-start;
+}
+
+.guideNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-lg);
+  background-color: var(--nb-yellow);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-sm);
+}
+
+.guideItem strong {
+  display: block;
+  font-size: var(--nb-text-base);
+  margin-bottom: 2px;
+}
+
+.guideItem p {
+  font-size: var(--nb-text-sm);
+  color: #555;
+}
+
+/* ── Danger zone ───────────────────────── */
+.danger {
+  border: 3px solid var(--nb-pink);
+}
+
+.dangerTitle {
+  color: var(--nb-pink);
+}
+
+.dangerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nb-space-5);
+  padding: var(--nb-space-4) 0;
+  border-top: 2px solid var(--nb-bg);
+}
+
+.dangerRow:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.dangerActionTitle {
+  font-size: var(--nb-text-base);
+  margin-bottom: 2px;
+}
+
+.dangerActionDesc {
+  font-size: var(--nb-text-sm);
+  color: #666;
+  max-width: 520px;
+}
+
+.modalHint {
+  margin: var(--nb-space-3) 0;
+  font-size: var(--nb-text-sm);
+  color: #666;
+}
+
+/* ── Responsive ────────────────────────── */
+@media (max-width: 768px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .dangerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .saveRow {
+    justify-content: stretch;
+  }
+
+  .saveRow button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,34 @@
+.card {
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-lg);
+  padding: 20px;
+  text-align: center;
+  transition: var(--nb-transition);
+}
+
+.card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--nb-shadow-xl);
+}
+
+.icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.value {
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-4xl);
+  line-height: 1;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.label {
+  font-size: var(--nb-text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}

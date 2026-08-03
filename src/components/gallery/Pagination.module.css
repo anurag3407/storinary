@@ -1,0 +1,20 @@
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--nb-space-6);
+}
+
+.ellipsis {
+  padding: 8px;
+  font-weight: 700;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .pagination {
+    gap: 6px;
+  }
+}

@@ -1,0 +1,64 @@
+.dropzone {
+  border: 3px dashed var(--nb-black);
+  background-color: var(--nb-white);
+  border-radius: var(--nb-radius);
+  padding: 60px 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--nb-transition);
+  box-shadow: var(--nb-shadow-md);
+  outline: none;
+}
+
+.dropzone:hover {
+  box-shadow: var(--nb-shadow-lg);
+  transform: translate(-1px, -1px);
+}
+
+.dragging {
+  border: 3px solid var(--nb-black);
+  background-color: var(--nb-yellow);
+  transform: scale(1.01);
+  box-shadow: var(--nb-shadow-lg);
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-xl);
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: var(--nb-text-base);
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.formats {
+  font-size: var(--nb-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  background-color: var(--nb-bg);
+  border: 2px solid var(--nb-black);
+  border-radius: 4px;
+  display: inline-block;
+  padding: 6px 12px;
+}
+
+@media (max-width: 768px) {
+  .dropzone {
+    padding: 40px 20px;
+  }
+}

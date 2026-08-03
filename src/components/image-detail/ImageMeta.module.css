@@ -1,0 +1,60 @@
+.card {
+  background-color: var(--nb-white);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-lg);
+  padding: var(--nb-space-6);
+  overflow: hidden;
+}
+
+.title {
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-xl);
+  margin-bottom: var(--nb-space-4);
+}
+
+.editableValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: #999;
+}
+
+.tags {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.editBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--nb-white);
+  border: 2px solid var(--nb-black);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: var(--nb-transition);
+  flex-shrink: 0;
+}
+
+.editBtn:hover {
+  background-color: var(--nb-yellow);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--nb-shadow-sm);
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: var(--nb-space-4);
+    overflow-x: auto;
+  }
+}

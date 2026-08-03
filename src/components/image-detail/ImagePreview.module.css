@@ -1,0 +1,80 @@
+.card {
+  background-color: var(--nb-white);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  box-shadow: var(--nb-shadow-lg);
+  padding: var(--nb-space-4);
+  position: relative;
+}
+
+.viewport {
+  cursor: zoom-in;
+  overflow: auto;
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--nb-bg);
+  border: 2px solid var(--nb-black);
+  border-radius: 4px;
+}
+
+.zoomed {
+  cursor: zoom-out;
+}
+
+.image {
+  max-height: 68vh;
+  max-width: 100%;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.zoomed .image {
+  transform: scale(1.8);
+  cursor: zoom-out;
+}
+
+.checkerboard {
+  background-image:
+    linear-gradient(45deg, #e5e2da 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e2da 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e2da 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e2da 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 200px;
+}
+
+.overlay {
+  position: absolute;
+  bottom: var(--nb-space-4);
+  left: var(--nb-space-4);
+  right: var(--nb-space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.badge {
+  pointer-events: auto;
+}
+
+.badgeRight {
+  pointer-events: auto;
+}
+
+.hint {
+  margin-top: var(--nb-space-3);
+  font-size: var(--nb-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  text-align: center;
+}

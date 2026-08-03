@@ -1,0 +1,30 @@
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-3);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--nb-space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-xl);
+}
+
+.count {
+  font-size: var(--nb-text-sm);
+  font-weight: 600;
+  color: #666;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

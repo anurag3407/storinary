@@ -1,0 +1,41 @@
+{
+  "name": "storinary",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Free, self-hosted Cloudinary alternative. Bulk upload, transform, and serve images from Supabase Storage.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "@prisma/client": "^6.0.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "nanoid": "^5.0.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
+    "jsdom": "^29.1.1",
+    "prisma": "^6.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
+  }
+}

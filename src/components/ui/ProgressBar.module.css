@@ -1,0 +1,37 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.container {
+  flex: 1;
+  background-color: var(--nb-white);
+  border: 2px solid var(--nb-black);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sm {
+  height: 12px;
+}
+
+.md {
+  height: 20px;
+}
+
+.fill {
+  height: 100%;
+  background-color: var(--nb-green);
+  border-right: 2px solid var(--nb-black);
+  transition: width 0.3s ease;
+}
+
+.label {
+  font-size: var(--nb-text-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+}

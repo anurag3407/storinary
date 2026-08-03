@@ -1,0 +1,35 @@
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.skeletonCard {
+  background-color: var(--nb-bg);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  animation: pulse 1.5s ease-in-out infinite;
+  aspect-ratio: 3 / 4;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: 768px) {
+  .skeletonGrid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+}

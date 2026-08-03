@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Image {
+  id              String   @id @default(cuid())
+
+  // ── File Info ──────────────────────────────────
+  originalName    String                // Original filename from user (e.g., "photo.jpg")
+  storagePath     String   @unique      // Supabase Storage path (e.g., "2024/08/photo-abc12345.webp")
+  publicUrl       String                // Full public URL (e.g., "https://<ref>.supabase.co/storage/v1/object/public/storinary/2024/08/photo-abc12345.webp")
+
+  // ── Image Metadata ─────────────────────────────
+  width           Int                   // Width in pixels
+  height          Int                   // Height in pixels
+  fileSize        Int                   // Size in bytes
+  format          String                // "jpeg", "png", "webp", "avif", "gif", "svg"
+  mimeType        String                // "image/jpeg", "image/png", etc.
+
+  // ── Organization ───────────────────────────────
+  folder          String   @default("/")  // Virtual folder path (e.g., "/products", "/blog")
+  tags            String   @default("")   // Comma-separated tags (e.g., "hero,banner,product")
+  altText         String   @default("")   // Alt text for accessibility
+
+  // ── Processing Flags ───────────────────────────
+  bgRemoved       Boolean  @default(false) // Was background removal applied?
+  compressed      Boolean  @default(false) // Was client-side compression applied?
+
+  // ── Timestamps ─────────────────────────────────
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // ── Indexes ────────────────────────────────────
+  @@index([folder])
+  @@index([createdAt])
+  @@index([originalName])
+}

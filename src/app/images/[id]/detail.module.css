@@ -1,0 +1,29 @@
+.detailLayout {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--nb-space-8);
+  align-items: start;
+}
+
+.previewColumn {
+  position: sticky;
+  top: 32px;
+  min-width: 0;
+}
+
+.infoColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-6);
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .detailLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .previewColumn {
+    position: static;
+  }
+}
