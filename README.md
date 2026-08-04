@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="/logo.png" alt="Storinary logo" width="240" />
+  <img src="public/logo.png" alt="Storinary logo" width="240" />
 </p>
 
 # 🟨 Storinary — Self-Hosted Image CDN
