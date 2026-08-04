@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="/logo.png" alt="Storinary logo" width="240" />
+</p>
+
 # 🟨 Storinary — Self-Hosted Image CDN
 
 A free, self-hosted [Cloudinary](https://cloudinary.com) alternative. Bulk upload, transform, and serve images from **Supabase Storage** with a neobrutalism dashboard — no credit card, no per-image pricing, no vendor lock-in.
