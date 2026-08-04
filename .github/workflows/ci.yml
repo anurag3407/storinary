@@ -12,6 +12,8 @@ jobs:
       DATABASE_URL: file:./ci.db
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SUPABASE_BUCKET_NAME: storinary
       NEXT_PUBLIC_MAX_FILE_SIZE_MB: "10"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
     steps:
