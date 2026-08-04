@@ -28,7 +28,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vercel-build": "prisma migrate deploy --schema prisma/schema.postgres.prisma && prisma generate --schema prisma/schema.postgres.prisma && next build"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",

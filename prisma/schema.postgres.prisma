@@ -1,0 +1,60 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUCTION / SERVERLESS SCHEMA (PostgreSQL)
+// ─────────────────────────────────────────────────────────────────────────────
+// This schema is used for Postgres deployments (Vercel, Render, Fly, etc.).
+// SQLite is used for local development via `prisma/schema.prisma`.
+//
+// ⚠️  KEEP THIS FILE IN SYNC WITH `prisma/schema.prisma` — the two schemas
+//     define the same `Image` model. When you change one, change the other
+//     (the CI workflow validates both).
+//
+// Usage:
+//   npx prisma migrate dev    --schema prisma/schema.postgres.prisma   # dev against Postgres
+//   npx prisma migrate deploy --schema prisma/schema.postgres.prisma   # apply on deploy
+//   npx prisma generate       --schema prisma/schema.postgres.prisma   # generate client
+//
+// DATABASE_URL must point at a PostgreSQL connection string, e.g.
+//   postgresql://user:pass@host:5432/db?sslmode=require
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Image {
+  id              String   @id @default(cuid())
+
+  // ── File Info ──────────────────────────────────
+  originalName    String                // Original filename from user (e.g., "photo.jpg")
+  storagePath     String   @unique      // Supabase Storage path (e.g., "2024/08/photo-abc12345.webp")
+  publicUrl       String                // Full public URL (e.g., "https://<ref>.supabase.co/storage/v1/object/public/storinary/2024/08/photo-abc12345.webp")
+
+  // ── Image Metadata ─────────────────────────────
+  width           Int                   // Width in pixels
+  height          Int                   // Height in pixels
+  fileSize        Int                   // Size in bytes
+  format          String                // "jpeg", "png", "webp", "avif", "gif", "svg"
+  mimeType        String                // "image/jpeg", "image/png", etc.
+
+  // ── Organization ───────────────────────────────
+  folder          String   @default("/")  // Virtual folder path (e.g., "/products", "/blog")
+  tags            String   @default("")   // Comma-separated tags (e.g., "hero,banner,product")
+  altText         String   @default("")   // Alt text for accessibility
+
+  // ── Processing Flags ───────────────────────────
+  bgRemoved       Boolean  @default(false) // Was background removal applied?
+  compressed      Boolean  @default(false) // Was client-side compression applied?
+
+  // ── Timestamps ─────────────────────────────────
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // ── Indexes ────────────────────────────────────
+  @@index([folder])
+  @@index([createdAt])
+  @@index([originalName])
+}

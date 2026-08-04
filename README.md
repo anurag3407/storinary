@@ -112,7 +112,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 
 - **Next.js 15** (App Router) + **React 19** + **TypeScript** (strict)
 - **Supabase Storage** — object storage + public CDN URLs
-- **Prisma + SQLite** — metadata database (swap to Postgres for serverless)
+- **Prisma + SQLite (dev) / PostgreSQL (production)** — metadata database
 - **sharp** — server-side image processing
 - **@imgly/background-removal** — client-side background removal (WASM + ONNX)
 - **Vitest + Testing Library** — 284 tests across 46 files
@@ -279,20 +279,37 @@ Coverage areas: lib utilities, upload/gallery/image-detail components, all hooks
 ## ☁️ Deployment
 
 ### Vercel (serverless)
-SQLite does not persist on serverless functions. **Switch the Prisma datasource to Postgres** (Supabase Postgres or [Neon](https://neon.tech)):
 
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
+SQLite doesn't persist on serverless functions, so production deploys use **PostgreSQL**. A ready-made Postgres schema (`prisma/schema.postgres.prisma`) and its migration (`prisma/migrations.postgres/`) are included — no manual editing required.
+
+**1. Create a Postgres database** — free options: your existing Supabase project (Dashboard → Database) or [Neon](https://neon.tech). Copy the connection string (`postgresql://user:pass@host:5432/db?sslmode=require`).
+
+**2. Apply the migration once** (from your local machine):
 
 ```bash
-npx prisma migrate deploy
+DATABASE_URL="postgresql://user:pass@host:5432/db?sslmode=require" \
+  npx prisma migrate deploy --schema prisma/schema.postgres.prisma
 ```
 
-The storage/transform architecture is otherwise serverless-friendly (all routes run on the Node runtime).
+The committed migration creates the `Image` table. If you change the schema later, create and commit a new migration with `npx prisma migrate dev --schema prisma/schema.postgres.prisma --name <name>`.
+
+**3. Deploy to Vercel** — import the repo, then set these environment variables (Settings → Environment Variables):
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Your **Postgres** connection string |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase **secret** key |
+| `SUPABASE_BUCKET_NAME` | Your public bucket name (e.g. `storinary`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public/publishable key |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-app>.vercel.app` |
+| `STORINARY_ADMIN_PASSWORD` *(optional)* | Enable login protection |
+
+The included `vercel-build` script runs automatically on Vercel: it applies pending Postgres migrations (`prisma migrate deploy` — idempotent), generates the Postgres Prisma client, and builds.
+
+**Serverless notes:**
+- All API routes run on the **Node.js runtime** (Next 15 App Router default), so `sharp` and Prisma work unchanged; the middleware runs on the edge and never touches the database.
+- The rate limiter and transform LRU cache are **in-memory per instance** — on serverless they reset per cold start. Fine for light traffic; for horizontal scale, swap in a shared store (Redis).
 
 ### VPS / Docker (recommended for simplicity)
 Keep SQLite, set `NEXT_PUBLIC_APP_URL` to your public URL, and:
@@ -311,6 +328,11 @@ The rate limiter and transform cache are **in-memory per instance**. For horizon
 ## 📁 Project Structure
 
 ```
+prisma/
+├── schema.prisma              # SQLite — local development
+├── schema.postgres.prisma     # PostgreSQL — production / serverless (Vercel)
+├── migrations/                # SQLite migrations
+└── migrations.postgres/       # PostgreSQL migrations
 src/
 ├── app/            # Pages (dashboard, upload, gallery, images/[id], settings, login) + API routes
 ├── components/     # layout, ui, upload, gallery, image-detail, dashboard
@@ -325,7 +347,7 @@ docs/               # Cloudinary comparison reports
 
 Planned directions — contributions welcome on any of these:
 
-- [ ] **Postgres migration docs** — first-class serverless deployment guide
+- [x] **Postgres migration path** — ready-made `schema.postgres.prisma` + migrations for Vercel/serverless (see [Deployment](#deployment))
 - [ ] **Eager transforms** — pre-generate derivatives at upload for zero first-hit latency
 - [ ] **Signed URLs** — gated/private image delivery
 - [ ] **Folder management UI** — create / rename / move folders in the gallery
