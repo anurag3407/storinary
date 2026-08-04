@@ -1,8 +1,26 @@
 {
   "name": "storinary",
   "version": "1.0.0",
-  "private": true,
+  "license": "GPL-3.0",
   "description": "Free, self-hosted Cloudinary alternative. Bulk upload, transform, and serve images from Supabase Storage.",
+  "author": "Anurag <anurag3407> (https://github.com/anurag3407)",
+  "keywords": [
+    "image-cdn",
+    "image-uploader",
+    "cloudinary-alternative",
+    "supabase",
+    "nextjs",
+    "image-transformation",
+    "self-hosted"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anurag3407/storinary-cloud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/anurag3407/storinary-cloud/issues"
+  },
+  "homepage": "https://github.com/anurag3407/storinary-cloud#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
