@@ -30,10 +30,12 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
+      # Intentionally scoped to the Image model (the only model) — extend the
+      # sed range / add new blocks if more models are added to the schemas.
       - name: Validate Postgres schema + model parity
         run: |
-          DATABASE_URL="postgresql://user:pass@localhost:5432/storinary" npx prisma validate --schema prisma/schema.postgres.prisma
-          diff <(sed -n '/^model Image/,/^}/p' prisma/schema.prisma) <(sed -n '/^model Image/,/^}/p' prisma/schema.postgres.prisma)
+          DATABASE_URL="postgresql://user:pass@localhost:5432/storinary" npx prisma validate --schema prisma/postgres/schema.prisma
+          diff <(sed -n '/^model Image/,/^}/p' prisma/schema.prisma) <(sed -n '/^model Image/,/^}/p' prisma/postgres/schema.prisma)
 
       - name: Typecheck
         run: npm run typecheck

@@ -280,7 +280,7 @@ Coverage areas: lib utilities, upload/gallery/image-detail components, all hooks
 
 ### Vercel (serverless)
 
-SQLite doesn't persist on serverless functions, so production deploys use **PostgreSQL**. A ready-made Postgres schema (`prisma/schema.postgres.prisma`) and its migration (`prisma/migrations.postgres/`) are included — no manual editing required.
+SQLite doesn't persist on serverless functions, so production deploys use **PostgreSQL**. A ready-made Postgres schema (`prisma/postgres/schema.prisma`) with its own migration history (`prisma/postgres/migrations/`) is included — no manual editing required.
 
 **1. Create a Postgres database** — free options: your existing Supabase project (Dashboard → Database) or [Neon](https://neon.tech). Copy the connection string (`postgresql://user:pass@host:5432/db?sslmode=require`).
 
@@ -288,10 +288,12 @@ SQLite doesn't persist on serverless functions, so production deploys use **Post
 
 ```bash
 DATABASE_URL="postgresql://user:pass@host:5432/db?sslmode=require" \
-  npx prisma migrate deploy --schema prisma/schema.postgres.prisma
+  npx prisma migrate deploy --schema prisma/postgres/schema.prisma
 ```
 
-The committed migration creates the `Image` table. If you change the schema later, create and commit a new migration with `npx prisma migrate dev --schema prisma/schema.postgres.prisma --name <name>`.
+The committed migration creates the `Image` table. If you change the schema later, create and commit a new migration with `npx prisma migrate dev --schema prisma/postgres/schema.prisma --name <name>`.
+
+> The Postgres schema lives in its own directory (`prisma/postgres/`) with its own `migrations/` folder — Prisma resolves the migration history next to each schema file, so the SQLite and Postgres histories stay separate.
 
 **3. Deploy to Vercel** — import the repo, then set these environment variables (Settings → Environment Variables):
 
@@ -330,9 +332,10 @@ The rate limiter and transform cache are **in-memory per instance**. For horizon
 ```
 prisma/
 ├── schema.prisma              # SQLite — local development
-├── schema.postgres.prisma     # PostgreSQL — production / serverless (Vercel)
 ├── migrations/                # SQLite migrations
-└── migrations.postgres/       # PostgreSQL migrations
+└── postgres/
+    ├── schema.prisma          # PostgreSQL — production / serverless (Vercel)
+    └── migrations/            # PostgreSQL migrations
 src/
 ├── app/            # Pages (dashboard, upload, gallery, images/[id], settings, login) + API routes
 ├── components/     # layout, ui, upload, gallery, image-detail, dashboard
@@ -347,7 +350,7 @@ docs/               # Cloudinary comparison reports
 
 Planned directions — contributions welcome on any of these:
 
-- [x] **Postgres migration path** — ready-made `schema.postgres.prisma` + migrations for Vercel/serverless (see [Deployment](#deployment))
+- [x] **Postgres migration path** — ready-made `prisma/postgres/` schema + migrations for Vercel/serverless (see [Deployment](#deployment))
 - [ ] **Eager transforms** — pre-generate derivatives at upload for zero first-hit latency
 - [ ] **Signed URLs** — gated/private image delivery
 - [ ] **Folder management UI** — create / rename / move folders in the gallery

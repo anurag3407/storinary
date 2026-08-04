@@ -8,10 +8,19 @@
 //     define the same `Image` model. When you change one, change the other
 //     (the CI workflow validates both).
 //
+// Prisma resolves the migrations directory NEXT TO each schema file, so the
+// Postgres schema lives in its own folder (`prisma/postgres/`) with its own
+// `migrations/`. Do NOT rename this file or move it into `prisma/` — the
+// SQLite and Postgres migration histories would collide.
+//
 // Usage:
-//   npx prisma migrate dev    --schema prisma/schema.postgres.prisma   # dev against Postgres
-//   npx prisma migrate deploy --schema prisma/schema.postgres.prisma   # apply on deploy
-//   npx prisma generate       --schema prisma/schema.postgres.prisma   # generate client
+//   npx prisma migrate dev    --schema prisma/postgres/schema.prisma   # dev against Postgres
+//   npx prisma migrate deploy --schema prisma/postgres/schema.prisma   # apply on deploy
+//   npx prisma generate       --schema prisma/postgres/schema.prisma   # generate client
+//
+// ⚠️  Generating the client with this schema switches @prisma/client to the
+//     Postgres engine. On the Vercel build host that is intended; if you run
+//     it locally, restore your dev client afterwards with `npx prisma generate`.
 //
 // DATABASE_URL must point at a PostgreSQL connection string, e.g.
 //   postgresql://user:pass@host:5432/db?sslmode=require
