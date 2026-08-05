@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { deleteFromStorage } from '@/lib/storage';
-import { generateLinks, serializeImage } from '@/lib/utils';
-import type { ImageDetailResponse } from '@/types';
+import { serializeImage } from '@/lib/utils';
+import { getImageDetail } from '@/lib/image-detail';
 
 export const runtime = 'nodejs';
 
@@ -14,22 +14,12 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
-  const image = await prisma.image.findUnique({ where: { id } });
-  if (!image) {
+  const data = await getImageDetail(id);
+  if (!data) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const links = generateLinks(
-    image.publicUrl,
-    image.storagePath,
-    image.altText,
-    process.env.NEXT_PUBLIC_APP_URL || ''
-  );
-
-  return NextResponse.json({
-    image: serializeImage(image),
-    links,
-  } satisfies ImageDetailResponse);
+  return NextResponse.json(data);
 }
 
 /**
