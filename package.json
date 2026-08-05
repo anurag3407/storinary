@@ -29,7 +29,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "vercel-build": "prisma migrate deploy --schema prisma/postgres/schema.prisma && prisma generate --schema prisma/postgres/schema.prisma && next build"
+    "vercel-build": "node scripts/vercel-build.js"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",

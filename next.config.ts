@@ -12,8 +12,10 @@ const nextConfig: NextConfig = {
   },
 
   // Allow large uploads via server actions
-  serverActions: {
-    bodySizeLimit: '50mb',
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '50mb',
+    },
   },
 
   // Exclude @imgly/background-removal from server-side bundling
