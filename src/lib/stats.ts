@@ -35,6 +35,20 @@ export async function getStats(): Promise<StatsResponse> {
     prisma.image.count({ where: { createdAt: { gte: firstOfMonth } } }),
   ]);
 
+  const results = [
+    totalImagesResult,
+    storageResult,
+    imagesByFormatResult,
+    imagesByFolderResult,
+    recentUploadsResult,
+    uploadsThisMonthResult,
+  ];
+  for (const r of results) {
+    if (r.status === 'rejected') {
+      console.error('getStats DB query failed:', r.reason);
+    }
+  }
+
   const totalImages = totalImagesResult.status === 'fulfilled' ? totalImagesResult.value : 0;
   const totalStorageBytes =
     storageResult.status === 'fulfilled' && storageResult.value._sum.fileSize

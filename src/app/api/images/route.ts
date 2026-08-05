@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
     } satisfies ImagesListResponse);
   } catch (error) {
     console.error('API /api/images error:', error);
-    return NextResponse.json({ error: 'Failed to fetch images' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
