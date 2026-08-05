@@ -11,38 +11,43 @@ function formatStorage(bytes: number): string {
 }
 
 /**
- * Helper to query dashboard statistics directly from the database.
+ * Helper to query dashboard statistics directly from the database using Promise.allSettled
+ * for parallel execution and fault tolerance in serverless environments.
  */
 export async function getStats(): Promise<StatsResponse> {
-  const totalImages = await prisma.image.count();
-
-  const storageResult = await prisma.image.aggregate({
-    _sum: { fileSize: true },
-  });
-  const totalStorageBytes = storageResult._sum.fileSize || 0;
-
-  const imagesByFormat = await prisma.image.groupBy({
-    by: ['format'],
-    _count: true,
-  });
-
-  const imagesByFolder = await prisma.image.groupBy({
-    by: ['folder'],
-    _count: true,
-  });
-
-  const recentUploads = await prisma.image.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 10,
-  });
-
   const firstOfMonth = new Date();
   firstOfMonth.setDate(1);
   firstOfMonth.setHours(0, 0, 0, 0);
 
-  const uploadsThisMonth = await prisma.image.count({
-    where: { createdAt: { gte: firstOfMonth } },
-  });
+  const [
+    totalImagesResult,
+    storageResult,
+    imagesByFormatResult,
+    imagesByFolderResult,
+    recentUploadsResult,
+    uploadsThisMonthResult,
+  ] = await Promise.allSettled([
+    prisma.image.count(),
+    prisma.image.aggregate({ _sum: { fileSize: true } }),
+    prisma.image.groupBy({ by: ['format'], _count: true }),
+    prisma.image.groupBy({ by: ['folder'], _count: true }),
+    prisma.image.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
+    prisma.image.count({ where: { createdAt: { gte: firstOfMonth } } }),
+  ]);
+
+  const totalImages = totalImagesResult.status === 'fulfilled' ? totalImagesResult.value : 0;
+  const totalStorageBytes =
+    storageResult.status === 'fulfilled' && storageResult.value._sum.fileSize
+      ? storageResult.value._sum.fileSize
+      : 0;
+  const imagesByFormat =
+    imagesByFormatResult.status === 'fulfilled' ? imagesByFormatResult.value : [];
+  const imagesByFolder =
+    imagesByFolderResult.status === 'fulfilled' ? imagesByFolderResult.value : [];
+  const recentUploads =
+    recentUploadsResult.status === 'fulfilled' ? recentUploadsResult.value : [];
+  const uploadsThisMonth =
+    uploadsThisMonthResult.status === 'fulfilled' ? uploadsThisMonthResult.value : 0;
 
   return {
     totalImages,

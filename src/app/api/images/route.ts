@@ -43,25 +43,30 @@ export async function GET(request: NextRequest) {
     where.folder = folder;
   }
 
-  const [items, total] = await Promise.all([
-    prisma.image.findMany({
-      where,
-      orderBy: { [sort]: order } as Prisma.ImageOrderByWithRelationInput,
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.image.count({ where }),
-  ]);
+  try {
+    const [items, total] = await Promise.all([
+      prisma.image.findMany({
+        where,
+        orderBy: { [sort]: order } as Prisma.ImageOrderByWithRelationInput,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.image.count({ where }),
+    ]);
 
-  return NextResponse.json({
-    images: items.map(serializeImage),
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.max(1, Math.ceil(total / limit)),
-    },
-  } satisfies ImagesListResponse);
+    return NextResponse.json({
+      images: items.map(serializeImage),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    } satisfies ImagesListResponse);
+  } catch (error) {
+    console.error('API /api/images error:', error);
+    return NextResponse.json({ error: 'Failed to fetch images' }, { status: 500 });
+  }
 }
 
 /**
