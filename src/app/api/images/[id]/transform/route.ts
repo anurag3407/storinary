@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getFromStorage } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
+import { diskCache } from '@/lib/disk-cache';
 import { svgSafeResponseHeaders } from '@/lib/svg-security';
 import { parseTransformParams } from '@/lib/utils';
 import type { TransformParams } from '@/types';
@@ -41,11 +42,27 @@ export async function GET(
 
   // Reuse a previously processed transform if we have one
   const cacheKey = hasTransforms ? transformCacheKey(image.storagePath, params) : '';
+
+  // L1: in-memory LRU cache
   const cached = hasTransforms ? transformCache.get(cacheKey) : undefined;
   if (cached) {
     return new Response(new Uint8Array(cached.buffer), {
       headers: { 'Content-Type': cached.contentType, ...CACHE_HEADERS },
     });
+  }
+
+  // L2: disk-backed persistent cache (survives cold starts)
+  if (hasTransforms) {
+    const diskCached = await diskCache.get(cacheKey);
+    if (diskCached) {
+      transformCache.set(cacheKey, {
+        buffer: diskCached.buffer,
+        contentType: diskCached.contentType,
+      });
+      return new Response(new Uint8Array(diskCached.buffer), {
+        headers: { 'Content-Type': diskCached.contentType, ...CACHE_HEADERS },
+      });
+    }
   }
 
   let fetched;
@@ -78,10 +95,14 @@ export async function GET(
     return new Response('Transform failed', { status: 500 });
   }
 
-  transformCache.set(cacheKey, {
+  const entry = {
     buffer: result.buffer,
     contentType: result.contentType,
-  });
+  };
+
+  // Store in both cache layers
+  transformCache.set(cacheKey, entry);
+  diskCache.set(cacheKey, entry).catch(() => {}); // fire-and-forget; best-effort
 
   return new Response(new Uint8Array(result.buffer), {
     headers: {

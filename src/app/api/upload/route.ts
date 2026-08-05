@@ -4,6 +4,7 @@ import { getPublicUrl, generateStorageKey, uploadToStorage } from '@/lib/storage
 import { getImageMetadata } from '@/lib/image-processing';
 import { isSafeSvg } from '@/lib/svg-security';
 import { generateShortId, getMimeType, serializeImage } from '@/lib/utils';
+import { generateEagerTransforms } from '@/lib/eager-transforms';
 import type { UploadResponse } from '@/types';
 
 export const runtime = 'nodejs';
@@ -54,8 +55,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  for (const file of files) {
-    try {
+  // Process all files concurrently with Promise.allSettled
+  const results = await Promise.allSettled(
+    files.map(async (file) => {
       // 1. Validate file type and size
       if (!ALLOWED_FORMATS.includes(file.type)) {
         throw new Error(`Unsupported format: ${file.type || 'unknown'}`);
@@ -113,11 +115,34 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      images.push(serializeImage(created));
-    } catch (error) {
+      // 9. Generate eager transform variants (thumbnail, medium, large)
+      //    Runs in the background of this upload slot — doesn't block the
+      //    overall response but the variant URLs are included in the result.
+      let variants: Array<{ label: string; width: number; publicUrl: string }> = [];
+      try {
+        const generated = await generateEagerTransforms(buffer, storageKey, format);
+        variants = generated.map((v) => ({
+          label: v.label,
+          width: v.width,
+          publicUrl: v.publicUrl,
+        }));
+      } catch {
+        // Variant generation is best-effort — don't fail the upload
+      }
+
+      return { image: serializeImage(created), variants };
+    })
+  );
+
+  // Collect results and errors
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      images.push(result.value.image);
+    } else {
       errors.push({
-        filename: file.name,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        filename: files[i].name,
+        error: result.reason instanceof Error ? result.reason.message : 'Unknown error',
       });
     }
   }

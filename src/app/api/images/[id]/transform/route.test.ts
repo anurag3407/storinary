@@ -4,11 +4,13 @@ import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { transformCache } from '@/lib/transform-cache';
 
-const { findUniqueMock, getFromStorageMock, transformImageMock } =
+const { findUniqueMock, getFromStorageMock, transformImageMock, diskCacheGetMock, diskCacheSetMock } =
   vi.hoisted(() => ({
     findUniqueMock: vi.fn(),
     getFromStorageMock: vi.fn(),
     transformImageMock: vi.fn(),
+    diskCacheGetMock: vi.fn().mockResolvedValue(null),
+    diskCacheSetMock: vi.fn().mockResolvedValue(undefined),
   }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -23,6 +25,15 @@ vi.mock('@/lib/storage', () => ({
 
 vi.mock('@/lib/image-processing', () => ({
   transformImage: transformImageMock,
+}));
+
+vi.mock('@/lib/disk-cache', () => ({
+  diskCache: {
+    get: diskCacheGetMock,
+    set: diskCacheSetMock,
+    clear: vi.fn().mockResolvedValue(undefined),
+    size: vi.fn().mockResolvedValue(0),
+  },
 }));
 
 const ROW = {

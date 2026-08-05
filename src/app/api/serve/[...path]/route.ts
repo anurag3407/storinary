@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFromStorage, getPublicUrl } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
+import { diskCache } from '@/lib/disk-cache';
 import { parseTransformParams } from '@/lib/utils';
 import type { TransformParams } from '@/types';
 
@@ -47,10 +48,25 @@ export async function GET(
 
   // Reuse a previously processed transform if we have one
   const cacheKey = transformCacheKey(key, params);
+
+  // L1: in-memory LRU cache
   const cached = transformCache.get(cacheKey);
   if (cached) {
     return new Response(new Uint8Array(cached.buffer), {
       headers: { 'Content-Type': cached.contentType, ...CACHE_HEADERS },
+    });
+  }
+
+  // L2: disk-backed persistent cache (survives cold starts)
+  const diskCached = await diskCache.get(cacheKey);
+  if (diskCached) {
+    // Promote to in-memory cache
+    transformCache.set(cacheKey, {
+      buffer: diskCached.buffer,
+      contentType: diskCached.contentType,
+    });
+    return new Response(new Uint8Array(diskCached.buffer), {
+      headers: { 'Content-Type': diskCached.contentType, ...CACHE_HEADERS },
     });
   }
 
@@ -68,10 +84,14 @@ export async function GET(
     return new Response('Transform failed', { status: 500 });
   }
 
-  transformCache.set(cacheKey, {
+  const entry = {
     buffer: result.buffer,
     contentType: result.contentType,
-  });
+  };
+
+  // Store in both cache layers
+  transformCache.set(cacheKey, entry);
+  diskCache.set(cacheKey, entry).catch(() => {}); // fire-and-forget; best-effort
 
   return new Response(new Uint8Array(result.buffer), {
     headers: {
