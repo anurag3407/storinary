@@ -23,6 +23,11 @@ export function getRateLimitRule(
   if (pathname.startsWith('/api/serve')) {
     return { key: 'serve', limit: 300, windowMs: 60_000 };
   }
+  // Legacy Cloudinary-URL redirects (can fan out to transforms) — same
+  // budget as serve since the redirect target route does the heavy lifting.
+  if (pathname.startsWith('/api/redirect')) {
+    return { key: 'redirect', limit: 300, windowMs: 60_000 };
+  }
   if (pathname.endsWith('/transform') && method === 'GET') {
     return { key: 'transform', limit: 120, windowMs: 60_000 };
   }

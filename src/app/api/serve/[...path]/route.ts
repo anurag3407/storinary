@@ -28,7 +28,14 @@ export async function GET(
   context: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await context.params;
-  const key = (path as string[]).join('/');
+  const rawKey = (path as string[] || []).join('/');
+  let key = rawKey;
+  try {
+    key = decodeURIComponent(rawKey);
+  } catch {
+    // leave as rawKey
+  }
+  key = key.replace(/^\//, '');
 
   if (!key) {
     return new Response('Not found', { status: 404 });

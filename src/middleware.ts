@@ -26,6 +26,7 @@ function isPublicApi(pathname: string): boolean {
   return (
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/serve') ||
+    pathname.startsWith('/api/redirect') ||
     pathname.endsWith('/transform')
   );
 }

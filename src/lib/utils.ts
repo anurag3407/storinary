@@ -104,7 +104,9 @@ export function generateServeUrl(
   storagePath: string,
   params?: Partial<TransformParams>
 ): string {
-  const base = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/serve/${storagePath}`;
+  const cleanPath = storagePath.replace(/^\//, '');
+  const prefix = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_APP_URL || '');
+  const base = `${prefix}/api/serve/${cleanPath}`;
   if (!params) return base;
 
   const qs = new URLSearchParams();

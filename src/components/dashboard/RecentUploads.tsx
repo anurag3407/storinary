@@ -32,6 +32,12 @@ export function RecentUploads({ images }: RecentUploadsProps) {
               src={generateServeUrl(image.storagePath, { w: 96, q: 60 })}
               alt={image.altText || image.originalName}
               loading="lazy"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (target.src !== image.publicUrl) {
+                  target.src = image.publicUrl;
+                }
+              }}
             />
             <div className={styles.info}>
               <span className={styles.name}>{image.originalName}</span>

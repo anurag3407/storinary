@@ -265,6 +265,43 @@ Transformed results are cached in memory (LRU) and sent with `Cache-Control: pub
 - **Secret hygiene** — `SUPABASE_SERVICE_ROLE_KEY` never enters the client bundle (no `NEXT_PUBLIC_` prefix); `.env` is gitignored.
 - **Safe defaults** — transform params are clamped (w/h ≤ 8192, q ≤ 100), uploads are validated by MIME type and size on both client and server.
 
+## ☁️ Migrating from Cloudinary
+
+If your Cloudinary account is being closed (or you simply want to move out), two scripts in [`scripts/`](scripts/) handle the whole migration — no manual downloading needed:
+
+### 1. Backup — get your images onto your own disk first
+
+```bash
+# Add CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET to .env
+node scripts/backup-cloudinary.mjs
+```
+
+Downloads every original image into `cloudinary-backup/` (folder structure preserved) plus a `manifest.json` with all metadata. Safe to re-run — already-downloaded files are skipped.
+
+### 2. Migrate — into Storinary (Supabase Storage + database)
+
+```bash
+# Make sure the Prisma client matches your DATABASE_URL first:
+#   Postgres: npx prisma generate --schema prisma/postgres/schema.prisma
+#   SQLite:   npx prisma generate
+node scripts/migrate-from-cloudinary.mjs
+```
+
+Uploads every image to your Supabase bucket and creates the database records, **preserving Cloudinary folders, tags, alt text, dimensions and original upload dates**. Idempotent — an interrupted run can simply be re-run. Also writes `cloudinary-backup/mapping.json` (public_id → new URL) to power old-URL redirects. Add `--limit=50` for a test run.
+
+### 3. Keep old Cloudinary URLs working (optional)
+
+The app ships a redirect route that understands Cloudinary URL paths, including transform segments (`w_800,h_600,q_70,f_auto`):
+
+```
+/api/redirect/image/upload/v1234/products/hero.jpg
+/api/redirect/image/upload/w_800,h_600,q_70,f_auto/v1234/products/hero.jpg
+```
+
+To serve your old URLs: point your Cloudinary **custom domain (CNAME)** at this app, then rewrite `/image/upload/:rest*` → `/api/redirect/image/upload/:rest*` (via `next.config.ts` rewrites, Vercel rewrites, or your reverse proxy). Images migrate to the same folder path they had on Cloudinary, so the mapping is 1:1. Note: `res.cloudinary.com` itself can't be taken over — a custom domain is required.
+
+> ⚠️ **Prisma client gotcha:** the generated client must match `DATABASE_URL`. If you've run the `vercel-build` script (or `prisma generate --schema prisma/postgres/schema.prisma`) locally, the client will expect Postgres — regenerate it with plain `npx prisma generate` to go back to SQLite, or vice versa. A mismatch shows up as a dashboard "stats API unavailable" error.
+
 ## 🧪 Testing
 
 ```bash

@@ -38,3 +38,6 @@ next-env.d.ts
 prisma/dev.db
 prisma/dev.db-journal
 prisma/dev.db-*
+
+# cloudinary migration backup (images + manifest — do not commit)
+/cloudinary-backup/

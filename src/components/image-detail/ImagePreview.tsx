@@ -25,6 +25,12 @@ export function ImagePreview({ image, transformedSrc }: ImagePreviewProps) {
             src={transformedSrc || image.publicUrl}
             alt={image.altText || image.originalName}
             className={styles.image}
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.src !== image.publicUrl) {
+                target.src = image.publicUrl;
+              }
+            }}
           />
         </div>
       </div>

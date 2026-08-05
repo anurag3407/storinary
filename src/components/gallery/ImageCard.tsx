@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
@@ -25,8 +26,22 @@ export function ImageCard({
 }: ImageCardProps) {
   const router = useRouter();
 
-  // Serve a downscaled, optimized thumbnail instead of the full original
+  // Serve a downscaled, optimized thumbnail instead of the full original, with fallback to publicUrl
   const thumbSrc = generateServeUrl(image.storagePath, { w: 400, q: 70 });
+  const [imgSrc, setImgSrc] = useState(thumbSrc);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(thumbSrc);
+    setHasError(false);
+  }, [thumbSrc]);
+
+  const handleImageError = () => {
+    if (!hasError && imgSrc !== image.publicUrl) {
+      setHasError(true);
+      setImgSrc(image.publicUrl);
+    }
+  };
 
   const handleDelete = () => {
     if (window.confirm(`Delete "${image.originalName}"? This cannot be undone.`)) {
@@ -46,11 +61,12 @@ export function ImageCard({
     >
       <div className={styles.imageWrap} onClick={(e) => e.stopPropagation()}>
         <img
-          src={thumbSrc}
+          src={imgSrc}
           alt={image.altText || image.originalName}
           loading="lazy"
           width={400}
           className={styles.image}
+          onError={handleImageError}
         />
         <label
           className={`nb-checkbox ${styles.checkbox}`}
