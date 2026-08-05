@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -8,6 +7,7 @@ import { FormatChart } from '@/components/dashboard/FormatChart';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { getStats } from '@/lib/stats';
 import type { StatsResponse } from '@/types';
 import styles from './page.module.css';
 
@@ -20,20 +20,12 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   let stats: StatsResponse | null = null;
 
   try {
-    // Forward the session cookie so /api/stats works when auth is enabled
-    const cookieHeader = (await cookies()).toString();
-    const response = await fetch(`${base}/api/stats`, {
-      cache: 'no-store',
-      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-    });
-    if (response.ok) {
-      stats = await response.json();
-    }
-  } catch {
+    stats = await getStats();
+  } catch (error) {
+    console.error('Failed to query dashboard stats:', error);
     stats = null;
   }
 
