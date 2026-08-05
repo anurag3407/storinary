@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-const FREE_STORAGE_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB
+const FREE_STORAGE_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -90,7 +90,7 @@ export function Sidebar() {
         <div className={styles.storageBox}>
           <span className={styles.storageLabel}>Storage</span>
           <span className={styles.storageValue}>
-            {usedFormatted} / 10 GB
+            {usedFormatted} / 1 GB
           </span>
           <div className={styles.storageBar} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
             <div className={styles.storageFill} style={{ width: `${pct}%` }} />
