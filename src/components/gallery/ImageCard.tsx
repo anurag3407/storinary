@@ -60,6 +60,7 @@ export function ImageCard({
       }}
     >
       <div className={styles.imageWrap} onClick={(e) => e.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imgSrc}
           alt={image.altText || image.originalName}

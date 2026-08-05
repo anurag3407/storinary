@@ -27,6 +27,7 @@ export function UploadItem({ item, onRemove }: UploadItemProps) {
 
   return (
     <div className={styles.item}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={item.previewUrl} alt="" className={styles.thumb} />
 
       <div className={styles.info}>

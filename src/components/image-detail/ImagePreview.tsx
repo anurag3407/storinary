@@ -21,6 +21,7 @@ export function ImagePreview({ image, transformedSrc }: ImagePreviewProps) {
         title={zoom ? 'Click to zoom out' : 'Click to zoom in'}
       >
         <div className={styles.checkerboard}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={transformedSrc || image.publicUrl}
             alt={image.altText || image.originalName}

@@ -58,7 +58,7 @@ export async function GET(
   // In canonical Cloudinary URLs the transforms and version always come
   // before the file path, so only the leading run is parsed as such.
   const transforms: Record<string, string> = {};
-  let fileSegments: string[] = [];
+  const fileSegments: string[] = [];
   let inHead = true;
   let versionSeen = false;
 
