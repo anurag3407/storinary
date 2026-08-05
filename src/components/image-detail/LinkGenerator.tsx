@@ -30,7 +30,7 @@ function buildTransformUrl(links: GeneratedLinks, params: TransformParams): stri
   return s ? `${links.transformBase}?${s}` : null;
 }
 
-export function LinkGenerator({ image, links, transformParams }: LinkGeneratorProps) {
+export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
   const { copy } = useClipboard();
   const { toast } = useToast();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);

@@ -18,7 +18,6 @@ export default function UploadPage() {
     removeFile,
     updateGlobalOptions,
     startUpload,
-    clearCompleted,
     reset,
   } = useUpload();
   const { toast } = useToast();

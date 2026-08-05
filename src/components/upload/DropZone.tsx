@@ -37,24 +37,29 @@ export function DropZone({ onFilesAdded, disabled }: DropZoneProps) {
   return (
     <div
       className={`${styles.dropzone} ${isDragging ? styles.dragging : ''} ${disabled ? styles.disabled : ''}`}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (!disabled) inputRef.current?.click();
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(true);
+        if (!disabled) setIsDragging(true);
       }}
       onDragEnter={(e) => {
         e.preventDefault();
+        if (disabled) return;
         dragCounter.current += 1;
         setIsDragging(true);
       }}
       onDragLeave={(e) => {
         e.preventDefault();
+        if (disabled) return;
         dragCounter.current -= 1;
         if (dragCounter.current <= 0) setIsDragging(false);
       }}
       onDrop={(e) => {
         e.preventDefault();
+        if (disabled) return;
         dragCounter.current = 0;
         setIsDragging(false);
         handleFiles(e.dataTransfer.files);
