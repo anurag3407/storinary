@@ -48,7 +48,10 @@ export function useImages() {
       if (f.folder) params.set('folder', f.folder);
 
       const res = await fetch(`/api/images?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load images');
+      if (!res.ok) {
+        const errData = typeof res.json === 'function' ? await res.json().catch(() => ({})) : {};
+        throw new Error(errData?.error || 'Failed to load images');
+      }
       const data: ImagesListResponse = await res.json();
       setImages(data.images);
       setPagination(data.pagination);
