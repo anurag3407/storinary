@@ -2,7 +2,7 @@
   <img src="public/logo.png" alt="Storinary logo" width="240" />
 </p>
 
-# 🟨 Storinary — Self-Hosted Image CDN
+# Storinary — Self-Hosted Image CDN
 
 <p align="center">
   <em>A free, self-hosted <a href="https://cloudinary.com">Cloudinary</a> alternative. Own your images, transform them on the fly, and never get your account deleted.</em>
@@ -10,7 +10,6 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License: GPL-3.0" /></a>
-  <a href="https://github.com/anurag3407/storinary-cloud/actions/workflows/ci.yml"><img src="https://github.com/anurag3407/storinary-cloud/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/tests-284%20passing-brightgreen" alt="284 tests passing" />
   <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6" alt="TypeScript strict" />
