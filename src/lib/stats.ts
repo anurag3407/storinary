@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeImage } from '@/lib/utils';
+import { getStorageProviderInfo } from '@/lib/storage';
 import type { StatsResponse } from '@/types';
 
 function formatStorage(bytes: number): string {
@@ -63,6 +64,8 @@ export async function getStats(): Promise<StatsResponse> {
   const uploadsThisMonth =
     uploadsThisMonthResult.status === 'fulfilled' ? uploadsThisMonthResult.value : 0;
 
+  const providerInfo = getStorageProviderInfo();
+
   return {
     totalImages,
     totalStorageBytes,
@@ -75,6 +78,11 @@ export async function getStats(): Promise<StatsResponse> {
     ),
     recentUploads: recentUploads.map(serializeImage),
     uploadsThisMonth,
-    supabaseBucket: process.env.SUPABASE_BUCKET_NAME || 'storinary',
+    provider: providerInfo.provider,
+    providerName: providerInfo.providerName,
+    storageBucket: providerInfo.bucket,
+    storageEndpoint: providerInfo.endpoint,
+    isConfigured: providerInfo.isConfigured,
+    supabaseBucket: providerInfo.bucket, // backwards compatibility
   };
 }

@@ -94,7 +94,12 @@ export interface StatsResponse {
   imagesByFolder: Record<string, number>; // e.g., { "/": 200, "/products": 100 }
   recentUploads: ImageRecord[]; // last 10 uploads
   uploadsThisMonth: number;
-  supabaseBucket?: string; // bucket name (for Settings connection display)
+  provider?: 'supabase' | 'appwrite';
+  providerName?: string;
+  storageBucket?: string;
+  storageEndpoint?: string;
+  isConfigured?: boolean;
+  supabaseBucket?: string; // bucket name (for Settings connection display backwards compat)
 }
 
 // ════════════════════════════════════════════════════════════

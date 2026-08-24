@@ -16,7 +16,7 @@ import {
 import type { StatsResponse } from '@/types';
 import styles from './settings.module.css';
 
-const SETUP_STEPS = [
+const SUPABASE_SETUP_STEPS = [
   {
     title: 'Create a Supabase project',
     detail:
@@ -44,6 +44,34 @@ const SETUP_STEPS = [
   },
 ];
 
+const APPWRITE_SETUP_STEPS = [
+  {
+    title: 'Create an Appwrite project',
+    detail:
+      'Go to cloud.appwrite.io and create a project (use your GitHub Student Developer Pack / Student Offer for free Pro tier). Note your Project ID and API Endpoint.',
+  },
+  {
+    title: 'Create the storage bucket',
+    detail:
+      'In the Appwrite dashboard, open Storage → Create Bucket. Name it and set Bucket ID to "storinary" (or your APPWRITE_BUCKET_ID).',
+  },
+  {
+    title: 'Configure bucket permissions',
+    detail:
+      'In the bucket Settings → Permissions, add "Any" with "Read" access (or configure file permissions) so generated CDN URLs are publicly accessible.',
+  },
+  {
+    title: 'Generate an API key',
+    detail:
+      'Open Project Settings → API Keys → Create API Key. Grant Storage scopes (files.read, files.write) and copy the secret key.',
+  },
+  {
+    title: 'Update your .env file',
+    detail:
+      'Paste the values into .env as NEXT_PUBLIC_APPWRITE_ENDPOINT, NEXT_PUBLIC_APPWRITE_PROJECT_ID, APPWRITE_API_KEY, and APPWRITE_BUCKET_ID. Restart the dev server.',
+  },
+];
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -54,11 +82,14 @@ export default function SettingsPage() {
   const [connection, setConnection] = useState<
     'checking' | 'connected' | 'disconnected'
   >('checking');
-  const [supabaseUrl, setSupabaseUrl] = useState('');
+  const [provider, setProvider] = useState<'supabase' | 'appwrite'>('supabase');
+  const [providerName, setProviderName] = useState('Supabase Storage');
+  const [storageEndpoint, setStorageEndpoint] = useState('');
   const [bucket, setBucket] = useState('');
 
   const [options, setOptions] = useState<UploadDefaults>(DEFAULT_UPLOAD_OPTIONS);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [activeGuideTab, setActiveGuideTab] = useState<'appwrite' | 'supabase'>('appwrite');
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
@@ -74,8 +105,12 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error('Request failed');
       const data: StatsResponse = await res.json();
       setConnection('connected');
-      setBucket(data.supabaseBucket || '');
-      if (!silent) toast.success('Connected!');
+      if (data.provider) setProvider(data.provider);
+      if (data.providerName) setProviderName(data.providerName);
+      if (data.storageEndpoint) setStorageEndpoint(data.storageEndpoint);
+      setBucket(data.storageBucket || data.supabaseBucket || '');
+      if (data.provider) setActiveGuideTab(data.provider);
+      if (!silent) toast.success(`Connected to ${data.providerName || 'Storage'}!`);
     } catch {
       setConnection('disconnected');
       if (!silent) toast.error('Connection failed');
@@ -85,7 +120,6 @@ export default function SettingsPage() {
   // Load saved defaults and test connection on mount (silently)
   useEffect(() => {
     setOptions(loadUploadDefaults());
-    setSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || '');
     testConnection(true);
     fetch('/api/auth/status')
       .then((res) => res.json())
@@ -178,7 +212,7 @@ export default function SettingsPage() {
     <div>
       <Header
         title="Settings"
-        description="Configure your Supabase connection and default upload options."
+        description="Configure your storage provider (Appwrite / Supabase) and default upload options."
       />
 
       <div className={styles.grid}>
@@ -218,7 +252,7 @@ export default function SettingsPage() {
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>Connection Status</h2>
           <p className={styles.cardDescription}>
-            Verify that Storinary can reach your Supabase bucket.
+            Verify that Storinary can reach your configured storage bucket.
           </p>
 
           <div className={styles.statusRow}>
@@ -237,6 +271,9 @@ export default function SettingsPage() {
                   ? 'DISCONNECTED'
                   : 'CHECKING…'}
             </Badge>
+            <Badge variant="default">
+              {provider === 'appwrite' ? 'APPWRITE' : 'SUPABASE'}
+            </Badge>
             <Button
               variant="secondary"
               size="sm"
@@ -249,13 +286,19 @@ export default function SettingsPage() {
 
           <div className={styles.infoGrid}>
             <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Supabase URL</span>
+              <span className={styles.infoLabel}>Active Provider</span>
+              <span className={styles.infoValue}>{providerName}</span>
+            </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>
+                {provider === 'appwrite' ? 'Appwrite Endpoint' : 'Supabase URL'}
+              </span>
               <span className={styles.infoValue}>
-                {supabaseUrl || 'Not set'}
+                {storageEndpoint || 'Not set'}
               </span>
             </div>
             <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Bucket Name</span>
+              <span className={styles.infoLabel}>Bucket Name / ID</span>
               <span className={styles.infoValue}>{bucket || 'Not set'}</span>
             </div>
           </div>
@@ -391,7 +434,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* ── Section 3: Supabase Setup Guide ──────────────── */}
+        {/* ── Section 3: Storage Setup Guide ───────────────── */}
         <section className={styles.card}>
           <button
             type="button"
@@ -399,24 +442,46 @@ export default function SettingsPage() {
             onClick={() => setGuideOpen((o) => !o)}
             aria-expanded={guideOpen}
           >
-            <span>Supabase Setup Instructions</span>
+            <span>Storage Provider Setup Instructions</span>
             <span className={styles.guideChevron} aria-hidden="true">
               {guideOpen ? '▼' : '▶'}
             </span>
           </button>
 
           {guideOpen && (
-            <ol className={styles.guideList}>
-              {SETUP_STEPS.map((step, i) => (
-                <li key={step.title} className={styles.guideItem}>
-                  <span className={styles.guideNumber}>{i + 1}</span>
-                  <div>
-                    <strong>{step.title}</strong>
-                    <p>{step.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <div>
+              <div className={styles.guideTabs}>
+                <button
+                  type="button"
+                  className={`${styles.guideTab} ${activeGuideTab === 'appwrite' ? styles.guideTabActive : ''}`}
+                  onClick={() => setActiveGuideTab('appwrite')}
+                >
+                  ⚡ Appwrite (Student Offer / Pro)
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.guideTab} ${activeGuideTab === 'supabase' ? styles.guideTabActive : ''}`}
+                  onClick={() => setActiveGuideTab('supabase')}
+                >
+                  ⚡ Supabase Storage
+                </button>
+              </div>
+
+              <ol className={styles.guideList}>
+                {(activeGuideTab === 'appwrite'
+                  ? APPWRITE_SETUP_STEPS
+                  : SUPABASE_SETUP_STEPS
+                ).map((step, i) => (
+                  <li key={step.title} className={styles.guideItem}>
+                    <span className={styles.guideNumber}>{i + 1}</span>
+                    <div>
+                      <strong>{step.title}</strong>
+                      <p>{step.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
           )}
         </section>
 
@@ -443,8 +508,8 @@ export default function SettingsPage() {
             <div>
               <h3 className={styles.dangerActionTitle}>Reset Database</h3>
               <p className={styles.dangerActionDesc}>
-                Deletes all database records but keeps the files in Supabase
-                Storage. Useful for re-syncing.
+                Deletes all database records but keeps the files in your storage
+                bucket. Useful for re-syncing.
               </p>
             </div>
             <Button variant="danger" onClick={() => setConfirmReset(true)}>

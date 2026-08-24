@@ -18,9 +18,9 @@
 
 ---
 
-**Storinary** is a self-hosted image management and delivery platform: bulk upload, transform, and serve images from **Supabase Storage** with a fast, neobrutalism-styled dashboard — **no credit card, no per-image pricing, no vendor lock-in**.
+**Storinary** is a self-hosted image management and delivery platform: bulk upload, transform, and serve images from **Appwrite Storage** or **Supabase Storage** with a fast, neobrutalism-styled dashboard — **no credit card, no per-image pricing, no vendor lock-in**.
 
-Built for the exact problem Cloudinary users hit on the free tier: your account gets disabled for overages and **your assets get deleted**. With Storinary, images live in **your** Supabase bucket, transforms run on **your** server and in **your** browser, and nothing is metered.
+Built for the exact problem Cloudinary users hit on the free tier: your account gets disabled for overages and **your assets get deleted**. With Storinary, images live in **your** Appwrite or Supabase bucket (with full support for the **Appwrite Student Offer / GitHub Student Pack**), transforms run on **your** server and in **your** browser, and nothing is metered.
 
 > 📊 Compare Storinary vs. Cloudinary (features, free tiers, pricing): [`docs/cloudinary-vs-storinary-report.md`](docs/cloudinary-vs-storinary-report.md) · quick summary: [`docs/cloudinary-vs-storinary-summary.md`](docs/cloudinary-vs-storinary-summary.md)
 
@@ -174,11 +174,19 @@ Open [http://localhost:3000](http://localhost:3000) and upload your first image.
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | ✅ | SQLite file (dev) or Postgres connection string (production) |
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Your Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | **Secret key** (server-side only — never expose to the client) |
-| `SUPABASE_BUCKET_NAME` | ✅ | Storage bucket name (must exist & be **public**) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | Public/publishable key (new format: `sb_publishable_…`) |
+| `DATABASE_URL` | ✅ | SQLite file (dev: `file:./dev.db`) or Postgres connection string (production) |
+| `STORAGE_PROVIDER` | — | Optional explicit override (`appwrite` or `supabase`). Auto-detected if omitted. |
+| **Appwrite Storage** | | *(Ideal for Appwrite Student Offer / GitHub Student Pack)* |
+| `NEXT_PUBLIC_APPWRITE_ENDPOINT` | ✅ (Appwrite) | Appwrite API endpoint (e.g., `https://cloud.appwrite.io/v1`) |
+| `NEXT_PUBLIC_APPWRITE_PROJECT_ID` | ✅ (Appwrite) | Your Appwrite project ID |
+| `APPWRITE_API_KEY` | ✅ (Appwrite) | Server API Key with `files.read` and `files.write` storage scopes |
+| `APPWRITE_BUCKET_ID` | — | Appwrite storage bucket ID (default `storinary`, bucket permissions set to public/read) |
+| **Supabase Storage** | | |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ (Supabase) | Your Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ (Supabase) | **Secret key** (server-side only — never expose to the client) |
+| `SUPABASE_BUCKET_NAME` | — | Storage bucket name (default `storinary`, must exist & be **public**) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | Public/publishable key (optional fallback) |
+| **General & Security** | | |
 | `NEXT_PUBLIC_APP_URL` | ⚠️ | Public app URL — used for generated links & server fetches (set it in production) |
 | `NEXT_PUBLIC_MAX_FILE_SIZE_MB` | — | Max upload size in MB (default `10`) |
 | `NEXT_PUBLIC_ALLOWED_FORMATS` | — | Comma-separated allowed MIME types |

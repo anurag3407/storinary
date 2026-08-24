@@ -127,6 +127,34 @@
   font-size: var(--nb-text-base);
 }
 
+.guideTabs {
+  display: flex;
+  gap: var(--nb-space-2);
+  margin-top: var(--nb-space-4);
+  flex-wrap: wrap;
+}
+
+.guideTab {
+  padding: 8px 14px;
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-sm);
+  background-color: var(--nb-bg);
+  border: var(--nb-border);
+  border-radius: var(--nb-radius);
+  cursor: pointer;
+  box-shadow: var(--nb-shadow-sm);
+  transition: var(--nb-transition);
+}
+
+.guideTab:hover {
+  background-color: #f0f0f0;
+}
+
+.guideTabActive {
+  background-color: var(--nb-yellow);
+  box-shadow: var(--nb-shadow);
+}
+
 .guideList {
   list-style: none;
   margin-top: var(--nb-space-5);
