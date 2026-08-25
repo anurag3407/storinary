@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/hooks/useToast';
+import { CompressionSelector } from '@/components/upload/CompressionSelector';
 import {
   DEFAULT_UPLOAD_OPTIONS,
   loadUploadDefaults,
@@ -15,6 +16,29 @@ import {
 } from '@/lib/upload-helpers';
 import type { StatsResponse } from '@/types';
 import styles from './settings.module.css';
+
+const BACKBLAZE_SETUP_STEPS = [
+  {
+    title: 'Create a Backblaze account',
+    detail:
+      'Go to backblaze.com/b2 and create a free B2 Cloud Storage account (10 GB free storage included).',
+  },
+  {
+    title: 'Create the storage bucket',
+    detail:
+      'In the Backblaze B2 dashboard, go to Buckets → Create a Bucket. Enter a unique bucket name (e.g. "storinary"), and set "Files in Bucket are" to Public.',
+  },
+  {
+    title: 'Create an Application Key',
+    detail:
+      'Go to App Keys → Add a New Application Key. Name it (e.g. "storinary-key"), select "Read and Write" access, and copy the keyID and applicationKey.',
+  },
+  {
+    title: 'Update your .env file',
+    detail:
+      'Paste the credentials into .env as BACKBLAZE_APPLICATION_KEY_ID, BACKBLAZE_APPLICATION_KEY, and BACKBLAZE_BUCKET_NAME. Restart the dev server.',
+  },
+];
 
 const SUPABASE_SETUP_STEPS = [
   {
@@ -82,14 +106,14 @@ export default function SettingsPage() {
   const [connection, setConnection] = useState<
     'checking' | 'connected' | 'disconnected'
   >('checking');
-  const [provider, setProvider] = useState<'supabase' | 'appwrite'>('supabase');
+  const [provider, setProvider] = useState<'backblaze' | 'appwrite' | 'supabase'>('supabase');
   const [providerName, setProviderName] = useState('Supabase Storage');
   const [storageEndpoint, setStorageEndpoint] = useState('');
   const [bucket, setBucket] = useState('');
 
   const [options, setOptions] = useState<UploadDefaults>(DEFAULT_UPLOAD_OPTIONS);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [activeGuideTab, setActiveGuideTab] = useState<'appwrite' | 'supabase'>('appwrite');
+  const [activeGuideTab, setActiveGuideTab] = useState<'backblaze' | 'appwrite' | 'supabase'>('backblaze');
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
@@ -212,7 +236,7 @@ export default function SettingsPage() {
     <div>
       <Header
         title="Settings"
-        description="Configure your storage provider (Appwrite / Supabase) and default upload options."
+        description="Configure your storage provider (Backblaze / Appwrite / Supabase) and default upload options."
       />
 
       <div className={styles.grid}>
@@ -272,7 +296,11 @@ export default function SettingsPage() {
                   : 'CHECKING…'}
             </Badge>
             <Badge variant="default">
-              {provider === 'appwrite' ? 'APPWRITE' : 'SUPABASE'}
+              {provider === 'backblaze'
+                ? 'BACKBLAZE B2'
+                : provider === 'appwrite'
+                  ? 'APPWRITE'
+                  : 'SUPABASE'}
             </Badge>
             <Button
               variant="secondary"
@@ -291,7 +319,11 @@ export default function SettingsPage() {
             </div>
             <div className={styles.infoItem}>
               <span className={styles.infoLabel}>
-                {provider === 'appwrite' ? 'Appwrite Endpoint' : 'Supabase URL'}
+                {provider === 'backblaze'
+                  ? 'Backblaze Endpoint / CDN'
+                  : provider === 'appwrite'
+                    ? 'Appwrite Endpoint'
+                    : 'Supabase URL'}
               </span>
               <span className={styles.infoValue}>
                 {storageEndpoint || 'Not set'}
@@ -326,24 +358,16 @@ export default function SettingsPage() {
 
             {options.compress && (
               <>
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="settings-quality">
-                    Quality: {options.quality}%
-                  </label>
-                  <input
-                    id="settings-quality"
-                    type="range"
-                    min="1"
-                    max="100"
-                    value={options.quality}
-                    onChange={(e) =>
-                      setOptions({
-                        ...options,
-                        quality: parseInt(e.target.value, 10),
-                      })
-                    }
-                  />
-                </div>
+                <CompressionSelector
+                  idPrefix="settings"
+                  quality={options.quality}
+                  onChange={(quality) =>
+                    setOptions({
+                      ...options,
+                      quality,
+                    })
+                  }
+                />
 
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="settings-maxwidth">
@@ -453,6 +477,13 @@ export default function SettingsPage() {
               <div className={styles.guideTabs}>
                 <button
                   type="button"
+                  className={`${styles.guideTab} ${activeGuideTab === 'backblaze' ? styles.guideTabActive : ''}`}
+                  onClick={() => setActiveGuideTab('backblaze')}
+                >
+                  ⚡ Backblaze B2 (10 GB Free)
+                </button>
+                <button
+                  type="button"
                   className={`${styles.guideTab} ${activeGuideTab === 'appwrite' ? styles.guideTabActive : ''}`}
                   onClick={() => setActiveGuideTab('appwrite')}
                 >
@@ -468,9 +499,11 @@ export default function SettingsPage() {
               </div>
 
               <ol className={styles.guideList}>
-                {(activeGuideTab === 'appwrite'
-                  ? APPWRITE_SETUP_STEPS
-                  : SUPABASE_SETUP_STEPS
+                {(activeGuideTab === 'backblaze'
+                  ? BACKBLAZE_SETUP_STEPS
+                  : activeGuideTab === 'appwrite'
+                    ? APPWRITE_SETUP_STEPS
+                    : SUPABASE_SETUP_STEPS
                 ).map((step, i) => (
                   <li key={step.title} className={styles.guideItem}>
                     <span className={styles.guideNumber}>{i + 1}</span>
@@ -551,7 +584,7 @@ export default function SettingsPage() {
       >
         <p>
           This will permanently delete <strong>every image</strong> from
-          Supabase Storage and the gallery. This action cannot be undone.
+          storage and the gallery. This action cannot be undone.
         </p>
         <p className={styles.modalHint}>
           Type <strong>DELETE ALL</strong> to confirm.
@@ -584,7 +617,7 @@ export default function SettingsPage() {
       >
         <p>
           This deletes all <strong>database records</strong> but keeps the
-          files in Supabase Storage. You can re-sync the library later. This
+          files in your storage bucket. You can re-sync the library later. This
           action cannot be undone.
         </p>
       </Modal>

@@ -1,5 +1,6 @@
 'use client';
 
+import { CompressionSelector } from './CompressionSelector';
 import type { UploadState } from '@/types';
 import styles from './UploadSettings.module.css';
 
@@ -24,22 +25,24 @@ export function UploadSettings({ options, onChange, disabled }: UploadSettingsPr
           Compress to WebP
         </label>
 
+        <label className="nb-checkbox">
+          <input
+            type="checkbox"
+            checked={options.removeBg}
+            disabled={disabled}
+            onChange={(e) => onChange({ removeBg: e.target.checked })}
+          />
+          Remove Background
+        </label>
+
         {options.compress && (
           <>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="upload-quality">
-                Quality: {options.quality}%
-              </label>
-              <input
-                id="upload-quality"
-                type="range"
-                min="1"
-                max="100"
-                value={options.quality}
-                disabled={disabled}
-                onChange={(e) => onChange({ quality: parseInt(e.target.value, 10) })}
-              />
-            </div>
+            <CompressionSelector
+              idPrefix="upload"
+              quality={options.quality}
+              disabled={disabled}
+              onChange={(quality) => onChange({ quality })}
+            />
 
             <div className={styles.field}>
               <label className={styles.label} htmlFor="upload-maxwidth">
@@ -65,15 +68,6 @@ export function UploadSettings({ options, onChange, disabled }: UploadSettingsPr
           </>
         )}
 
-        <label className="nb-checkbox">
-          <input
-            type="checkbox"
-            checked={options.removeBg}
-            disabled={disabled}
-            onChange={(e) => onChange({ removeBg: e.target.checked })}
-          />
-          Remove Background
-        </label>
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor="upload-folder">

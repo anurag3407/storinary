@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { CompressionSelector } from '@/components/upload/CompressionSelector';
 import type { ImageRecord, TransformParams } from '@/types';
 import styles from './TransformPanel.module.css';
 
@@ -83,16 +84,10 @@ export function TransformPanel({ image, onTransformChange }: TransformPanelProps
         </div>
 
         <div className={`${styles.field} ${styles.full}`}>
-          <label className={styles.label} htmlFor="tf-quality">
-            Quality: {params.q ?? 80}%
-          </label>
-          <input
-            id="tf-quality"
-            type="range"
-            min="1"
-            max="100"
-            value={params.q ?? 80}
-            onChange={(e) => update({ ...params, q: parseInt(e.target.value, 10) })}
+          <CompressionSelector
+            idPrefix="tf"
+            quality={params.q ?? 80}
+            onChange={(q) => update({ ...params, q })}
           />
         </div>
 

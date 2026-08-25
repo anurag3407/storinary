@@ -18,9 +18,9 @@
 
 ---
 
-**Storinary** is a self-hosted image management and delivery platform: bulk upload, transform, and serve images from **Appwrite Storage** or **Supabase Storage** with a fast, neobrutalism-styled dashboard — **no credit card, no per-image pricing, no vendor lock-in**.
+**Storinary** is a self-hosted image management and delivery platform: bulk upload, transform, and serve images from **Backblaze B2**, **Appwrite Storage**, or **Supabase Storage** with a fast, neobrutalism-styled dashboard — **no credit card, no per-image pricing, no vendor lock-in**.
 
-Built for the exact problem Cloudinary users hit on the free tier: your account gets disabled for overages and **your assets get deleted**. With Storinary, images live in **your** Appwrite or Supabase bucket (with full support for the **Appwrite Student Offer / GitHub Student Pack**), transforms run on **your** server and in **your** browser, and nothing is metered.
+Built for the exact problem Cloudinary users hit on the free tier: your account gets disabled for overages and **your assets get deleted**. With Storinary, images live in **your** Backblaze, Appwrite, or Supabase bucket (with full support for 10 GB free B2 storage and the **Appwrite Student Offer / GitHub Student Pack**), transforms run on **your** server and in **your** browser, and nothing is metered.
 
 > 📊 Compare Storinary vs. Cloudinary (features, free tiers, pricing): [`docs/cloudinary-vs-storinary-report.md`](docs/cloudinary-vs-storinary-report.md) · quick summary: [`docs/cloudinary-vs-storinary-summary.md`](docs/cloudinary-vs-storinary-summary.md)
 
@@ -175,7 +175,13 @@ Open [http://localhost:3000](http://localhost:3000) and upload your first image.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | SQLite file (dev: `file:./dev.db`) or Postgres connection string (production) |
-| `STORAGE_PROVIDER` | — | Optional explicit override (`appwrite` or `supabase`). Auto-detected if omitted. |
+| `STORAGE_PROVIDER` | — | Optional explicit override (`backblaze`, `appwrite`, or `supabase`). Auto-detected (Backblaze → Appwrite → Supabase) if omitted. |
+| **Backblaze B2 Storage** | | *(10 GB Free Object Storage)* |
+| `BACKBLAZE_APPLICATION_KEY_ID` | ✅ (Backblaze) | Your Backblaze Key ID |
+| `BACKBLAZE_APPLICATION_KEY` | ✅ (Backblaze) | Your Backblaze Application Key with read/write access |
+| `BACKBLAZE_BUCKET_NAME` | — | Storage bucket name (default `storinary`, bucket files must be **public**) |
+| `BACKBLAZE_BUCKET_ID` | — | Optional bucket ID (auto-resolved if omitted) |
+| `NEXT_PUBLIC_BACKBLAZE_CDN_URL` | — | Optional custom CDN / endpoint domain |
 | **Appwrite Storage** | | *(Ideal for Appwrite Student Offer / GitHub Student Pack)* |
 | `NEXT_PUBLIC_APPWRITE_ENDPOINT` | ✅ (Appwrite) | Appwrite API endpoint (e.g., `https://cloud.appwrite.io/v1`) |
 | `NEXT_PUBLIC_APPWRITE_PROJECT_ID` | ✅ (Appwrite) | Your Appwrite project ID |

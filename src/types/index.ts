@@ -94,7 +94,7 @@ export interface StatsResponse {
   imagesByFolder: Record<string, number>; // e.g., { "/": 200, "/products": 100 }
   recentUploads: ImageRecord[]; // last 10 uploads
   uploadsThisMonth: number;
-  provider?: 'supabase' | 'appwrite';
+  provider?: 'backblaze' | 'appwrite' | 'supabase';
   providerName?: string;
   storageBucket?: string;
   storageEndpoint?: string;

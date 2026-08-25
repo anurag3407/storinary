@@ -1,8 +1,9 @@
+import crypto from 'node:crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Client as AppwriteClient, Storage as AppwriteStorage } from 'node-appwrite';
 import { InputFile } from 'node-appwrite/file';
 
-export type StorageProviderType = 'supabase' | 'appwrite';
+export type StorageProviderType = 'backblaze' | 'appwrite' | 'supabase';
 
 export interface StorageObject {
   key: string;
@@ -29,21 +30,31 @@ export interface StorageProviderInfo {
  * Detect which storage provider to use based on configuration.
  *
  * Rules:
- * 1. If process.env.STORAGE_PROVIDER is explicitly set ('appwrite' or 'supabase'), use that.
- * 2. If both Supabase and Appwrite credentials are provided, Supabase takes precedence.
- * 3. If only Supabase credentials are provided, use Supabase.
- * 4. If only Appwrite credentials are provided, use Appwrite.
- * 5. Default fallback is Supabase.
+ * 1. If process.env.STORAGE_PROVIDER is explicitly set ('backblaze' / 'b2', 'appwrite', or 'supabase'), use that.
+ * 2. If multiple provider credentials are provided, priority is:
+ *    - Backblaze B2 (first priority)
+ *    - Appwrite (second priority)
+ *    - Supabase (third priority)
+ * 3. Default fallback is Supabase.
  */
 export function getStorageProvider(): StorageProviderType {
   const explicit = process.env.STORAGE_PROVIDER?.toLowerCase().trim();
+  if (explicit === 'backblaze' || explicit === 'b2') {
+    return 'backblaze';
+  }
   if (explicit === 'appwrite' || explicit === 'supabase') {
     return explicit;
   }
 
-  const hasSupabase = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  const hasBackblaze = Boolean(
+    (process.env.BACKBLAZE_APPLICATION_KEY_ID ||
+      process.env.BACKBLAZE_KEY_ID ||
+      process.env.B2_APPLICATION_KEY_ID ||
+      process.env.B2_KEY_ID) &&
+    (process.env.BACKBLAZE_APPLICATION_KEY ||
+      process.env.BACKBLAZE_APP_KEY ||
+      process.env.B2_APPLICATION_KEY ||
+      process.env.B2_APP_KEY)
   );
 
   const hasAppwrite = Boolean(
@@ -52,14 +63,19 @@ export function getStorageProvider(): StorageProviderType {
     (process.env.APPWRITE_API_KEY || process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
   );
 
-  if (hasSupabase && hasAppwrite) {
-    return 'supabase';
-  }
-  if (hasSupabase) {
-    return 'supabase';
+  const hasSupabase = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  );
+
+  if (hasBackblaze) {
+    return 'backblaze';
   }
   if (hasAppwrite) {
     return 'appwrite';
+  }
+  if (hasSupabase) {
+    return 'supabase';
   }
 
   return 'supabase';
@@ -199,6 +215,139 @@ export function getAppwriteStorage(): {
   return { storage: appwriteStorageInstance, config };
 }
 
+// ── Backblaze B2 Client Helpers ──────────────────────────────
+
+export function getBackblazeConfig() {
+  const keyId =
+    process.env.BACKBLAZE_APPLICATION_KEY_ID ||
+    process.env.BACKBLAZE_KEY_ID ||
+    process.env.B2_APPLICATION_KEY_ID ||
+    process.env.B2_KEY_ID ||
+    '';
+  const appKey =
+    process.env.BACKBLAZE_APPLICATION_KEY ||
+    process.env.BACKBLAZE_APP_KEY ||
+    process.env.B2_APPLICATION_KEY ||
+    process.env.B2_APP_KEY ||
+    '';
+  const bucketName =
+    process.env.BACKBLAZE_BUCKET_NAME ||
+    process.env.B2_BUCKET_NAME ||
+    process.env.NEXT_PUBLIC_BACKBLAZE_BUCKET_NAME ||
+    'storinary';
+  const bucketId =
+    process.env.BACKBLAZE_BUCKET_ID ||
+    process.env.B2_BUCKET_ID ||
+    '';
+  const endpoint = (
+    process.env.BACKBLAZE_ENDPOINT ||
+    process.env.B2_ENDPOINT ||
+    'https://api.backblazeb2.com'
+  ).replace(/\/+$/, '');
+  const cdnUrl = (
+    process.env.NEXT_PUBLIC_BACKBLAZE_CDN_URL ||
+    process.env.BACKBLAZE_CDN_URL ||
+    process.env.BACKBLAZE_DOWNLOAD_URL ||
+    process.env.B2_DOWNLOAD_URL ||
+    ''
+  ).replace(/\/+$/, '');
+
+  return { keyId, appKey, bucketName, bucketId, endpoint, cdnUrl };
+}
+
+interface BackblazeAuth {
+  accountId: string;
+  authorizationToken: string;
+  apiUrl: string;
+  downloadUrl: string;
+  allowedBucketId?: string;
+  expiresAt: number;
+}
+
+let backblazeAuthCache: BackblazeAuth | null = null;
+let backblazeResolvedBucketId: string | null = null;
+
+export function resetBackblazeCache(): void {
+  backblazeAuthCache = null;
+  backblazeResolvedBucketId = null;
+}
+
+export async function getBackblazeAuth(): Promise<BackblazeAuth> {
+  if (backblazeAuthCache && Date.now() < backblazeAuthCache.expiresAt) {
+    return backblazeAuthCache;
+  }
+
+  const config = getBackblazeConfig();
+  if (!config.keyId || !config.appKey) {
+    throw new Error('Backblaze B2 credentials missing: Key ID and Application Key are required');
+  }
+
+  const authHeader = 'Basic ' + Buffer.from(`${config.keyId}:${config.appKey}`).toString('base64');
+  const res = await fetch(`${config.endpoint}/b2api/v2/b2_authorize_account`, {
+    headers: { Authorization: authHeader },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Backblaze authorize account failed (${res.status}): ${errorText}`);
+  }
+
+  const data = await res.json();
+  const auth: BackblazeAuth = {
+    accountId: data.accountId,
+    authorizationToken: data.authorizationToken,
+    apiUrl: data.apiUrl,
+    downloadUrl: data.downloadUrl,
+    allowedBucketId: data.allowed?.bucketId || undefined,
+    // Tokens last 24 hours; refresh after 23 hours
+    expiresAt: Date.now() + 23 * 60 * 60 * 1000,
+  };
+
+  backblazeAuthCache = auth;
+  return auth;
+}
+
+export async function getBackblazeBucketId(): Promise<string> {
+  const config = getBackblazeConfig();
+  if (config.bucketId) return config.bucketId;
+  if (backblazeResolvedBucketId) return backblazeResolvedBucketId;
+
+  const auth = await getBackblazeAuth();
+  if (auth.allowedBucketId) {
+    backblazeResolvedBucketId = auth.allowedBucketId;
+    return auth.allowedBucketId;
+  }
+
+  // Lookup bucketId by bucketName using b2_list_buckets
+  const res = await fetch(`${auth.apiUrl}/b2api/v2/b2_list_buckets`, {
+    method: 'POST',
+    headers: {
+      Authorization: auth.authorizationToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      accountId: auth.accountId,
+      bucketName: config.bucketName,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Backblaze list buckets failed (${res.status}): ${errorText}`);
+  }
+
+  const data = await res.json();
+  const bucket = (data.buckets || []).find(
+    (b: { bucketName: string; bucketId: string }) => b.bucketName === config.bucketName
+  );
+  if (!bucket) {
+    throw new Error(`Backblaze bucket "${config.bucketName}" not found`);
+  }
+
+  backblazeResolvedBucketId = bucket.bucketId;
+  return bucket.bucketId;
+}
+
 // ── Unified Storage API ──────────────────────────────────────
 
 /**
@@ -211,6 +360,56 @@ export async function uploadToStorage(
   contentType: string
 ): Promise<string> {
   const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const auth = await getBackblazeAuth();
+    const bucketId = await getBackblazeBucketId();
+
+    // 1. Get upload URL
+    const getUploadUrlRes = await fetch(`${auth.apiUrl}/b2api/v2/b2_get_upload_url`, {
+      method: 'POST',
+      headers: {
+        Authorization: auth.authorizationToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ bucketId }),
+    });
+
+    if (!getUploadUrlRes.ok) {
+      const errText = await getUploadUrlRes.text();
+      throw new Error(`Upload failed: Backblaze get upload URL error (${getUploadUrlRes.status}): ${errText}`);
+    }
+
+    const uploadUrlData = await getUploadUrlRes.json();
+    const { uploadUrl, authorizationToken: uploadAuthToken } = uploadUrlData;
+
+    // 2. Upload file
+    const sha1 = crypto.createHash('sha1').update(buffer).digest('hex');
+    const safeEncodedKey = key
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: uploadAuthToken,
+        'X-Bz-File-Name': safeEncodedKey,
+        'Content-Type': contentType || 'application/octet-stream',
+        'Content-Length': String(buffer.length),
+        'X-Bz-Content-Sha1': sha1,
+        'X-Bz-Info-src_last_modified_millis': String(Date.now()),
+      },
+      body: buffer as unknown as BodyInit,
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(`Upload failed: Backblaze upload error (${uploadRes.status}): ${errText}`);
+    }
+
+    return key;
+  }
 
   if (provider === 'appwrite') {
     const { storage, config } = getAppwriteStorage();
@@ -255,6 +454,34 @@ export async function uploadToStorage(
  */
 export async function getFromStorage(key: string): Promise<StorageDownloadResult> {
   const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const config = getBackblazeConfig();
+    const auth = await getBackblazeAuth();
+    const safeEncodedKey = key
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+    const downloadBase = config.cdnUrl || auth.downloadUrl;
+    const downloadUrl = `${downloadBase}/file/${config.bucketName}/${safeEncodedKey}`;
+
+    const res = await fetch(downloadUrl, {
+      headers: {
+        Authorization: auth.authorizationToken,
+      },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Download failed: Backblaze download error (${res.status}): ${errText}`);
+    }
+
+    const arrayBuffer = await res.arrayBuffer();
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      contentType: res.headers.get('content-type') || 'application/octet-stream',
+    };
+  }
 
   if (provider === 'appwrite') {
     const { storage, config } = getAppwriteStorage();
@@ -305,6 +532,54 @@ export async function getFromStorage(key: string): Promise<StorageDownloadResult
 export async function deleteFromStorage(key: string): Promise<void> {
   const provider = getStorageProvider();
 
+  if (provider === 'backblaze') {
+    const auth = await getBackblazeAuth();
+    const bucketId = await getBackblazeBucketId();
+
+    const listRes = await fetch(`${auth.apiUrl}/b2api/v2/b2_list_file_versions`, {
+      method: 'POST',
+      headers: {
+        Authorization: auth.authorizationToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bucketId,
+        startFileName: key,
+        prefix: key,
+        maxFileCount: 100,
+      }),
+    });
+
+    if (!listRes.ok) {
+      const errText = await listRes.text();
+      throw new Error(`Delete failed: Backblaze list file versions error (${listRes.status}): ${errText}`);
+    }
+
+    const listData = await listRes.json();
+    const matchingFiles = (listData.files || []).filter(
+      (f: { fileName: string; fileId: string }) => f.fileName === key
+    );
+
+    for (const file of matchingFiles) {
+      const delRes = await fetch(`${auth.apiUrl}/b2api/v2/b2_delete_file_version`, {
+        method: 'POST',
+        headers: {
+          Authorization: auth.authorizationToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.fileName,
+          fileId: file.fileId,
+        }),
+      });
+      if (!delRes.ok) {
+        const errText = await delRes.text();
+        throw new Error(`Delete failed: Backblaze delete file version error (${delRes.status}): ${errText}`);
+      }
+    }
+    return;
+  }
+
   if (provider === 'appwrite') {
     const { storage, config } = getAppwriteStorage();
     const fileId = sanitizeAppwriteFileId(key);
@@ -331,6 +606,16 @@ export async function deleteFromStorage(key: string): Promise<void> {
 export async function bulkDeleteFromStorage(keys: string[]): Promise<void> {
   if (keys.length === 0) return;
   const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const promises = keys.map((k) => deleteFromStorage(k));
+    const results = await Promise.allSettled(promises);
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length === keys.length && keys.length > 0) {
+      throw new Error('Bulk delete failed for all items');
+    }
+    return;
+  }
 
   if (provider === 'appwrite') {
     const { storage, config } = getAppwriteStorage();
@@ -372,6 +657,40 @@ export async function listStorageObjects(
   offset: number = 0
 ): Promise<{ objects: StorageObject[] }> {
   const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const auth = await getBackblazeAuth();
+    const bucketId = await getBackblazeBucketId();
+
+    const listRes = await fetch(`${auth.apiUrl}/b2api/v2/b2_list_file_names`, {
+      method: 'POST',
+      headers: {
+        Authorization: auth.authorizationToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bucketId,
+        prefix: folder || '',
+        maxFileCount: limit,
+      }),
+    });
+
+    if (!listRes.ok) {
+      const errText = await listRes.text();
+      throw new Error(`List failed: Backblaze list files error (${listRes.status}): ${errText}`);
+    }
+
+    const listData = await listRes.json();
+    return {
+      objects: (listData.files || []).map(
+        (file: { fileName: string; contentLength?: number; uploadTimestamp?: number }) => ({
+          key: file.fileName,
+          size: file.contentLength || 0,
+          lastModified: new Date(file.uploadTimestamp || Date.now()),
+        })
+      ),
+    };
+  }
 
   if (provider === 'appwrite') {
     const { storage, config } = getAppwriteStorage();
@@ -416,6 +735,17 @@ export async function listStorageObjects(
 export function getPublicUrl(key: string): string {
   const provider = getStorageProvider();
 
+  if (provider === 'backblaze') {
+    const config = getBackblazeConfig();
+    const safeEncodedKey = key
+      .split('/')
+      .map((seg) => encodeURIComponent(seg))
+      .join('/');
+    const downloadBase =
+      config.cdnUrl || backblazeAuthCache?.downloadUrl || 'https://f000.backblazeb2.com';
+    return `${downloadBase}/file/${config.bucketName}/${safeEncodedKey}`;
+  }
+
   if (provider === 'appwrite') {
     const config = getAppwriteConfig();
     const fileId = sanitizeAppwriteFileId(key);
@@ -434,6 +764,18 @@ export function getPublicUrl(key: string): string {
  */
 export function getStorageProviderInfo(): StorageProviderInfo {
   const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const config = getBackblazeConfig();
+    const isConfigured = Boolean(config.keyId && config.appKey);
+    return {
+      provider: 'backblaze',
+      providerName: 'Backblaze B2 Storage',
+      bucket: config.bucketName,
+      endpoint: config.cdnUrl || config.endpoint,
+      isConfigured,
+    };
+  }
 
   if (provider === 'appwrite') {
     const config = getAppwriteConfig();

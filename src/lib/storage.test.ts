@@ -78,6 +78,7 @@ import {
   getStorageProvider,
   getStorageProviderInfo,
   listStorageObjects,
+  resetBackblazeCache,
   sanitizeAppwriteFileId,
   uploadToStorage,
 } from './storage';
@@ -87,21 +88,60 @@ describe('Storage Provider Resolution', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    resetBackblazeCache();
   });
 
-  it('defaults to supabase when both credentials are provided', () => {
-    process.env.STORAGE_PROVIDER = '';
-    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'supabase_key';
+  it('prioritizes backblaze when all 3 credentials (backblaze, appwrite, supabase) are present', () => {
+    delete process.env.STORAGE_PROVIDER;
+    process.env.BACKBLAZE_APPLICATION_KEY_ID = 'b2_key_id';
+    process.env.BACKBLAZE_APPLICATION_KEY = 'b2_app_key';
     process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
     process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID = 'appwrite_project';
     process.env.APPWRITE_API_KEY = 'appwrite_key';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'supabase_key';
 
-    expect(getStorageProvider()).toBe('supabase');
+    expect(getStorageProvider()).toBe('backblaze');
+  });
+
+  it('prioritizes appwrite when appwrite and supabase credentials are provided (no backblaze)', () => {
+    delete process.env.STORAGE_PROVIDER;
+    delete process.env.BACKBLAZE_APPLICATION_KEY_ID;
+    delete process.env.BACKBLAZE_KEY_ID;
+    delete process.env.B2_APPLICATION_KEY_ID;
+    delete process.env.BACKBLAZE_APPLICATION_KEY;
+    delete process.env.B2_APPLICATION_KEY;
+
+    process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
+    process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID = 'appwrite_project';
+    process.env.APPWRITE_API_KEY = 'appwrite_key';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'supabase_key';
+
+    expect(getStorageProvider()).toBe('appwrite');
+  });
+
+  it('selects backblaze when only backblaze credentials are provided', () => {
+    delete process.env.STORAGE_PROVIDER;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+    delete process.env.APPWRITE_ENDPOINT;
+    delete process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+    delete process.env.APPWRITE_PROJECT_ID;
+    delete process.env.APPWRITE_API_KEY;
+
+    process.env.BACKBLAZE_APPLICATION_KEY_ID = 'b2_id_123';
+    process.env.BACKBLAZE_APPLICATION_KEY = 'b2_key_secret';
+
+    expect(getStorageProvider()).toBe('backblaze');
   });
 
   it('selects appwrite when only appwrite credentials are provided', () => {
     delete process.env.STORAGE_PROVIDER;
+    delete process.env.BACKBLAZE_APPLICATION_KEY_ID;
+    delete process.env.BACKBLAZE_APPLICATION_KEY;
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -115,6 +155,8 @@ describe('Storage Provider Resolution', () => {
 
   it('selects supabase when only supabase credentials are provided', () => {
     delete process.env.STORAGE_PROVIDER;
+    delete process.env.BACKBLAZE_APPLICATION_KEY_ID;
+    delete process.env.BACKBLAZE_APPLICATION_KEY;
     delete process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
     delete process.env.APPWRITE_ENDPOINT;
     delete process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
@@ -128,10 +170,14 @@ describe('Storage Provider Resolution', () => {
   });
 
   it('respects explicit STORAGE_PROVIDER override', () => {
-    process.env.STORAGE_PROVIDER = 'appwrite';
+    process.env.STORAGE_PROVIDER = 'backblaze';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'supabase_key';
+    expect(getStorageProvider()).toBe('backblaze');
 
+    process.env.STORAGE_PROVIDER = 'b2';
+    expect(getStorageProvider()).toBe('backblaze');
+
+    process.env.STORAGE_PROVIDER = 'appwrite';
     expect(getStorageProvider()).toBe('appwrite');
 
     process.env.STORAGE_PROVIDER = 'supabase';
@@ -169,13 +215,17 @@ describe('generateStorageKey', () => {
     process.env = { ...originalEnv };
   });
 
-  it('builds {year}/{month}/{name}-{id}.{format} for Supabase', () => {
+  it('builds {year}/{month}/{name}-{id}.{format} for Supabase and Backblaze', () => {
     process.env.STORAGE_PROVIDER = 'supabase';
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const key = generateStorageKey('My Photo.jpg', 'abc12345', 'webp');
     expect(key).toBe(`${year}/${month}/my-photo-abc12345.webp`);
+
+    process.env.STORAGE_PROVIDER = 'backblaze';
+    const keyB2 = generateStorageKey('My Photo.jpg', 'abc12345', 'webp');
+    expect(keyB2).toBe(`${year}/${month}/my-photo-abc12345.webp`);
   });
 
   it('builds valid Appwrite fileId when provider is Appwrite', () => {
@@ -338,6 +388,223 @@ describe('Appwrite Storage Operations', () => {
   });
 });
 
+describe('Backblaze Storage Operations', () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    resetBackblazeCache();
+    process.env.STORAGE_PROVIDER = 'backblaze';
+    process.env.BACKBLAZE_APPLICATION_KEY_ID = 'test_key_id';
+    process.env.BACKBLAZE_APPLICATION_KEY = 'test_app_key';
+    process.env.BACKBLAZE_BUCKET_NAME = 'storinary';
+    delete process.env.BACKBLAZE_BUCKET_ID;
+    delete process.env.NEXT_PUBLIC_BACKBLAZE_CDN_URL;
+
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  const setupAuthAndBucketMocks = () => {
+    fetchMock.mockImplementation(async (url: string | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('b2_authorize_account')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            accountId: 'acc_123',
+            authorizationToken: 'auth_token_123',
+            apiUrl: 'https://api005.backblazeb2.com',
+            downloadUrl: 'https://f005.backblazeb2.com',
+            allowed: { bucketId: 'bucket_abc123', bucketName: 'storinary' },
+          }),
+        } as Response;
+      }
+      return null;
+    });
+  };
+
+  it('uploads file buffer to Backblaze B2', async () => {
+    setupAuthAndBucketMocks();
+
+    fetchMock.mockImplementation(async (url: string | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('b2_authorize_account')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            accountId: 'acc_123',
+            authorizationToken: 'auth_token_123',
+            apiUrl: 'https://api005.backblazeb2.com',
+            downloadUrl: 'https://f005.backblazeb2.com',
+            allowed: { bucketId: 'bucket_abc123' },
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('b2_get_upload_url')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            bucketId: 'bucket_abc123',
+            uploadUrl: 'https://upload.backblazeb2.com/file/123',
+            authorizationToken: 'upload_auth_token_789',
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('upload.backblazeb2.com')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            fileId: 'file_id_100',
+            fileName: '2026/08/photo-abc12345.webp',
+            contentLength: 4,
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, text: async () => 'Not found' } as Response;
+    });
+
+    const key = await uploadToStorage(
+      Buffer.from('test'),
+      '2026/08/photo-abc12345.webp',
+      'image/webp'
+    );
+    expect(key).toBe('2026/08/photo-abc12345.webp');
+  });
+
+  it('downloads file from Backblaze B2', async () => {
+    fetchMock.mockImplementation(async (url: string | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('b2_authorize_account')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            accountId: 'acc_123',
+            authorizationToken: 'auth_token_123',
+            apiUrl: 'https://api005.backblazeb2.com',
+            downloadUrl: 'https://f005.backblazeb2.com',
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('/file/storinary/2026/08/photo-abc12345.webp')) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode('image-bytes-b2');
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'content-type': 'image/webp' }),
+          arrayBuffer: async () => data.buffer,
+        } as unknown as Response;
+      }
+      return { ok: false, status: 404, text: async () => 'Not found' } as Response;
+    });
+
+    const result = await getFromStorage('2026/08/photo-abc12345.webp');
+    expect(result.contentType).toBe('image/webp');
+    expect(result.buffer.toString()).toBe('image-bytes-b2');
+  });
+
+  it('deletes file versions and bulk deletes from Backblaze B2', async () => {
+    fetchMock.mockImplementation(async (url: string | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('b2_authorize_account')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            accountId: 'acc_123',
+            authorizationToken: 'auth_token_123',
+            apiUrl: 'https://api005.backblazeb2.com',
+            downloadUrl: 'https://f005.backblazeb2.com',
+            allowed: { bucketId: 'bucket_abc123' },
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('b2_list_file_versions')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            files: [
+              {
+                fileId: 'ver_1',
+                fileName: '2026/08/photo.webp',
+              },
+            ],
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('b2_delete_file_version')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            fileId: 'ver_1',
+            fileName: '2026/08/photo.webp',
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, text: async () => 'Not found' } as Response;
+    });
+
+    await deleteFromStorage('2026/08/photo.webp');
+    await bulkDeleteFromStorage(['2026/08/photo.webp']);
+  });
+
+  it('lists files from Backblaze B2', async () => {
+    fetchMock.mockImplementation(async (url: string | URL) => {
+      const urlStr = url.toString();
+      if (urlStr.includes('b2_authorize_account')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            accountId: 'acc_123',
+            authorizationToken: 'auth_token_123',
+            apiUrl: 'https://api005.backblazeb2.com',
+            downloadUrl: 'https://f005.backblazeb2.com',
+            allowed: { bucketId: 'bucket_abc123' },
+          }),
+        } as Response;
+      }
+      if (urlStr.includes('b2_list_file_names')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            files: [
+              {
+                fileName: '2026/08/item.webp',
+                contentLength: 1024,
+                uploadTimestamp: 1724000000000,
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: false, status: 404, text: async () => 'Not found' } as Response;
+    });
+
+    const result = await listStorageObjects('2026/08');
+    expect(result.objects).toHaveLength(1);
+    expect(result.objects[0].key).toBe('2026/08/item.webp');
+    expect(result.objects[0].size).toBe(1024);
+  });
+
+  it('constructs public view URL for Backblaze B2 (default and custom CDN)', () => {
+    const urlDefault = getPublicUrl('2026/08/photo.webp');
+    expect(urlDefault).toBe('https://f000.backblazeb2.com/file/storinary/2026/08/photo.webp');
+
+    process.env.NEXT_PUBLIC_BACKBLAZE_CDN_URL = 'https://cdn.example.com';
+    const urlCdn = getPublicUrl('2026/08/photo.webp');
+    expect(urlCdn).toBe('https://cdn.example.com/file/storinary/2026/08/photo.webp');
+  });
+});
+
 describe('getStorageProviderInfo', () => {
   it('returns metadata for active provider', () => {
     process.env.STORAGE_PROVIDER = 'appwrite';
@@ -351,5 +618,16 @@ describe('getStorageProviderInfo', () => {
     expect(info.bucket).toBe('custom_bucket');
     expect(info.endpoint).toBe('https://cloud.appwrite.io/v1');
     expect(info.isConfigured).toBe(true);
+
+    process.env.STORAGE_PROVIDER = 'backblaze';
+    process.env.BACKBLAZE_APPLICATION_KEY_ID = 'b2_id';
+    process.env.BACKBLAZE_APPLICATION_KEY = 'b2_key';
+    process.env.BACKBLAZE_BUCKET_NAME = 'b2_bucket';
+
+    const infoB2 = getStorageProviderInfo();
+    expect(infoB2.provider).toBe('backblaze');
+    expect(infoB2.providerName).toBe('Backblaze B2 Storage');
+    expect(infoB2.bucket).toBe('b2_bucket');
+    expect(infoB2.isConfigured).toBe(true);
   });
 });
