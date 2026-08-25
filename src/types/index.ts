@@ -22,6 +22,59 @@ export interface ImageRecord {
 }
 
 // ════════════════════════════════════════════════════════════
+// PROGRAMMATIC API CREDENTIALS
+// ════════════════════════════════════════════════════════════
+
+export interface ApiKeyRecord {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  lastFour: string;
+  scopes: string[];
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateApiKeyResponse {
+  key: ApiKeyRecord & {
+    secret: string;
+  };
+}
+
+export interface VideoRecord {
+  id: string;
+  originalName: string;
+  storagePath: string;
+  publicUrl: string;
+  mimeType: string;
+  posterPath: string | null;
+  format: string;
+  width: number;
+  height: number;
+  duration: number;
+  fileSize: number;
+  folder: string;
+  tags: string;
+  altText: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VideoSortField = 'createdAt' | 'duration' | 'fileSize' | 'originalName';
+
+export interface VideoListResponse {
+  videos: VideoRecord[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// ════════════════════════════════════════════════════════════
 // API REQUEST / RESPONSE TYPES
 // ════════════════════════════════════════════════════════════
 
@@ -88,6 +141,8 @@ export interface TransformParams {
 // GET /api/stats
 export interface StatsResponse {
   totalImages: number;
+  totalVideos?: number;
+  totalVideoBytes?: number;
   totalStorageBytes: number;
   totalStorageFormatted: string; // e.g., "1.2 GB"
   imagesByFormat: Record<string, number>; // e.g., { "webp": 500, "jpeg": 300 }

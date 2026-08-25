@@ -14,6 +14,10 @@ if (
 
 const isPostgres = dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://');
 
+if (!process.env.DIRECT_URL) {
+  process.env.DIRECT_URL = process.env.DATABASE_URL;
+}
+
 if (!isPostgres) {
   console.warn(
     '⚠️ DATABASE_URL is missing or does not start with postgresql:// or postgres://.\n' +

@@ -27,6 +27,8 @@ export async function getStats(): Promise<StatsResponse> {
     imagesByFolderResult,
     recentUploadsResult,
     uploadsThisMonthResult,
+    totalVideosResult,
+    videoStorageResult,
   ] = await Promise.allSettled([
     prisma.image.count(),
     prisma.image.aggregate({ _sum: { fileSize: true } }),
@@ -34,6 +36,8 @@ export async function getStats(): Promise<StatsResponse> {
     prisma.image.groupBy({ by: ['folder'], _count: true }),
     prisma.image.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
     prisma.image.count({ where: { createdAt: { gte: firstOfMonth } } }),
+    prisma.video.count(),
+    prisma.video.aggregate({ _sum: { fileSize: true } }),
   ]);
 
   const results = [
@@ -43,6 +47,8 @@ export async function getStats(): Promise<StatsResponse> {
     imagesByFolderResult,
     recentUploadsResult,
     uploadsThisMonthResult,
+    totalVideosResult,
+    videoStorageResult,
   ];
   for (const r of results) {
     if (r.status === 'rejected') {
@@ -63,13 +69,22 @@ export async function getStats(): Promise<StatsResponse> {
     recentUploadsResult.status === 'fulfilled' ? recentUploadsResult.value : [];
   const uploadsThisMonth =
     uploadsThisMonthResult.status === 'fulfilled' ? uploadsThisMonthResult.value : 0;
+  const totalVideos =
+    totalVideosResult.status === 'fulfilled' ? totalVideosResult.value : 0;
+  const totalVideoBytes =
+    videoStorageResult.status === 'fulfilled' && videoStorageResult.value._sum.fileSize
+      ? videoStorageResult.value._sum.fileSize
+      : 0;
+  const allStorageBytes = totalStorageBytes + totalVideoBytes;
 
   const providerInfo = getStorageProviderInfo();
 
   return {
     totalImages,
-    totalStorageBytes,
-    totalStorageFormatted: formatStorage(totalStorageBytes),
+    totalVideos,
+    totalVideoBytes,
+    totalStorageBytes: allStorageBytes,
+    totalStorageFormatted: formatStorage(allStorageBytes),
     imagesByFormat: Object.fromEntries(
       imagesByFormat.map((g) => [g.format, g._count])
     ),

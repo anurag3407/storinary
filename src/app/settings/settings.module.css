@@ -102,6 +102,50 @@
   justify-content: flex-end;
 }
 
+/* ── Programmatic API access ───────────── */
+.apiKeyCreator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--nb-space-3);
+  margin-bottom: var(--nb-space-4);
+}
+
+.revealedSecret {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nb-space-3);
+  margin-bottom: var(--nb-space-4);
+  padding: var(--nb-space-3);
+  border: 2px solid var(--nb-yellow);
+  background: color-mix(in srgb, var(--nb-yellow) 12%, transparent);
+}
+
+.revealedSecret code {
+  font-family: var(--nb-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.keyList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nb-space-3);
+}
+
+.keyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nb-space-4);
+  padding: var(--nb-space-3);
+  border: 2px solid var(--nb-black);
+}
+
+.keyRow small {
+  display: block;
+  opacity: 0.7;
+}
+
 /* ── Setup guide ───────────────────────── */
 .guideToggle {
   display: flex;
@@ -240,6 +284,12 @@
 @media (max-width: 768px) {
   .form {
     grid-template-columns: 1fr;
+  }
+
+  .apiKeyCreator,
+  .keyRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .dangerRow {

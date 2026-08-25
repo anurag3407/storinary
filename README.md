@@ -53,6 +53,8 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 | Feature | Description |
 | --- | --- |
 | **Bulk upload** | Drag & drop, file picker, or **paste (Ctrl/Cmd+V)** — concurrent queue with live per-file status |
+| **Video ingestion & streaming** | Authenticated MP4/WebM uploads with metadata, range playback, and a video library |
+| **Programmatic API keys** | Hashed, revocable credentials for external sites with Cloudinary-style signed uploads |
 | **Client-side AI background removal** | `@imgly/background-removal` (WASM) runs entirely in the browser — no API key, no server cost, **unlimited** |
 | **Client-side pre-compression** | Images are compressed to WebP in the browser before upload, slashing storage usage |
 | **On-the-fly transforms** | URL-based resize / crop / format / quality: `/api/serve/img.webp?w=800&h=600&fit=cover&q=80&fmt=webp` |
@@ -162,6 +164,12 @@ STORINARY_ADMIN_PASSWORD="a-strong-password"
 npx prisma migrate dev --name init
 ```
 
+Existing installations should run the new API-key migration:
+
+```bash
+npx prisma migrate deploy
+```
+
 ### 4. Run
 
 ```bash
@@ -199,6 +207,44 @@ Open [http://localhost:3000](http://localhost:3000) and upload your first image.
 | `STORINARY_ADMIN_PASSWORD` | — | Set to enable admin login + API protection |
 | `STORINARY_TRANSFORM_CACHE_ENTRIES` | — | LRU cache entry limit (default `50`) |
 | `STORINARY_TRANSFORM_CACHE_MB` | — | LRU cache byte budget in MB (default `64`) |
+
+### Programmatic API
+
+Create a key in **Settings → API Keys**, then upload from any website:
+
+```bash
+curl -X POST https://your-storinary-domain/api/upload \
+  -H "X-API-Key: <stor_live_...>" \
+  -F "file=@photo.jpg" \
+  -F "folder=/website" \
+  -F "tags=hero"
+```
+
+For untrusted clients, sign metadata server-side with the same key and send
+`timestamp` plus `api_signature`. The signature is HMAC-SHA256 over sorted,
+non-file form fields followed by the Unix timestamp. Secrets are SHA-256 hashed
+at rest and displayed only once.
+
+### Video API
+
+Create an API key with the `video-upload` scope, then upload MP4 or WebM files:
+
+```bash
+curl -X POST https://your-storinary-domain/api/videos \
+  -H "X-API-Key: <stor_live_...>" \
+  -F "file=@clip.mp4" \
+  -F "folder=/website/videos" \
+  -F "tags=hero,launch"
+```
+
+The response includes duration and file metadata. Browser-ready playback uses:
+
+```
+/api/videos/<id>/stream
+```
+
+The endpoint supports HTTP `Range` requests so seeking works without loading the
+entire asset into memory.
 
 ## 🧭 Usage Guide
 

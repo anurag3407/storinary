@@ -5,6 +5,7 @@ import { getImageMetadata } from '@/lib/image-processing';
 import { isSafeSvg } from '@/lib/svg-security';
 import { generateShortId, getMimeType, serializeImage } from '@/lib/utils';
 import { generateEagerTransforms } from '@/lib/eager-transforms';
+import { authenticateApiKey } from '@/lib/api-keys';
 import type { UploadResponse } from '@/types';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, images: [], errors: [{ filename: 'form', error: 'Invalid form data' }] },
       { status: 400 }
+    );
+  }
+
+  const authorization = await authenticateApiKey(request, formData);
+  if (!authorization.ok) {
+    return NextResponse.json(
+      { success: false, images: [], errors: [{ filename: 'auth', error: authorization.error }] },
+      { status: authorization.status }
     );
   }
 

@@ -36,34 +36,73 @@ datasource db {
 }
 
 model Image {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // ── File Info ──────────────────────────────────
-  originalName    String                // Original filename from user (e.g., "photo.jpg")
-  storagePath     String   @unique      // Supabase Storage path (e.g., "2024/08/photo-abc12345.webp")
-  publicUrl       String                // Full public URL (e.g., "https://<ref>.supabase.co/storage/v1/object/public/storinary/2024/08/photo-abc12345.webp")
+  originalName String // Original filename from user (e.g., "photo.jpg")
+  storagePath  String @unique // Supabase Storage path (e.g., "2024/08/photo-abc12345.webp")
+  publicUrl    String // Full public URL (e.g., "https://<ref>.supabase.co/storage/v1/object/public/storinary/2024/08/photo-abc12345.webp")
 
   // ── Image Metadata ─────────────────────────────
-  width           Int                   // Width in pixels
-  height          Int                   // Height in pixels
-  fileSize        Int                   // Size in bytes
-  format          String                // "jpeg", "png", "webp", "avif", "gif", "svg"
-  mimeType        String                // "image/jpeg", "image/png", etc.
+  width    Int // Width in pixels
+  height   Int // Height in pixels
+  fileSize Int // Size in bytes
+  format   String // "jpeg", "png", "webp", "avif", "gif", "svg"
+  mimeType String // "image/jpeg", "image/png", etc.
 
   // ── Organization ───────────────────────────────
-  folder          String   @default("/")  // Virtual folder path (e.g., "/products", "/blog")
-  tags            String   @default("")   // Comma-separated tags (e.g., "hero,banner,product")
-  altText         String   @default("")   // Alt text for accessibility
+  folder  String @default("/") // Virtual folder path (e.g., "/products", "/blog")
+  tags    String @default("") // Comma-separated tags (e.g., "hero,banner,product")
+  altText String @default("") // Alt text for accessibility
 
   // ── Processing Flags ───────────────────────────
-  bgRemoved       Boolean  @default(false) // Was background removal applied?
-  compressed      Boolean  @default(false) // Was client-side compression applied?
+  bgRemoved  Boolean @default(false) // Was background removal applied?
+  compressed Boolean @default(false) // Was client-side compression applied?
 
   // ── Timestamps ─────────────────────────────────
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // ── Indexes ────────────────────────────────────
+  @@index([folder])
+  @@index([createdAt])
+  @@index([originalName])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  hashedKey  String    @unique
+  keyPrefix  String
+  lastFour   String
+  scopes     String    @default("upload,read")
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([keyPrefix])
+}
+
+model Video {
+  id           String    @id @default(cuid())
+  originalName String
+  storagePath  String    @unique
+  publicUrl    String
+  mimeType     String
+  posterPath   String?
+  format       String
+  width        Int
+  height       Int
+  duration     Float
+  fileSize     Int
+  folder       String    @default("/")
+  tags         String    @default("")
+  altText      String    @default("")
+  status       String    @default("ready")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   @@index([folder])
   @@index([createdAt])
   @@index([originalName])

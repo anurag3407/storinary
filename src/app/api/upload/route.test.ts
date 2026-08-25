@@ -12,6 +12,11 @@ const { createMock, uploadToStorageMock, getPublicUrlMock, generateStorageKeyMoc
     getImageMetadataMock: vi.fn(),
   }));
 
+const { authenticateApiKeyMock, generateEagerTransformsMock } = vi.hoisted(() => ({
+  authenticateApiKeyMock: vi.fn(),
+  generateEagerTransformsMock: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     image: { create: createMock },
@@ -26,6 +31,14 @@ vi.mock('@/lib/storage', () => ({
 
 vi.mock('@/lib/image-processing', () => ({
   getImageMetadata: getImageMetadataMock,
+}));
+
+vi.mock('@/lib/api-keys', () => ({
+  authenticateApiKey: authenticateApiKeyMock,
+}));
+
+vi.mock('@/lib/eager-transforms', () => ({
+  generateEagerTransforms: generateEagerTransformsMock,
 }));
 
 const ROW = {
@@ -56,11 +69,27 @@ function makeRequest(formData: FormData) {
 
 describe('POST /api/upload', () => {
   beforeEach(() => {
+    authenticateApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'key-1' });
+    generateEagerTransformsMock.mockReset().mockResolvedValue([]);
     createMock.mockReset();
     uploadToStorageMock.mockReset();
     getPublicUrlMock.mockReset();
     generateStorageKeyMock.mockReset();
     getImageMetadataMock.mockReset();
+  });
+
+  it('requires a valid programmatic API key', async () => {
+    authenticateApiKeyMock.mockResolvedValue({
+      ok: false,
+      status: 401,
+      error: 'Invalid or revoked API key',
+    });
+    const formData = new FormData();
+    formData.append('file', new File(['png'], 'photo.png', { type: 'image/png' }));
+
+    const response = await POST(makeRequest(formData));
+    expect(response.status).toBe(401);
+    expect(createMock).not.toHaveBeenCalled();
   });
 
   it('rejects empty form data with 400', async () => {

@@ -2,18 +2,26 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { GET } from './route';
 
-const { imageMock } = vi.hoisted(() => ({
+  const { imageMock } = vi.hoisted(() => ({
   imageMock: {
     count: vi.fn(),
     aggregate: vi.fn(),
     groupBy: vi.fn(),
     findMany: vi.fn(),
   },
+  }));
+
+const { videoMock } = vi.hoisted(() => ({
+  videoMock: {
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     image: imageMock,
+    video: videoMock,
   },
 }));
 
@@ -23,6 +31,8 @@ describe('GET /api/stats', () => {
     imageMock.aggregate.mockReset();
     imageMock.groupBy.mockReset();
     imageMock.findMany.mockReset();
+    videoMock.count.mockReset().mockResolvedValue(0);
+    videoMock.aggregate.mockReset().mockResolvedValue({ _sum: { fileSize: 0 } });
   });
 
   it('returns aggregated stats', async () => {
@@ -39,6 +49,7 @@ describe('GET /api/stats', () => {
     expect(response.status).toBe(200);
     expect(body.totalImages).toBe(10);
     expect(body.totalStorageBytes).toBe(2048);
+    expect(body.totalVideos).toBe(0);
     expect(body.totalStorageFormatted).toBe('2 KB');
     expect(body.imagesByFormat).toEqual({ webp: 8 });
     expect(body.imagesByFolder).toEqual({ '/': 10 });

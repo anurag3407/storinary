@@ -16,6 +16,14 @@ export interface StorageDownloadResult {
   contentType: string;
 }
 
+export interface StorageRangeResult {
+  buffer: Buffer;
+  contentType: string;
+  totalSize?: number;
+  rangeStatus?: number;
+  contentRange?: string;
+}
+
 export interface StorageProviderInfo {
   provider: StorageProviderType;
   providerName: string;
@@ -524,6 +532,48 @@ export async function getFromStorage(key: string): Promise<StorageDownloadResult
     buffer: Buffer.from(arrayBuffer),
     contentType: data.type || 'application/octet-stream',
   };
+}
+
+export async function getVideoFromStorage(
+  key: string,
+  rangeHeader?: string | null
+): Promise<StorageRangeResult> {
+  const provider = getStorageProvider();
+
+  if (provider === 'backblaze') {
+    const config = getBackblazeConfig();
+    const auth = await getBackblazeAuth();
+    const safeEncodedKey = key.split('/').map(encodeURIComponent).join('/');
+    const downloadUrl = `${config.cdnUrl || auth.downloadUrl}/file/${config.bucketName}/${safeEncodedKey}`;
+    const response = await fetch(downloadUrl, {
+      headers: {
+        Authorization: auth.authorizationToken,
+        ...(rangeHeader ? { Range: rangeHeader } : {}),
+      },
+    });
+    if (!response.ok && response.status !== 206) {
+      throw new Error(`Video download failed (${response.status})`);
+    }
+    return {
+      buffer: Buffer.from(await response.arrayBuffer()),
+      contentType: response.headers.get('content-type') || 'video/mp4',
+      totalSize: Number(response.headers.get('content-range')?.split('/')[1] ?? response.headers.get('content-length') ?? 0),
+      rangeStatus: response.status,
+      contentRange: response.headers.get('content-range') || undefined,
+    };
+  }
+
+  if (provider === 'appwrite') {
+    const full = await getFromStorage(key);
+    return { ...full, totalSize: full.buffer.length };
+  }
+
+  const supabase = getSupabaseClient();
+  const bucket = getSupabaseBucket();
+  const { data, error } = await supabase.storage.from(bucket).download(key);
+  if (error || !data) throw new Error(`Video download failed: ${error?.message || 'No data'}`);
+  const buffer = Buffer.from(await data.arrayBuffer());
+  return { buffer, contentType: data.type || 'video/mp4', totalSize: buffer.length };
 }
 
 /**

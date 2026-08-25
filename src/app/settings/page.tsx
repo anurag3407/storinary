@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { CompressionSelector } from '@/components/upload/CompressionSelector';
 import {
@@ -14,7 +15,7 @@ import {
   saveUploadDefaults,
   type UploadDefaults,
 } from '@/lib/upload-helpers';
-import type { StatsResponse } from '@/types';
+import type { ApiKeyRecord, CreateApiKeyResponse, StatsResponse } from '@/types';
 import styles from './settings.module.css';
 
 const BACKBLAZE_SETUP_STEPS = [
@@ -99,6 +100,7 @@ const APPWRITE_SETUP_STEPS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { copy } = useClipboard();
 
   const [authStatus, setAuthStatus] = useState<
     'checking' | 'on' | 'off'
@@ -121,6 +123,11 @@ export default function SettingsPage() {
 
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [revealedSecret, setRevealedSecret] = useState('');
+  const [revealedKeyId, setRevealedKeyId] = useState('');
 
   const testConnection = async (silent = false) => {
     setConnection('checking');
@@ -145,12 +152,56 @@ export default function SettingsPage() {
   useEffect(() => {
     setOptions(loadUploadDefaults());
     testConnection(true);
+    loadApiKeys();
     fetch('/api/auth/status')
       .then((res) => res.json())
       .then((data) => setAuthStatus(data?.enabled ? 'on' : 'off'))
       .catch(() => setAuthStatus('off'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadApiKeys = async () => {
+    try {
+      const res = await fetch('/api/api-keys', { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      setApiKeys((await res.json()).keys ?? []);
+    } catch {
+      toast.error('Could not load API keys');
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    setCreatingKey(true);
+    try {
+      const res = await fetch('/api/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newKeyName || 'Default key' }),
+      });
+      if (!res.ok) throw new Error();
+      const data: CreateApiKeyResponse = await res.json();
+      setApiKeys((current) => [data.key, ...current]);
+      setRevealedKeyId(data.key.id);
+      setRevealedSecret(data.key.secret);
+      setNewKeyName('');
+      toast.success('API key created');
+    } catch {
+      toast.error('Could not create API key');
+    } finally {
+      setCreatingKey(false);
+    }
+  };
+
+  const handleRevokeApiKey = async (id: string) => {
+    try {
+      const res = await fetch(`/api/api-keys/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setApiKeys((current) => current.filter((key) => key.id !== id));
+      toast.success('API key revoked');
+    } catch {
+      toast.error('Could not revoke API key');
+    }
+  };
 
   const saveDefaults = () => {
     try {
@@ -269,6 +320,67 @@ export default function SettingsPage() {
                 Sign Out
               </Button>
             )}
+          </div>
+        </section>
+
+        {/* ── Section 0.5: Programmatic API Access ─────────── */}
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>API Keys</h2>
+          <p className={styles.cardDescription}>
+            Upload images and videos from any website with an{' '}
+            <code>X-API-Key</code> header. Select scopes when creating a key.
+            Secrets are hashed at rest and shown only once.
+          </p>
+
+          <div className={styles.apiKeyCreator}>
+            <input
+              aria-label="API key name"
+              className="nb-input"
+              value={newKeyName}
+              onChange={(event) => setNewKeyName(event.target.value)}
+              placeholder="Production site"
+            />
+            <Button onClick={handleCreateApiKey} loading={creatingKey}>
+              Create Key
+            </Button>
+          </div>
+
+          {revealedSecret && (
+            <div className={styles.revealedSecret}>
+              <code>{revealedSecret}</code>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  await copy(revealedSecret);
+                  toast.success('Secret copied');
+                }}
+              >
+                Copy
+              </Button>
+            </div>
+          )}
+
+          <div className={styles.keyList}>
+            {apiKeys.map((key) => (
+              <div key={key.id} className={styles.keyRow}>
+                <div>
+                  <strong>{key.name}</strong>
+                  <small>{`••••${key.lastFour} · created ${key.createdAt.slice(0, 10)}`}</small>
+                </div>
+                <div className={styles.statusRow}>
+                  <Badge variant="default">{key.scopes.join(' · ')}</Badge>
+                  {revealedKeyId === key.id && revealedSecret ? (
+                    <Button variant="ghost" size="sm" onClick={() => setRevealedSecret('')}>
+                      Hide
+                    </Button>
+                  ) : null}
+                  <Button variant="danger" size="sm" onClick={() => handleRevokeApiKey(key.id)}>
+                    Revoke
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

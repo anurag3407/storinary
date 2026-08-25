@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', icon: '📊' },
   { href: '/upload', label: 'Upload', icon: '⬆️' },
   { href: '/gallery', label: 'Gallery', icon: '🖼️' },
+  { href: '/videos', label: 'Videos', icon: '🎬' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
