@@ -30,7 +30,7 @@ export default async function ImageDetailPage({ params }: PageProps) {
         title={data.image.originalName}
         description={`${data.image.width} × ${data.image.height} px · ${data.image.format.toUpperCase()}`}
       />
-      <DetailView image={data.image} links={data.links} />
+      <DetailView image={data.image} links={data.links} versions={data.versions} />
     </>
   );
 }

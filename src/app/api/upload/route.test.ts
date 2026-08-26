@@ -3,16 +3,25 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from './route';
 
-const { createMock, uploadToStorageMock, getPublicUrlMock, generateStorageKeyMock, getImageMetadataMock } =
+const {
+  createMock,
+  imageVersionCreateMock,
+  uploadToStorageMock,
+  getPublicUrlMock,
+  generateStorageKeyMock,
+  getImageMetadataMock,
+} =
   vi.hoisted(() => ({
     createMock: vi.fn(),
+    imageVersionCreateMock: vi.fn(),
     uploadToStorageMock: vi.fn(),
     getPublicUrlMock: vi.fn(),
     generateStorageKeyMock: vi.fn(),
     getImageMetadataMock: vi.fn(),
   }));
 
-const { authenticateApiKeyMock, generateEagerTransformsMock } = vi.hoisted(() => ({
+const { authorizationMock, generateEagerTransformsMock } = vi.hoisted(() => ({
+  authorizationMock: vi.fn(),
   authenticateApiKeyMock: vi.fn(),
   generateEagerTransformsMock: vi.fn(),
 }));
@@ -20,6 +29,7 @@ const { authenticateApiKeyMock, generateEagerTransformsMock } = vi.hoisted(() =>
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     image: { create: createMock },
+    imageVersion: { create: imageVersionCreateMock },
   },
 }));
 
@@ -33,13 +43,24 @@ vi.mock('@/lib/image-processing', () => ({
   getImageMetadata: getImageMetadataMock,
 }));
 
-vi.mock('@/lib/api-keys', () => ({
-  authenticateApiKey: authenticateApiKeyMock,
+vi.mock('@/lib/media-auth', () => ({
+  authorizeDashboardOrApiKey: authorizationMock,
 }));
+
+const { dispatchWebhooksMock } = vi.hoisted(() => ({ dispatchWebhooksMock: vi.fn() }));
+
+vi.mock('@/lib/webhooks', () => ({ dispatchWebhooks: dispatchWebhooksMock }));
 
 vi.mock('@/lib/eager-transforms', () => ({
   generateEagerTransforms: generateEagerTransformsMock,
 }));
+
+vi.mock('@/lib/asset-versions', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/asset-versions')>(
+    '@/lib/asset-versions'
+  );
+  return { ...actual };
+});
 
 const ROW = {
   id: 'img-1',
@@ -55,6 +76,8 @@ const ROW = {
   tags: '',
   altText: '',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: true,
   createdAt: new Date('2024-01-01T00:00:00Z'),
   updatedAt: new Date('2024-01-01T00:00:00Z'),
@@ -67,10 +90,30 @@ function makeRequest(formData: FormData) {
   });
 }
 
+function setupSuccessfulUpload() {
+  setupVersionCapture();
+  getImageMetadataMock.mockResolvedValue({ width: 1, height: 1, format: 'png', size: 3 });
+  generateStorageKeyMock.mockReturnValue('key.png');
+  uploadToStorageMock.mockResolvedValue(undefined);
+  getPublicUrlMock.mockReturnValue('https://cdn.example/key.png');
+  createMock.mockResolvedValue(ROW);
+}
+
+function setupVersionCapture() {
+  imageVersionCreateMock.mockImplementation(({ data }: { data: { version: number } }) =>
+    Promise.resolve({
+      id: `version-${data.version}`,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      ...data,
+    })
+  );
+}
+
 describe('POST /api/upload', () => {
   beforeEach(() => {
-    authenticateApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'key-1' });
+    authorizationMock.mockReset().mockResolvedValue({ ok: true, keyId: null });
     generateEagerTransformsMock.mockReset().mockResolvedValue([]);
+    dispatchWebhooksMock.mockReset();
     createMock.mockReset();
     uploadToStorageMock.mockReset();
     getPublicUrlMock.mockReset();
@@ -78,11 +121,11 @@ describe('POST /api/upload', () => {
     getImageMetadataMock.mockReset();
   });
 
-  it('requires a valid programmatic API key', async () => {
-    authenticateApiKeyMock.mockResolvedValue({
+  it('rejects unauthenticated requests without credentials or a session', async () => {
+    authorizationMock.mockResolvedValue({
       ok: false,
       status: 401,
-      error: 'Invalid or revoked API key',
+      error: 'Unauthorized',
     });
     const formData = new FormData();
     formData.append('file', new File(['png'], 'photo.png', { type: 'image/png' }));
@@ -90,6 +133,31 @@ describe('POST /api/upload', () => {
     const response = await POST(makeRequest(formData));
     expect(response.status).toBe(401);
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('allows dashboard sessions without an API key', async () => {
+    const file = new File(['png-bytes'], 'photo.png', { type: 'image/png' });
+    const formData = new FormData();
+    formData.append('file', file);
+    authorizationMock.mockResolvedValue({ ok: true, keyId: null });
+    getImageMetadataMock.mockResolvedValue({ width: 1, height: 1, format: 'png', size: 4 });
+    generateStorageKeyMock.mockReturnValue('key.png');
+    createMock.mockResolvedValue(ROW);
+    imageVersionCreateMock.mockReset().mockImplementation(({ data }: { data: { version: number } }) =>
+      Promise.resolve({
+        id: `version-${data.version}`,
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+        ...data,
+      })
+    );
+
+    const response = await POST(makeRequest(formData));
+
+    expect(response.status).toBe(200);
+    expect(authorizationMock).toHaveBeenCalledTimes(1);
+    const [request, receivedFormData] = authorizationMock.mock.calls[0];
+    expect(request).toBeInstanceOf(NextRequest);
+    expect(receivedFormData.get('file')).toBeInstanceOf(File);
   });
 
   it('rejects empty form data with 400', async () => {
@@ -121,6 +189,15 @@ describe('POST /api/upload', () => {
     expect(body.images).toHaveLength(1);
     expect(body.images[0].id).toBe('img-1');
     expect(body.errors).toHaveLength(0);
+    expect(imageVersionCreateMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        imageId: 'img-1',
+        version: 1,
+        label: 'original',
+        storagePath: '2024/01/photo-abc12345.png',
+        fileSize: 2048,
+      }),
+    });
     expect(createMock).toHaveBeenCalledWith({
       data: expect.objectContaining({
         originalName: 'photo.png',
@@ -128,6 +205,8 @@ describe('POST /api/upload', () => {
         tags: 'hero,product',
         compressed: true,
         bgRemoved: false,
+        aiModerated: false,
+        aiModerationScore: null,
       }),
     });
   });
@@ -147,6 +226,28 @@ describe('POST /api/upload', () => {
       error: expect.stringContaining('Unsupported format'),
     });
     expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it('persists valid moderation results and rejects malformed scores safely', async () => {
+    const formData = new FormData();
+    formData.append('file', new File(['png'], 'photo.png', { type: 'image/png' }));
+    formData.append('moderated', 'true');
+    formData.append('moderationScore', '0.42');
+    setupSuccessfulUpload();
+    await POST(makeRequest(formData));
+    expect(createMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({ aiModerated: true, aiModerationScore: 0.42 }),
+    });
+
+    const invalid = new FormData();
+    invalid.append('file', new File(['png'], 'bad.png', { type: 'image/png' }));
+    invalid.append('moderated', 'true');
+    invalid.append('moderationScore', '2.5');
+    createMock.mockClear();
+    await POST(makeRequest(invalid));
+    expect(createMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({ aiModerated: true, aiModerationScore: null }),
+    });
   });
 
   it('reports upload failures without aborting other files', async () => {
@@ -209,6 +310,7 @@ describe('POST /api/upload', () => {
     uploadToStorageMock.mockResolvedValue(undefined);
     getPublicUrlMock.mockReturnValue('https://cdn.example/2024/01/ok-123.svg');
     createMock.mockResolvedValue({ ...ROW, id: 'img-2' });
+    setupSuccessfulUpload();
 
     const response = await POST(makeRequest(formData));
     const body = await response.json();

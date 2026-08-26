@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormatChart } from '@/components/dashboard/FormatChart';
+import { DeliveryAnalyticsPanel } from '@/components/dashboard/DeliveryAnalytics';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -89,6 +90,8 @@ export default async function DashboardPage() {
       </div>
 
       <FormatChart data={stats.imagesByFormat} total={stats.totalImages} />
+
+      <DeliveryAnalyticsPanel />
 
       <RecentUploads images={stats.recentUploads} />
 

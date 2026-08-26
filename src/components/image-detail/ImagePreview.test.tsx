@@ -17,6 +17,8 @@ const image: ImageRecord = {
   tags: '',
   altText: 'Hero image',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: true,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',

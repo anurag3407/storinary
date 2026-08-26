@@ -12,6 +12,32 @@
   padding: var(--nb-space-6);
 }
 
+.importPanel {
+  display: grid;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-5);
+  border: var(--nb-border);
+  box-shadow: var(--nb-shadow-lg);
+  background: white;
+}
+
+.importPanel textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.importPanel > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--nb-space-3);
+}
+
+.importPanel span {
+  color: #666;
+  font-size: var(--nb-text-sm);
+}
+
 .completedHeader {
   display: flex;
   align-items: baseline;

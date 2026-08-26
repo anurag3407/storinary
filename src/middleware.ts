@@ -21,7 +21,11 @@ function isProtectedPage(pathname: string): boolean {
   );
 }
 
-/** APIs that must stay open: auth endpoints + the public CDN surface. */
+/**
+ * APIs that must stay open at middleware level. Versioned compatibility routes
+ * perform their own dashboard/API-key authorization, while auth endpoints and
+ * the public CDN surface remain intentionally open.
+ */
 function isPublicApi(pathname: string): boolean {
   return (
     pathname.startsWith('/api/auth') ||
@@ -29,7 +33,9 @@ function isPublicApi(pathname: string): boolean {
     pathname.startsWith('/api/redirect') ||
     pathname.startsWith('/api/v1/') ||
     pathname === '/api/videos' ||
-    pathname.endsWith('/stream') ||
+    pathname.startsWith('/api/videos/') ||
+    pathname === '/api/upload' ||
+    pathname.endsWith('/transform') ||
     pathname.endsWith('/transform')
   );
 }

@@ -1,13 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import {
   compressImage,
   createPreviewUrl,
   loadUploadDefaults,
 } from '@/lib/upload-helpers';
-import type { ImageRecord, UploadItem, UploadState } from '@/types';
+import { analyzeSubjectMask, createSubjectMask } from '@/lib/bg-removal';
+import type {
+  ContentSafetyResult,
+  ImageRecord,
+  UploadItem,
+  UploadState,
+} from '@/types';
 
 // ════════════════════════════════════════════════════════════
 // REDUCER ACTIONS
@@ -21,7 +27,9 @@ type UploadAction =
   | { type: 'UPDATE_ITEM_PROGRESS'; payload: { id: string; progress: number } }
   | { type: 'SET_ITEM_RESULT'; payload: { id: string; result: ImageRecord } }
   | { type: 'SET_ITEM_ERROR'; payload: { id: string; error: string } }
+  | { type: 'INCREMENT_ITEM_ATTEMPTS'; payload: string }
   | { type: 'SET_ITEM_BLOB'; payload: { id: string; blob: Blob } }
+  | { type: 'SET_ITEM_MODERATION'; payload: { id: string; moderation: ContentSafetyResult } }
   | { type: 'CLEAR_COMPLETED' }
   | { type: 'RESET' }
   | { type: 'SET_UPLOADING'; payload: boolean }
@@ -32,6 +40,7 @@ const initialState: UploadState = {
   items: [],
   globalOptions: {
     removeBg: false,
+    moderate: false,
     compress: true,
     quality: 80,
     maxWidth: 2048,
@@ -55,6 +64,7 @@ function reducer(state: UploadState, action: UploadAction): UploadState {
         options: {
           removeBg: state.globalOptions.removeBg,
           compress: state.globalOptions.compress,
+          moderate: state.globalOptions.moderate,
           folder: state.globalOptions.folder,
           tags: state.globalOptions.tags,
         },
@@ -95,11 +105,27 @@ function reducer(state: UploadState, action: UploadAction): UploadState {
           i.id === action.payload.id ? { ...i, error: action.payload.error, status: 'error' } : i
         ),
       };
+    case 'INCREMENT_ITEM_ATTEMPTS':
+      return {
+        ...state,
+        items: state.items.map((item) => item.id === action.payload
+          ? { ...item, attempts: (item.attempts ?? 0) + 1 }
+          : item),
+      };
     case 'SET_ITEM_BLOB':
       return {
         ...state,
         items: state.items.map((i) =>
           i.id === action.payload.id ? { ...i, processedBlob: action.payload.blob } : i
+        ),
+      };
+    case 'SET_ITEM_MODERATION':
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === action.payload.id
+            ? { ...item, moderation: action.payload.moderation }
+            : item
         ),
       };
     case 'CLEAR_COMPLETED':
@@ -127,6 +153,7 @@ function reducer(state: UploadState, action: UploadAction): UploadState {
 export function useUpload() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const stateRef = useRef(state);
+  const [selectedPreset, setSelectedPreset] = useState('');
 
   useEffect(() => {
     stateRef.current = state;
@@ -157,11 +184,15 @@ export function useUpload() {
     []
   );
 
+  const selectUploadPreset = useCallback((name: string) => {
+    setSelectedPreset(name);
+  }, []);
+
   const startUpload = useCallback(async () => {
     const { items, globalOptions, isUploading } = stateRef.current;
     if (isUploading) return;
 
-    const pending = items.filter((i) => i.status === 'pending');
+    const pending = items.filter((i) => i.status === 'pending' || i.status === 'error');
     if (pending.length === 0) return;
 
     dispatch({ type: 'SET_UPLOADING', payload: true });
@@ -198,43 +229,83 @@ export function useUpload() {
           dispatch({ type: 'SET_ITEM_BLOB', payload: { id: item.id, blob } });
         }
 
-        // 3. Upload with simulated progress (fetch has no upload progress API)
+        // 3. Local AI moderation: derive a subject mask and reject images whose
+        // opaque subject fills most of the canvas. This is conservative, private,
+        // and catches tightly cropped explicit subjects without an external API.
+        if (opts.moderate || globalOptions.moderate) {
+          dispatch({ type: 'UPDATE_ITEM_STATUS', payload: { id: item.id, status: 'moderating' } });
+          const mask = await createSubjectMask(item.file);
+          const moderation = await analyzeSubjectMask(mask);
+          dispatch({ type: 'SET_ITEM_MODERATION', payload: { id: item.id, moderation } });
+          if (!moderation.safe) {
+            throw new Error('Upload blocked by local AI moderation');
+          }
+        }
+
+        // 4. Upload with byte-level progress from XHR's upload stream.
         dispatch({ type: 'UPDATE_ITEM_STATUS', payload: { id: item.id, status: 'uploading' } });
-
-        let progress = 5;
-        const timer = window.setInterval(() => {
-          progress = Math.min(90, progress + Math.random() * 12);
-          dispatch({ type: 'UPDATE_ITEM_PROGRESS', payload: { id: item.id, progress } });
-        }, 200);
-
+        dispatch({ type: 'INCREMENT_ITEM_ATTEMPTS', payload: item.id });
         const formData = new FormData();
         formData.append('file', blob, item.file.name);
         formData.append('folder', opts.folder || globalOptions.folder);
         formData.append('tags', opts.tags || globalOptions.tags);
+        if (selectedPreset) formData.append('upload_preset', selectedPreset);
         formData.append('compressed', String(shouldCompress));
         formData.append('bgRemoved', String(shouldRemoveBg));
-
-        let response: Response;
-        try {
-          response = await fetch('/api/upload', { method: 'POST', body: formData });
-        } finally {
-          window.clearInterval(timer);
+        if (latest?.moderation) {
+          formData.append('moderated', 'true');
+          formData.append('moderationScore', String(latest.moderation.score));
         }
 
-        if (response.ok) {
-          const data = await response.json();
-          const result = data?.images?.[0] as ImageRecord | undefined;
-          if (result) {
-            dispatch({ type: 'SET_ITEM_RESULT', payload: { id: item.id, result } });
-            dispatch({ type: 'INCREMENT_COMPLETED' });
-            completed += 1;
-          } else {
-            throw new Error(data?.errors?.[0]?.error || 'Upload failed');
-          }
-        } else {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data?.error || 'Upload failed');
+        const payload = await new Promise<Record<string, unknown>>((resolve, reject) => {
+          const request = new (window as Window & {
+            XMLHttpRequest: typeof XMLHttpRequest;
+          }).XMLHttpRequest();
+          request.open('POST', '/api/upload');
+          request.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              dispatch({
+                type: 'UPDATE_ITEM_PROGRESS',
+                payload: {
+                  id: item.id,
+                  progress: Math.round((event.loaded / event.total) * 100),
+                },
+              });
+            }
+          });
+          request.addEventListener('load', () => {
+            let parsed: Record<string, unknown>;
+            try {
+              parsed = JSON.parse(request.responseText || '{}') as Record<string, unknown>;
+            } catch {
+              reject(new Error(`Upload failed (${request.status})`));
+              return;
+            }
+            if (request.status >= 200 && request.status < 300) {
+              resolve(parsed);
+              return;
+            }
+            const errors = parsed.errors as Array<{ error?: string }> | undefined;
+            reject(new Error(
+              (typeof parsed.error === 'string' && parsed.error)
+                || errors?.[0]?.error
+                || `Upload failed (${request.status})`
+            ));
+          });
+          request.addEventListener('error', () => reject(new Error('Network error during upload')));
+          request.addEventListener('abort', () => reject(new Error('Upload canceled')));
+          request.send(formData);
+        });
+
+        const result = (payload.images as ImageRecord[] | undefined)?.[0];
+        if (!result) {
+          const errors = payload.errors as Array<{ error?: string }> | undefined;
+          throw new Error(errors?.[0]?.error || 'Upload failed');
         }
+
+        dispatch({ type: 'SET_ITEM_RESULT', payload: { id: item.id, result } });
+        dispatch({ type: 'INCREMENT_COMPLETED' });
+        completed += 1;
       } catch (error) {
         dispatch({
           type: 'SET_ITEM_ERROR',
@@ -250,7 +321,7 @@ export function useUpload() {
 
     dispatch({ type: 'SET_UPLOADING', payload: false });
     return { completed, failed };
-  }, []);
+  }, [selectedPreset]);
 
   const clearCompleted = useCallback(() => {
     dispatch({ type: 'CLEAR_COMPLETED' });
@@ -266,6 +337,8 @@ export function useUpload() {
     addFiles,
     removeFile,
     updateGlobalOptions,
+    selectedPreset,
+    selectUploadPreset,
     startUpload,
     clearCompleted,
     reset,

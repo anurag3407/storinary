@@ -15,7 +15,7 @@ function makeItem(overrides: Partial<UploadItemType> = {}): UploadItemType {
     previewUrl: 'blob:preview',
     status: 'pending',
     progress: 0,
-    options: { removeBg: false, compress: true, folder: '/', tags: '' },
+    options: { removeBg: false, compress: true, moderate: false, folder: '/', tags: '' },
     ...overrides,
   };
 }
@@ -51,6 +51,8 @@ describe('UploadItem', () => {
         tags: '',
         altText: '',
         bgRemoved: false,
+        aiModerated: false,
+        aiModerationScore: null,
         compressed: true,
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
@@ -72,6 +74,22 @@ describe('UploadItem', () => {
     );
     expect(screen.getByText('Error')).toBeInTheDocument();
     expect(screen.getByText('boom')).toBeInTheDocument();
+  });
+
+  it('offers retry only when a retry handler is provided', () => {
+    const onRetry = vi.fn();
+    const item = makeItem({ status: 'error', error: 'boom', attempts: 1 });
+
+    const { rerender } = render(
+      <UploadItem item={item} onRemove={vi.fn()} />,
+      { wrapper }
+    );
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+
+    rerender(<UploadItem item={item} onRemove={vi.fn()} onRetry={onRetry} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(onRetry).toHaveBeenCalledWith('u1');
   });
 
   it('removes the item from the remove button', () => {

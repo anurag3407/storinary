@@ -17,8 +17,50 @@ export interface ImageRecord {
   altText: string;
   bgRemoved: boolean;
   compressed: boolean;
+  aiModerated: boolean;
+  aiModerationScore: number | null;
+  metadata?: Record<string, string>;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+}
+
+export interface ImageVersionRecord {
+  id: string;
+  imageId: string;
+  version: number;
+  label: string;
+  originalName: string;
+  storagePath: string;
+  publicUrl: string;
+  width: number;
+  height: number;
+  fileSize: number;
+  format: string;
+  mimeType: string;
+  createdAt: string;
+}
+
+export interface VideoVersionRecord {
+  id: string;
+  videoId: string;
+  version: number;
+  label: string;
+  originalName: string;
+  storagePath: string;
+  publicUrl: string;
+  mimeType: string;
+  posterPath: string | null;
+  format: string;
+  width: number;
+  height: number;
+  duration: number;
+  fileSize: number;
+  createdAt: string;
+}
+
+export interface ModerationResult {
+  moderated: boolean;
+  score: number | null;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -42,6 +84,65 @@ export interface CreateApiKeyResponse {
   };
 }
 
+export interface ApiKeyUsageMetric {
+  requests: number;
+  assets: number;
+  errors: number;
+  bytes: number;
+}
+
+export type ApiKeyUsageAction = 'upload' | 'video-upload' | 'read' | 'write' | 'delete';
+
+export interface ApiKeyUsageSummary {
+  range: { days: number; from: string };
+  keys: Array<{
+    id: string;
+    name: string;
+    lastFour: string;
+    scopes: string[];
+    usage: ApiKeyUsageMetric & {
+      byAction: Record<ApiKeyUsageAction, ApiKeyUsageMetric>;
+    };
+  }>;
+}
+
+export interface WebhookEndpointRecord {
+  id: string;
+  name: string;
+  url: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CreateWebhookResponse {
+  webhook: WebhookEndpointRecord & { secret: string };
+}
+
+export interface UpdateWebhookResponse {
+  webhook: WebhookEndpointRecord;
+  secret?: string;
+}
+
+export interface WebhookDeliveryRecord {
+  id: string;
+  endpointId: string;
+  eventType:
+    | 'image.uploaded'
+    | 'image.updated'
+    | 'image.deleted'
+    | 'video.uploaded'
+    | 'video.updated'
+    | 'video.deleted';
+  data: unknown;
+  status: 'pending' | 'delivered' | 'failed';
+  responseCode: number | null;
+  attempts: number;
+  error: string | null;
+  nextAttemptAt: string;
+  deliveredAt: string | null;
+  createdAt: string;
+}
+
 export interface VideoRecord {
   id: string;
   originalName: string;
@@ -57,9 +158,87 @@ export interface VideoRecord {
   folder: string;
   tags: string;
   altText: string;
+  aiModerated?: boolean;
+  aiModerationScore?: number | null;
   status: string;
+  metadata?: Record<string, string>;
+  renditions: VideoRenditionRecord[];
+  clips?: VideoClipRecord[];
+  hlsPackages: VideoHlsPackageRecord[];
+  dashPackages: VideoDashPackageRecord[];
+  versions?: VideoVersionRecord[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VideoClipRecord {
+  id: string;
+  videoId: string;
+  name: string;
+  storagePath: string;
+  publicUrl: string;
+  mimeType: string;
+  startSeconds: number;
+  endSeconds: number;
+  durationSeconds: number;
+  muted: boolean;
+  sourceLabel: string | null;
+  fileSize: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type HlsVariantRecord = {
+  label: '360p' | '720p';
+  playlistPath: string;
+  segmentPaths: string[];
+  width: number;
+  height: number;
+  bandwidthKbps: number;
+};
+
+export interface VideoHlsPackageRecord {
+  id: string;
+  label: string;
+  publicUrl: string;
+  masterPath: string;
+  variants: HlsVariantRecord[];
+  segmentPaths: string[];
+  totalFileSize: number;
+  status: string;
+}
+
+export type DashVariantRecord = {
+  label: '360p' | '720p';
+  playlistPath: string;
+  initPath: string;
+  mediaSegmentPaths: string[];
+  width: number;
+  height: number;
+  bandwidthKbps: number;
+};
+
+export interface VideoDashPackageRecord {
+  id: string;
+  label: string;
+  publicUrl: string;
+  manifestPath: string;
+  variants: DashVariantRecord[];
+  filePaths: string[];
+  totalFileSize: number;
+  status: string;
+}
+
+export interface VideoRenditionRecord {
+  id: string;
+  label: string;
+  publicUrl: string;
+  storagePath: string;
+  width: number;
+  height: number;
+  bitrateKbps: number;
+  fileSize: number;
+  status: string;
 }
 
 export type VideoSortField = 'createdAt' | 'duration' | 'fileSize' | 'originalName';
@@ -98,6 +277,7 @@ export interface ImagesListParams {
   limit: number; // items per page (default 20, max 100)
   search?: string; // search by originalName or tags
   folder?: string; // filter by folder
+  metadata?: string; // encoded field:value filters
   sort: 'createdAt' | 'fileSize' | 'originalName'; // sort field
   order: 'asc' | 'desc'; // sort direction
 }
@@ -115,6 +295,7 @@ export interface ImagesListResponse {
 // GET /api/images/:id
 export interface ImageDetailResponse {
   image: ImageRecord;
+  versions: ImageVersionRecord[];
   links: GeneratedLinks;
 }
 
@@ -129,13 +310,53 @@ export interface BulkDeleteResponse {
   errors: Array<{ id: string; error: string }>;
 }
 
-// GET /api/serve/[...path]?w=800&h=600&q=80&fmt=webp&fit=cover
+// GET /api/serve/[...path]?w=800&h=600&q=80&fmt=auto&fit=cover&g=center
 export interface TransformParams {
+  t?: string;
   w?: number; // width (pixels)
   h?: number; // height (pixels)
-  q?: number; // quality (1-100, default 80)
-  fmt?: 'jpeg' | 'webp' | 'avif' | 'png'; // output format
-  fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside'; // resize fit mode
+  q?: number | 'auto'; // quality (1-100 or automatic)
+  fmt?: 'jpeg' | 'webp' | 'avif' | 'png' | 'auto';
+  fit?:
+    | 'cover'
+    | 'contain'
+    | 'fill'
+    | 'inside'
+    | 'outside'
+    | 'thumb'
+    | 'limit';
+  g?: TransformGravity;
+  ar?: string;
+  b?: string;
+  a?: number;
+  e?: Array<TransformEffect>;
+  brightness?: number;
+  contrast?: number;
+  gamma?: number;
+  dpr?: number;
+  text?: string;
+  overlayId?: string;
+}
+
+export type TransformGravity =
+  | 'center'
+  | 'auto'
+  | 'north'
+  | 'south'
+  | 'east'
+  | 'west'
+  | 'face'
+  | 'faces';
+
+export interface TransformEffect {
+  brightness?: number;
+  contrast?: number;
+  gamma?: number;
+  grayscale?: boolean;
+  sepia?: number;
+  blur?: number;
+  sharpen?: number;
+  saturation?: number;
 }
 
 // GET /api/stats
@@ -163,6 +384,8 @@ export interface StatsResponse {
 
 export interface GeneratedLinks {
   direct: string; // https://cdn.example.com/2024/08/photo.webp
+  directUrl: string;
+  transformUrl?: string;
   html: string; // <img src="..." alt="..." />
   markdown: string; // ![alt](url)
   css: string; // background-image: url('...');
@@ -177,6 +400,7 @@ export type UploadItemStatus =
   | 'pending'
   | 'compressing'
   | 'removing-bg'
+  | 'moderating'
   | 'uploading'
   | 'done'
   | 'error';
@@ -189,10 +413,13 @@ export interface UploadItem {
   status: UploadItemStatus;
   progress: number; // 0-100 upload progress
   error?: string; // Error message if failed
+  moderation?: ContentSafetyResult;
   result?: ImageRecord; // Server response after successful upload
+  attempts?: number;
   options: {
     removeBg: boolean;
     compress: boolean;
+    moderate: boolean;
     folder: string;
     tags: string;
   };
@@ -207,10 +434,17 @@ export interface UploadState {
     maxWidth: number; // Max width for compression (default 2048)
     folder: string; // Target folder (default "/")
     tags: string; // Default tags
+    moderate: boolean; // Local subject-mask moderation toggle
   };
   isUploading: boolean;
   completedCount: number;
   errorCount: number;
+}
+
+export interface ContentSafetyResult {
+  safe: boolean;
+  score: number;
+  threshold: number;
 }
 
 // ════════════════════════════════════════════════════════════

@@ -74,6 +74,93 @@ describe('transformImage', () => {
     expect(meta.width).toBe(100);
     expect(meta.height).toBe(100);
   });
+
+  it('applies aspect ratio, padding, rotation, DPR, and effects', async () => {
+    const buffer = await makePng(100, 50);
+    const result = await transformImage(buffer, {
+      w: 80,
+      ar: '1:1',
+      fit: 'contain',
+      a: 45,
+      dpr: 2,
+      e: [{ grayscale: true }, { saturation: 0 }],
+    });
+
+    const meta = await sharp(result.buffer).metadata();
+    expect(meta.width).toBeGreaterThan(80);
+    expect(result.format).toBe('webp');
+  });
+
+  it('applies brightness, contrast, and gamma adjustments', async () => {
+    const buffer = await makePng();
+    const baseline = await transformImage(buffer, { w: 100 });
+    const adjusted = await transformImage(buffer, {
+      w: 100,
+      brightness: 1.5,
+      contrast: 1.4,
+      gamma: 1.8,
+    });
+
+    const [baseStats, adjustedStats] = await Promise.all([
+      sharp(baseline.buffer).stats(),
+      sharp(adjusted.buffer).stats(),
+    ]);
+    const baseMean = baseStats.channels.reduce((total, channel) => total + channel.mean, 0);
+    const adjustedMean = adjustedStats.channels.reduce((total, channel) => total + channel.mean, 0);
+    expect(adjustedMean).toBeGreaterThan(baseMean);
+  });
+
+  it('accepts attention-based smart crop gravity without changing output dimensions', async () => {
+    const buffer = await makePng(200, 100);
+    const result = await transformImage(buffer, {
+      w: 100,
+      h: 100,
+      fit: 'cover',
+      g: 'auto',
+    });
+
+    const meta = await sharp(result.buffer).metadata();
+    expect(meta.width).toBe(100);
+    expect(meta.height).toBe(100);
+  });
+
+  it('composites sanitized text overlays without executing markup', async () => {
+    const buffer = await makePng();
+    const baseline = await transformImage(buffer, { w: 200 });
+    const result = await transformImage(buffer, {
+      w: 200,
+      text: '<b>Watermark</b>',
+    });
+
+    const [baseMeta, overlayMeta] = await Promise.all([
+      sharp(baseline.buffer).metadata(),
+      sharp(result.buffer).metadata(),
+    ]);
+    expect(overlayMeta.width).toBe(baseMeta.width);
+    expect(overlayMeta.height).toBe(baseMeta.height);
+    expect(overlayMeta.channels).toBeGreaterThanOrEqual(3);
+  });
+
+  it('composites a tracked image overlay and honors gravity', async () => {
+    const buffer = await makePng();
+    const watermark = await sharp({
+      create: {
+        width: 40,
+        height: 20,
+        channels: 4,
+        background: { r: 0, g: 0, b: 255, alpha: 1 },
+      },
+    }).png().toBuffer();
+
+    const result = await transformImage(buffer, {
+      w: 200,
+      g: 'east',
+    }, watermark);
+
+    const meta = await sharp(result.buffer).metadata();
+    expect(meta.width).toBe(200);
+    expect(meta.height).toBe(100);
+  });
 });
 
 describe('optimizeForUpload', () => {

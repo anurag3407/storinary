@@ -34,8 +34,10 @@ jobs:
       # sed range / add new blocks if more models are added to the schemas.
       - name: Validate Postgres schema + model parity
         run: |
-          DATABASE_URL="postgresql://user:pass@localhost:5432/storinary" npx prisma validate --schema prisma/postgres/schema.prisma
+          DATABASE_URL="postgresql://user:pass@localhost:5432/storinary" DIRECT_URL="postgresql://user:pass@localhost:5432/storinary" npx prisma validate --schema prisma/postgres/schema.prisma
           diff <(sed -n '/^model Image/,/^}/p' prisma/schema.prisma) <(sed -n '/^model Image/,/^}/p' prisma/postgres/schema.prisma)
+          diff <(sed -n '/^model ApiKey/,/^}/p' prisma/schema.prisma) <(sed -n '/^model ApiKey/,/^}/p' prisma/postgres/schema.prisma)
+          diff <(sed -n '/^model Video/,/^}/p' prisma/schema.prisma) <(sed -n '/^model Video/,/^}/p' prisma/postgres/schema.prisma)
 
       - name: Typecheck
         run: npm run typecheck
@@ -48,3 +50,42 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build SDK artifact
+        run: npm run build:sdk
+
+  sdk-package:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: sdk-package-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org/
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test SDK
+        run: npx vitest run packages/storinary/src/index.test.ts
+      - name: Build package
+        run: npm run build:sdk
+      - name: Check whether version changed
+        id: version
+        run: |
+          VERSION="$(node -p "require('./packages/storinary/package.json').version")"
+          if npm view "@storinary/sdk@$VERSION" version --silent >/dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish to npm
+        if: steps.version.outputs.changed == 'true'
+        working-directory: packages/storinary
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

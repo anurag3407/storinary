@@ -3,6 +3,7 @@ import {
   generateLinks,
   generateShortId,
   getMimeType,
+  hasTransformParams,
   parseTransformParams,
   serializeImage,
 } from './utils';
@@ -37,6 +38,8 @@ describe('serializeImage', () => {
       tags: 'hero,product',
       altText: 'A product photo',
       bgRemoved: false,
+      aiModerated: false,
+      aiModerationScore: null,
       compressed: true,
       createdAt: created,
       updatedAt: updated,
@@ -57,6 +60,9 @@ describe('serializeImage', () => {
       altText: 'A product photo',
       bgRemoved: false,
       compressed: true,
+      aiModerated: false,
+      aiModerationScore: null,
+      metadata: {},
       createdAt: created.toISOString(),
       updatedAt: updated.toISOString(),
     });
@@ -76,6 +82,7 @@ describe('generateLinks', () => {
     );
 
     expect(links.direct).toBe(publicUrl);
+    expect(links.directUrl).toBe(publicUrl);
     expect(links.html).toBe(
       '<img src="https://cdn.example/2024/01/photo-abc12345.webp" alt="My photo" loading="lazy" />'
     );
@@ -100,6 +107,14 @@ describe('generateLinks', () => {
 describe('parseTransformParams', () => {
   const toSearchParams = (obj: Record<string, string>) =>
     new URLSearchParams(obj);
+
+  it('parses auto gravity for smart cropping', () => {
+    expect(parseTransformParams(toSearchParams({ g: 'auto', w: '100', h: '100' }))).toMatchObject({
+      g: 'auto',
+      w: 100,
+      h: 100,
+    });
+  });
 
   it('parses valid width, height, quality', () => {
     const params = parseTransformParams(
@@ -133,6 +148,46 @@ describe('parseTransformParams', () => {
     );
     expect(params.fmt).toBeUndefined();
     expect(params.fit).toBeUndefined();
+  });
+
+  it('parses advanced crop, background, angle, DPR, and effects', () => {
+    const params = parseTransformParams(
+      toSearchParams({
+        fit: 'thumb',
+        g: 'north',
+        ar: '16:9',
+        b: '#ff0044',
+        a: '-90',
+        dpr: '2',
+        e: 'grayscale,blur:30,saturation:120',
+      })
+    );
+
+    expect(params).toMatchObject({
+      fit: 'thumb',
+      g: 'north',
+      ar: '16:9',
+      b: '#ff0044',
+      a: -90,
+      dpr: 2,
+      e: [{ grayscale: true }, { blur: 30 }, { saturation: 1.2 }],
+    });
+  });
+
+  it('supports automatic quality, format, and DPR while rejecting unsafe values', () => {
+    const params = parseTransformParams(toSearchParams({ q: 'auto', fmt: 'auto', dpr: 'auto' }));
+    expect(params).toEqual({ q: 'auto', fmt: 'auto', dpr: 2 });
+    expect(parseTransformParams(toSearchParams({ b: 'javascript:alert(1)' })).b).toBeUndefined();
+    expect(parseTransformParams(toSearchParams({ ar: 'bad' })).ar).toBeUndefined();
+  });
+
+  it('sanitizes text overlays while preserving safe content', () => {
+    const parsed = parseTransformParams(toSearchParams({
+      text: '  <script>alert(1)</script> Watermark & More ',
+    }));
+    expect(parsed.text).toBe('<script>alert(1)</script> Watermark & More');
+    expect(hasTransformParams(parsed)).toBe(true);
+    expect(parseTransformParams(toSearchParams({ text: '   \n\t   ' })).text).toBeUndefined();
   });
 
   it('returns empty params for an empty query', () => {

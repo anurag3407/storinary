@@ -1,3 +1,5 @@
+import { getVideoMetadataWithFfprobe } from '@/lib/video-renditions';
+
 export interface VideoMetadata {
   width: number;
   height: number;
@@ -80,14 +82,15 @@ export async function getVideoMetadata(
 
   if (format === 'mp4') {
     const duration = parseMp4Duration(buffer);
-    if (!Number.isFinite(duration) || duration <= 0) {
-      throw new Error('Unable to read MP4 metadata');
+    if (Number.isFinite(duration) && duration > 0) {
+      const dimensions = parseMp4Dimensions(buffer);
+      return { width: dimensions.width, height: dimensions.height, duration, format };
     }
-    const dimensions = parseMp4Dimensions(buffer);
-    return { width: dimensions.width, height: dimensions.height, duration, format };
+    if (duration <= 0) throw new Error('Unable to read MP4 metadata');
   }
 
-  throw new Error('WebM metadata extraction is not supported yet');
+  if (format === 'unknown') throw new Error('Unsupported video container');
+  return { ...(await getVideoMetadataWithFfprobe(buffer, format)), format };
 }
 
 function parseMp4Dimensions(buffer: Buffer): Mp4SampleEntry {
@@ -116,9 +119,15 @@ function findVideoTrackDimensions(buffer: Buffer, start: number, end: number): M
       const mdiaEnd = offset + boxSize(buffer, offset);
       const hdlrOffset = findBox(buffer, 'hdlr', mdiaStart, mdiaEnd);
       if (hdlrOffset >= 0 && buffer.subarray(hdlrOffset + 16, hdlrOffset + 20).toString('latin1') === 'vide') {
-        const stsdOffset = findBox(buffer, 'stsd', mdiaStart, mdiaEnd);
+        const minfOffset = findBox(buffer, 'minf', mdiaStart, mdiaEnd);
+        const searchStart = minfOffset >= 0 ? minfOffset + 8 : mdiaStart;
+        const searchEnd = minfOffset >= 0 ? minfOffset + boxSize(buffer, minfOffset) : mdiaEnd;
+        const stblOffset = findBox(buffer, 'stbl', searchStart, searchEnd);
+        const stsdParentStart = stblOffset >= 0 ? stblOffset + 8 : searchStart;
+        const stsdParentEnd = stblOffset >= 0 ? stblOffset + boxSize(buffer, stblOffset) : searchEnd;
+        const stsdOffset = findBox(buffer, 'stsd', stsdParentStart, stsdParentEnd);
         if (stsdOffset >= 0) {
-          const widthOffset = stsdOffset + 8 + 78;
+          const widthOffset = stsdOffset + 54;
           const heightOffset = widthOffset + 2;
           if (heightOffset + 2 <= end) {
             return { width: buffer.readUInt16BE(widthOffset), height: buffer.readUInt16BE(heightOffset) };

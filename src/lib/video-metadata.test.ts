@@ -1,6 +1,7 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getVideoMetadata } from './video-metadata';
+import * as videoRenditions from './video-renditions';
 
 function box(type: string, payload: Buffer): Buffer {
   const header = Buffer.alloc(8);
@@ -90,6 +91,22 @@ describe('video metadata', () => {
     await expect(getVideoMetadata(buffer, 'video/mp4')).resolves.toMatchObject({
       width: 2,
       height: 3,
+      duration: 4.5,
+    });
+  });
+
+  it('extracts WebM metadata with FFprobe', async () => {
+    vi.spyOn(videoRenditions, 'getVideoMetadataWithFfprobe').mockResolvedValue({
+      width: 640,
+      height: 360,
+      duration: 2.5,
+    });
+
+    await expect(getVideoMetadata(Buffer.from('webm'), 'video/webm')).resolves.toEqual({
+      width: 640,
+      height: 360,
+      duration: 2.5,
+      format: 'webm',
     });
   });
 });

@@ -58,3 +58,46 @@
     overflow-x: auto;
   }
 }
+
+.versionList {
+  display: grid;
+  gap: .45rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.versionList a {
+  color: currentColor;
+}
+
+.versionLabel,
+.versionList small {
+  display: inline-block;
+  margin-right: .35rem;
+}
+
+.versionLabel {
+  font-weight: 700;
+}
+
+.versionList a {
+  text-decoration: underline;
+}
+
+.replaceInput {
+  display: block;
+  margin-bottom: .55rem;
+}
+
+.versionList button {
+  border: 1px solid var(--nb-black);
+  background: var(--nb-white);
+  border-radius: 4px;
+  padding: .15rem .45rem;
+  cursor: pointer;
+}
+
+.versionList button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}

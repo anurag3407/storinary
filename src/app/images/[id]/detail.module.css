@@ -18,6 +18,31 @@
   min-width: 0;
 }
 
+.signedCard {
+  display: grid;
+  gap: var(--nb-space-3);
+  padding: var(--nb-space-4);
+  border: 2px solid var(--nb-purple);
+  border-radius: var(--nb-radius);
+  background: color-mix(in srgb, var(--nb-purple) 8%, transparent);
+}
+
+.signedCard h2 {
+  margin: 0;
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-lg);
+}
+
+.signedCard code {
+  overflow-wrap: anywhere;
+  font-family: var(--nb-font-mono);
+  font-size: var(--nb-text-xs);
+}
+
+.signedCard small {
+  opacity: 0.7;
+}
+
 @media (max-width: 1024px) {
   .detailLayout {
     grid-template-columns: 1fr;

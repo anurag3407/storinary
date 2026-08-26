@@ -46,6 +46,7 @@ export function useImages() {
       params.set('order', f.order);
       if (f.search) params.set('search', f.search);
       if (f.folder) params.set('folder', f.folder);
+      if (f.metadata) params.set('metadata', f.metadata);
 
       const res = await fetch(`/api/images?${params.toString()}`);
       if (!res.ok) {

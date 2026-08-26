@@ -5,7 +5,7 @@ import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
 import { diskCache } from '@/lib/disk-cache';
 import { svgSafeResponseHeaders } from '@/lib/svg-security';
-import { parseTransformParams } from '@/lib/utils';
+import { hasTransformParams, parseTransformParams } from '@/lib/utils';
 import type { TransformParams } from '@/types';
 
 export const runtime = 'nodejs';
@@ -33,12 +33,31 @@ export async function GET(
     return new Response('Not found', { status: 404 });
   }
 
+  let overlayBuffer: Buffer | undefined;
+  if (request.nextUrl.searchParams.has('overlay')) {
+    const overlay = await prisma.image.findUnique({
+      where: { id: request.nextUrl.searchParams.get('overlay') || '' },
+      select: { storagePath: true },
+    });
+    if (!overlay) return new Response('Overlay not found', { status: 404 });
+    try {
+      overlayBuffer = (await getFromStorage(overlay.storagePath)).buffer;
+    } catch {
+      return new Response('Overlay unavailable', { status: 502 });
+    }
+  }
+
+  const activeNamedTransforms = await prisma.namedTransformation.findMany({
+    where: { active: true },
+    select: { name: true, params: true },
+  });
+  const namedTransforms = Object.fromEntries(activeNamedTransforms.map((row) => [row.name, row.params]));
+
   const params = parseTransformParams(
-    request.nextUrl.searchParams
+    request.nextUrl.searchParams,
+    namedTransforms
   ) as TransformParams;
-  const hasTransforms = Boolean(
-    params.w || params.h || params.q || params.fmt || params.fit
-  );
+  const hasTransforms = hasTransformParams(params);
 
   // Reuse a previously processed transform if we have one
   const cacheKey = hasTransforms ? transformCacheKey(image.storagePath, params) : '';
@@ -90,7 +109,7 @@ export async function GET(
 
   let result;
   try {
-    result = await transformImage(fetched.buffer, params);
+    result = await transformImage(fetched.buffer, params, overlayBuffer);
   } catch {
     return new Response('Transform failed', { status: 500 });
   }

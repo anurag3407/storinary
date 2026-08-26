@@ -160,9 +160,12 @@ describe('middleware', () => {
       }
     });
 
-    it('rejects write APIs with 401 when unauthenticated', async () => {
+    it('defers credentialed media uploads to route-level authentication', async () => {
       const res = await middleware(makeRequest('/api/upload', { method: 'POST' }));
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(200);
+
+      const videos = await middleware(makeRequest('/api/videos', { method: 'POST' }));
+      expect(videos.status).toBe(200);
     });
 
     it('leaves the public CDN surface and auth endpoints open', async () => {

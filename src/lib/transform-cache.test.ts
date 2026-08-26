@@ -10,6 +10,16 @@ describe('transformCacheKey', () => {
     expect(transformCacheKey('2024/01/a.webp', { fmt: 'jpeg' })).toBe(
       '2024/01/a.webp?fmt=jpeg'
     );
+    expect(
+      transformCacheKey('2024/01/a.webp', {
+        g: 'north',
+        b: '#fff',
+        a: 45,
+        e: [{ grayscale: true }, { blur: 20 }],
+        dpr: 2,
+        text: 'Hello',
+      })
+    ).toBe('2024/01/a.webp?g=north&b=%23fff&a=45&e=grayscale%2Cblur%3A20&dpr=2&text=Hello');
     expect(transformCacheKey('2024/01/a.webp', {})).toBe('2024/01/a.webp');
   });
 });

@@ -32,11 +32,11 @@
 | **Image processing** | Cloud-side (credit-metered) | `sharp` on your own server (free, unlimited) |
 | **Free tier cost** | $0 — 25 credits/month (~25 GB storage *or* ~25 GB bandwidth *or* 25k transformations, shared pool) | $0 — Supabase free tier: 1 GB storage, ~10 GB egress/mo, unlimited transforms |
 | **Credit card required** | No | No |
-| **Video support** | Full (transcoding, ABR/HLS/DASH, player) | ❌ Images only (no video) |
+| **Video support** | Full (managed transcoding, ABR/HLS/DASH, player) | ✅ Practical self-hosted video with renditions, HLS/DASH, and named clips |
 | **AI background removal** | Cloud AI, counts against credits | Client-side WASM (`@imgly/background-removal`), runs in browser, unlimited & free |
 | **Best for** | Teams needing managed, feature-rich media CDN with video, AI, and global CDN — with a budget | Developers who want a free, self-hosted, no-lock-in image CDN and are OK running their own infra |
 
-**One-paragraph verdict:** Cloudinary is the industry-standard *managed* media platform — extremely powerful, feature-complete (images, video, AI, DAM, SDKs, global CDN), but every operation is metered via a credit system, and meaningful scale requires a paid plan starting at **$89–99/month**. Storinary is a *self-hosted* alternative that covers the core image workflow Cloudinary is best known for (bulk upload, on-the-fly resize/format/quality transforms, link generation, gallery/DAM-lite, background removal) using free components: Supabase Storage + Vercel free hosting + `sharp`. Its free tier is effectively **unlimited transformations** — a key advantage — at the cost of you managing infrastructure, having no video support, and a smaller storage pool (1 GB).
+**One-paragraph verdict:** Cloudinary is the industry-standard *managed* media platform — extremely powerful, feature-complete (images, video, AI, DAM, SDKs, global CDN), but every operation is metered via a credit system, and meaningful scale requires a paid plan starting at **$89–99/month**. Storinary is a *self-hosted* alternative covering the core image workflow plus practical video delivery with your own storage and infrastructure. Its transformation tier is effectively unlimited — a key advantage — while trading managed scale and enterprise tooling for full data ownership.
 
 ---
 
@@ -50,12 +50,12 @@
 ### Storinary
 - A **self-hosted image management platform** ("a free, self-hosted Cloudinary alternative") built in this repository with:
   - **Next.js 15** (App Router, TypeScript) — web app + API routes
-  - **Supabase Storage** — object storage with a basic CDN (public bucket → CDN URLs)
+  - **Supabase Storage** — object storage with a basic CDN; Backblaze B2 and Appwrite adapters are also supported
   - **Prisma + SQLite** — local metadata database (zero external DB dependencies)
   - **sharp** — server-side image processing (resize, format conversion, quality)
   - **@imgly/background-removal** — client-side AI background removal (WASM + ONNX, runs in the browser)
 - Deploys free on Vercel (or self-hosted Node.js), storing assets in your own Supabase account.
-- Feature set (from plan + codebase): bulk upload with progress, client-side WebP pre-compression, client-side background removal, on-the-fly resize/format/quality transforms via `/api/serve/...?w=&h=&fmt=&q=&fit=`, multi-format link generator (Direct/HTML/Markdown/CSS/JSON), searchable/filterable/paginated gallery with bulk actions, image detail page with metadata + interactive transform controls, dashboard with stats, folder organization, and settings.
+- Feature set (from codebase): bulk upload with progress, client-side pre-compression, background removal, image/video delivery and transformations, structured metadata, collections, API keys, webhooks, analytics, HLS/DASH, named clips, and dashboard workflows.
 
 ---
 
@@ -65,13 +65,13 @@
 
 | Capability | Cloudinary | Storinary |
 |---|---|---|
-| Resize / scale | ✅ Extensive: `scale`, `fill`, `fit`, `limit`, `pad`, `crop` + **content-aware gravity** (`g_face`, `g_auto`, `g_custom`) | ✅ Core set: resize via `w`/`h` with `fit` modes (`cover`, `contain`, `fill`, `inside`, `outside`) |
+| Resize / scale | ✅ Extensive: `scale`, `fill`, `fit`, `limit`, `pad`, `crop` + **content-aware gravity** (`g_face`, `g_auto`, `g_custom`) | ✅ Core set: resize via `w`/`h` with `fit` modes and attention-based `g=auto` |
 | Format conversion | ✅ WebP, AVIF, JPEG, PNG, GIF, + animated formats; **auto-format `f_auto`** (serves best format per browser) | ✅ `fmt=webp/avif/jpeg/png` via URL (`/api/serve/...?fmt=webp`) |
-| Quality optimization | ✅ `q_80` manual + **`q_auto`** (perceptual/visual quality auto-tuning) | ✅ `q=` (1–100) manual only |
-| Smart cropping (faces/objects) | ✅ AI gravity cropping | ❌ Manual fit modes only |
-| Overlays / text / watermarks | ✅ Text & image overlays, watermarks, effects, filters, rounding, shadows | ❌ Not implemented |
+| Quality optimization | ✅ `q_80` manual + **`q_auto`** (perceptual/visual quality auto-tuning) | ✅ `q=` manual plus `q=auto` mapping to optimized quality |
+| Smart cropping (faces/objects) | ✅ AI gravity cropping | ⚠️ Attention-based `g=auto`; no face detection |
+| Overlays / text / watermarks | ✅ Text & image overlays, watermarks, effects, filters, rounding, shadows | ⚠️ Safe sanitized text overlays/watermarks; no image overlays or shadows |
 | Progressive / interlaced | ✅ Progressive JPEG, interlaced PNG, LQIP placeholders | ✅ Progressive JPEG (`mozjpeg`, `progressive: true`); no LQIP |
-| Video transformations | ✅ Full (trim, transcode, overlays, ABR) | ❌ N/A |
+| Video transformations | ✅ Full (trim, transcode, overlays, ABR) | ⚠️ Renditions, posters, range streaming, HLS/DASH, bounded MP4/WebM clips; no overlays or advanced synthesis |
 
 **Takeaway:** Cloudinary wins decisively on transform *breadth* and intelligence. Storinary covers the ~80% use case (resize + format + quality) that most product teams actually need, using identical URL-query-syntax concepts.
 
@@ -82,33 +82,33 @@
 | Bulk upload | ✅ API + widgets | ✅ Drag-and-drop / paste / file picker, queue with per-file progress bars |
 | Pre-upload optimization | ✅ Server-side (auto-optimization on delivery) | ✅ **Client-side WebP compression before upload** (Canvas API) — saves storage & bandwidth |
 | Folder organization | ✅ Folders, tags, collections | ✅ Folders (path prefixes) + tags (comma-separated) |
-| Search | ✅ Full-text + structured metadata + AI contextual search | ✅ Search by name/tags/alt-text, folder filter, sort, pagination |
+| Search | ✅ Full-text + structured metadata + AI contextual search | ✅ Search by name/tags/alt-text, folder filter, structured metadata filters, sort, pagination |
 | Bulk actions | ✅ API + DAM UI | ✅ Bulk select, bulk delete, bulk copy links (Ctrl+A / Delete / Esc shortcuts) |
 | Link generation | ✅ SDK URL builders + many formats | ✅ One-click Direct / HTML / Markdown / CSS / JSON export |
-| Versioning / history | ✅ Asset versions | ❌ None |
+| Versioning / history | ✅ Asset versions | ✅ Image/video version records and restoration |
 | Media library UI | ✅ Full DAM web app + widgets | ✅ Neobrutalism dashboard, gallery, detail pages (built for single-user) |
-| Alt-text / metadata editing | ✅ Rich structured metadata | ✅ Inline editing of tags, alt text, folder on detail page |
+| Alt-text / metadata editing | ✅ Rich structured metadata | ✅ Inline tags/alt text/folder editing plus typed structured metadata and dashboard editors for images/videos |
 
 ### 3.3 API & Developer Experience
 
 | Capability | Cloudinary | Storinary |
 |---|---|---|
 | REST API | ✅ Upload/Admin/Provisioning APIs | ✅ REST routes (`/api/upload`, `/api/images`, `/api/serve/...`, `/api/stats`, `/api/reset`) |
-| SDKs | ✅ Node, Python, PHP, Java, Ruby, .NET, Go, Dart + React/Vue/Angular/Next.js/Nuxt/Svelte/Astro/Solid/Flutter | ❌ None (plain REST + URLs; web app included) |
+| SDKs | ✅ Node, Python, PHP, Java, Ruby, .NET, Go, Dart + frontend frameworks | ⚠️ TypeScript REST SDK + widget; fewer language/framework integrations |
 | Framework components | ✅ `<CldImage>`, `<CldVideoPlayer>`, Upload Widget, Product Gallery, Media Editor | ✅ Built-in Next.js components instead (ImageCard, DropZone, TransformPanel…) |
-| Webhooks | ✅ Rich webhook events | ❌ None |
-| Workflow automation | ✅ PowerFlows / EasyFlows visual builders | ❌ None |
+| Webhooks | ✅ Rich webhook events | ✅ Signed endpoints, retries, delivery history, image/video lifecycle events |
+| Workflow automation | ✅ PowerFlows / EasyFlows visual builders | ❌ API/webhook automation only; no visual builder |
 | Rate limits (free) | ⚠️ ~500 hourly Admin API requests | ✅ No imposed rate limits (your server) |
 
 ### 3.4 Video
 
 | Capability | Cloudinary | Storinary |
 |---|---|---|
-| Video upload/transcode | ✅ MP4, WebM, on-the-fly encoding | ❌ |
-| Adaptive Bitrate Streaming | ✅ HLS & MPEG-DASH (`sp_auto`) | ❌ |
+| Video upload/transcode | ✅ MP4, WebM, on-the-fly encoding | ✅ MP4/MOV/WebM upload, metadata, posters, 360p/720p renditions, HLS/DASH, persistent named clips |
+| Adaptive Bitrate Streaming | ✅ HLS & MPEG-DASH (`sp_auto`) | ✅ FFmpeg HLS and MPEG-DASH ABR packages with persisted variant manifests |
 | Video player | ✅ Cloudinary Video Player (playlists, analytics, monetization, shoppable) | ❌ |
 
-**Storinary is strictly an image platform.** If video is in scope, Cloudinary (or another provider) is required.
+Storinary now covers practical self-hosted video delivery, but Cloudinary retains a broader managed transcoding catalog, player ecosystem, and workflow tooling.
 
 ---
 
@@ -203,7 +203,7 @@
 | Transform caching | Cloudinary CDN edge caching | HTTP `Cache-Control: public, max-age=31536000, immutable` → CDN/browser caches |
 | Storage | Cloudinary managed + optional S3 backup (paid) | Supabase Storage (yours), S3-compatible |
 | Database | Cloudinary metadata + optional DAM | Prisma + SQLite (metadata in your DB) |
-| Authentication | Cloud accounts, API keys, seats/roles (paid) | None built-in (single-user self-hosted tool); API key middleware possible |
+| Authentication | Cloud accounts, API keys, seats/roles (paid) | Optional admin session; hashed/revocable scoped API keys and upload presets |
 | Frontend | SDKs + widgets (drop-in) | Full included React app (dashboard, gallery, upload, settings) |
 | Tech stack (yours) | API/SDK integration only | Next.js 15, TypeScript, CSS Modules (neobrutalism), sharp, Prisma, Supabase |
 
@@ -217,13 +217,13 @@
 |---|---|---|
 | Background removal | ✅ Cloud AI (`e_background_removal`) — metered | ✅ **Client-side** WASM (`@imgly/background-removal`, `isnet` model) — free, unlimited, runs offline per-user |
 | Background replacement / generative fill | ✅ | ❌ |
-| Auto-tagging / image captioning | ✅ | ❌ |
+| Auto-tagging / image captioning | ✅ | ⚠️ Optional pluggable vision API for images and video posters |
 | Smart crop / object-aware gravity | ✅ | ❌ |
 | Generative text-to-image / object removal | ✅ | ❌ |
-| Content moderation (NSFW) | ✅ (via partners) | ❌ |
+| Content moderation (NSFW) | ✅ (via partners) | ⚠️ Optional provider score persisted per image/video |
 | **Privacy angle** | Images leave your infra for AI processing | **Images never leave the browser** for bg removal |
 
-**Takeaway:** Cloudinary has far broader AI. But Storinary's single AI feature (background removal) is architecturally clever — it's free, unlimited, and privacy-preserving, since the model runs locally in the browser with zero server cost and zero image exfiltration.
+**Takeaway:** Storinary keeps background removal free and private in-browser. For teams that want practical DAM automation, optional OpenAI-compatible server-side vision adds bounded auto-tags, accessibility captions, moderation scores, and immutable analysis history without locking the project to one AI vendor. Generative editing remains outside the current scope.
 
 ---
 
@@ -277,10 +277,10 @@
 
 ### Choose **Storinary** if…
 - You want a **$0** self-hosted image CDN with **unlimited transformations** and **unlimited background removal**.
-- Your workload is **images only** (no video).
+- Your workload is primarily images with practical self-hosted video delivery.
 - You're a developer comfortable with Next.js and running your own infra (Vercel free + Supabase free).
 - You value **data ownership / no vendor lock-in** and **privacy** (client-side background removal).
-- You want a **batteries-included web app** (dashboard, gallery, link generator) rather than integrating an SDK.
+- You want a **batteries-included web app**, TypeScript SDK, widget, and full data ownership.
 - You have modest storage needs (~1 GB free; scales with Supabase Pro at $25/mo).
 
 ---
@@ -288,8 +288,8 @@
 ## 12. Bottom Line
 
 - **Cloudinary is the more powerful product** — vastly broader (video, AI, DAM, SDKs, global CDN, automation) and a better fit for teams and production workloads with a budget. Its free tier (25 credits/mo) is generous for experimentation but restrictive for real traffic due to shared bandwidth/transformation metering and the 30-day deletion risk.
-- **Storinary is the more cost-effective alternative for image-only workloads.** It inverts the cost model: unlimited transforms and AI via client/server-side processing on free infrastructure. Trade-offs: 1 GB storage, ~10 GB egress, no video, no team features, and you own the ops.
-- **The honest recommendation:** For hobby projects, MVPs, internal tools, and image-only sites — Storinary's effective free tier (unlimited transforms) can outperform Cloudinary's metered 25 credits. For video, enterprise DAM, AI-heavy pipelines, or teams that don't want to manage infrastructure — Cloudinary is the standard choice at its price point.
+- **Storinary is the more cost-effective alternative for self-hosted workloads.** It inverts the cost model with unlimited image transforms, client-side AI, practical video derivatives, and ABR on your own infrastructure. Trade-offs are operational burden, smaller base storage/egress allowances, and less managed tooling.
+- **The honest recommendation:** For hobby projects, MVPs, internal tools, and privacy-sensitive media workflows — Storinary can outperform Cloudinary's metered credits while keeping assets in your own storage. For enterprise DAM, managed global scale, advanced players/generative tools, or teams that don't want to operate infrastructure — Cloudinary remains the standard choice at its price point.
 
 ---
 

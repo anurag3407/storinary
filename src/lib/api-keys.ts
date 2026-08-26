@@ -6,7 +6,8 @@ const KEY_PREFIX = 'stor_live_';
 const KEY_BYTES = 32;
 const SIGNATURE_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
-export type ApiKeyScope = 'upload' | 'read' | 'video-upload';
+export type ApiKeyScope = 'upload' | 'read' | 'video-upload' | 'write' | 'delete';
+export type ApiKeyUsageAction = 'upload' | 'video-upload' | 'read' | 'write' | 'delete';
 
 function hashSecret(secret: string): string {
   return createHash('sha256').update(secret).digest('hex');
@@ -113,9 +114,11 @@ async function verifySignature(
   return constantTimeEquals(expected, provided);
 }
 
-export async function authenticateApiKey(
+export async function authenticateScopedApiKey(
   request: Request,
-  formData?: FormData
+  formData?: FormData,
+  preset?: { unsigned: boolean } | null,
+  requiredScope: ApiKeyScope = 'upload'
 ): Promise<
   | { ok: true; keyId: string }
   | { ok: false; status: number; error: string }
@@ -135,12 +138,17 @@ export async function authenticateApiKey(
     return { ok: false, status: 401, error: 'Invalid or revoked API key' };
   }
 
-  if (!key.scopes.split(',').includes('upload')) {
-    return { ok: false, status: 403, error: 'API key lacks upload scope' };
+  if (!key.scopes.split(',').includes(requiredScope)) {
+    return { ok: false, status: 403, error: `API key lacks ${requiredScope} scope` };
   }
 
-  if (formData && formData.has('api_signature')) {
-    const valid = await verifySignature(secret, formData);
+  const signed = Boolean(formData?.has('api_signature'));
+  if (preset?.unsigned && signed) {
+    return { ok: false, status: 400, error: 'Unsigned preset cannot include api_signature' };
+  }
+
+  if (signed) {
+    const valid = await verifySignature(secret, formData!);
     if (!valid) return { ok: false, status: 401, error: 'Invalid upload signature' };
   }
 
@@ -151,20 +159,63 @@ export async function authenticateApiKey(
   return { ok: true, keyId: key.id };
 }
 
+export async function authenticateApiKey(
+  request: Request,
+  formData?: FormData,
+  preset?: { unsigned: boolean } | null
+) {
+  return authenticateScopedApiKey(request, formData, preset, 'upload');
+}
+
+export async function authenticateReadApiKey(request: Request) {
+  return authenticateScopedApiKey(request, undefined, undefined, 'read');
+}
+
 export async function authenticateVideoApiKey(
   request: Request,
-  formData?: FormData
+  formData?: FormData,
+  preset?: { unsigned: boolean } | null
 ): Promise<
   | { ok: true; keyId: string }
   | { ok: false; status: number; error: string }
 > {
-  const result = await authenticateApiKey(request, formData);
-  if (!result.ok) return result;
+  return authenticateScopedApiKey(request, formData, preset, 'video-upload');
+}
 
-  const key = await prisma.apiKey.findUnique({ where: { id: result.keyId } });
-  if (!key || !key.scopes.split(',').includes('video-upload')) {
-    return { ok: false, status: 403, error: 'API key lacks video-upload scope' };
+export async function recordApiKeyUsage(
+  apiKeyId: string,
+  action: ApiKeyUsageAction,
+  result: { assets?: number; errors?: number; bytes?: number } = {}
+): Promise<void> {
+  const periodStart = new Date();
+  periodStart.setUTCHours(0, 0, 0, 0);
+
+  try {
+    await prisma.apiKeyUsageEvent.upsert({
+      where: {
+        apiKeyId_periodStart_action: {
+          apiKeyId,
+          periodStart,
+          action,
+        },
+      },
+      create: {
+        apiKeyId,
+        periodStart,
+        action,
+        requests: 1,
+        assets: Math.max(0, Math.floor(result.assets ?? 0)),
+        errors: Math.max(0, Math.floor(result.errors ?? 0)),
+        bytes: BigInt(Math.max(0, Math.floor(result.bytes ?? 0))),
+      },
+      update: {
+        requests: { increment: 1 },
+        assets: { increment: Math.max(0, Math.floor(result.assets ?? 0)) },
+        errors: { increment: Math.max(0, Math.floor(result.errors ?? 0)) },
+        bytes: { increment: BigInt(Math.max(0, Math.floor(result.bytes ?? 0))) },
+      },
+    });
+  } catch (error) {
+    console.error('API key usage recording error:', error);
   }
-
-  return { ok: true, keyId: result.keyId };
 }

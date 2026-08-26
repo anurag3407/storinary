@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
+import type { MetadataFieldRecord } from '@/lib/structured-metadata';
 import type { ImagesListParams } from '@/types';
 import styles from './GalleryToolbar.module.css';
 
@@ -10,10 +11,15 @@ interface GalleryToolbarProps {
   selectedCount: number;
   totalCount: number;
   folders: string[];
+  metadataFields?: MetadataFieldRecord[];
   onSelectAll: () => void;
   onDeselectAll: () => void;
   onBulkDelete: () => void;
   onBulkCopy: () => void;
+  onBulkDownload: () => void;
+  onAddToCollection?: (collectionId: string) => void;
+  isArchiving?: boolean;
+  collections?: Array<{ id: string; name: string }>;
 }
 
 export function GalleryToolbar({
@@ -22,11 +28,27 @@ export function GalleryToolbar({
   selectedCount,
   totalCount,
   folders,
+  metadataFields = [],
   onSelectAll,
   onDeselectAll,
   onBulkDelete,
   onBulkCopy,
+  onBulkDownload,
+  onAddToCollection,
+  isArchiving = false,
+  collections = [],
 }: GalleryToolbarProps) {
+  const metadataFilters = new URLSearchParams(filters.metadata ?? '');
+
+  const setMetadataFilter = (externalId: string, value: string) => {
+    const next = new URLSearchParams(filters.metadata ?? '');
+    if (value) next.set(externalId, value);
+    else next.delete(externalId);
+    setFilters({
+      metadata: next.toString() || undefined,
+      page: 1,
+    });
+  };
   const start = totalCount === 0 ? 0 : (filters.page - 1) * filters.limit + 1;
   const end = Math.min(filters.page * filters.limit, totalCount);
   const allSelected =
@@ -55,6 +77,21 @@ export function GalleryToolbar({
             </option>
           ))}
         </select>
+
+        {metadataFields?.map((field) => (
+          <select
+            key={field.id}
+            aria-label={`Filter by ${field.label}`}
+            className="nb-select"
+            value={metadataFilters.get(field.externalId) ?? ''}
+            onChange={(event) => setMetadataFilter(field.externalId, event.target.value)}
+          >
+            <option value={`${field.label}: all`}>{field.label}</option>
+            {field.allowedValues.map((option) => (
+              <option key={option} value={option}>{`${field.label}: ${option}`}</option>
+            ))}
+          </select>
+        ))}
 
         <select
           className="nb-select"
@@ -92,6 +129,26 @@ export function GalleryToolbar({
             <Button variant="secondary" size="sm" icon="📋" onClick={onBulkCopy}>
               Copy URLs
             </Button>
+            <Button variant="secondary" size="sm" icon="📦" loading={isArchiving} onClick={onBulkDownload}>
+              Download ZIP
+            </Button>
+            {collections.length > 0 && (
+              <select
+                aria-label="Add selected images to collection"
+                className="nb-select"
+                defaultValue=""
+                onChange={(event) => {
+                  const collectionId = event.target.value;
+                  event.currentTarget.value = '';
+                  if (collectionId) onAddToCollection?.(collectionId);
+                }}
+              >
+                <option value="">Add to collection…</option>
+                {collections.map((collection) => (
+                  <option key={collection.id} value={collection.id}>{collection.name}</option>
+                ))}
+              </select>
+            )}
             <Button variant="danger" size="sm" icon="🗑️" onClick={onBulkDelete}>
               Delete Selected
             </Button>

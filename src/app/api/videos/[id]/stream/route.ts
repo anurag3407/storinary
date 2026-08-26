@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getVideoFromStorage } from '@/lib/storage';
+import { isSignedDeliveryEnabled, verifySignedUrlToken } from '@/lib/signed-delivery';
+import { recordVideoDelivery } from '@/lib/delivery-analytics';
 
 export const runtime = 'nodejs';
 
@@ -9,8 +11,28 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
+  if (isSignedDeliveryEnabled() && !verifySignedUrlToken(`/api/videos/${id}`, request.nextUrl.searchParams.get('token'))) {
+    return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
+  }
+  const requestedRendition = request.nextUrl.searchParams.get('rendition');
+  const rendition = requestedRendition
+    ? await prisma.videoRendition.findUnique({
+        where: { videoId_label: { videoId: id, label: requestedRendition } },
+      })
+    : null;
+
   const video = await prisma.video.findUnique({ where: { id } });
   if (!video) return new Response('Not found', { status: 404 });
+  if (requestedRendition && !rendition) {
+    return new Response('Rendition not found', { status: 404 });
+  }
+
+  const deliveryMetadata = {
+    videoId: id,
+    label: rendition?.label || null,
+    referer: request.headers.get('referer'),
+    userAgent: request.headers.get('user-agent'),
+  };
 
   try {
     const range = request.headers.get('range');
@@ -30,8 +52,15 @@ export async function GET(
         });
       }
 
-      const result = await getVideoFromStorage(video.storagePath, `bytes=${start}-${end}`);
+      const result = await getVideoFromStorage(rendition?.storagePath ?? video.storagePath, `bytes=${start}-${end}`);
+      if (result.rangeStatus === 416) {
+        return new Response('Range not satisfiable', {
+          status: 416,
+          headers: { 'Content-Range': result.contentRange || `bytes */${video.fileSize}` },
+        });
+      }
       const totalSize = result.totalSize || video.fileSize;
+      void recordVideoDelivery({ ...deliveryMetadata, bytes: result.buffer.length }).catch(() => {});
       return new Response(new Uint8Array(result.buffer), {
         status: 206,
         headers: {
@@ -39,18 +68,19 @@ export async function GET(
           'Content-Length': String(result.buffer.length),
           'Content-Range': `bytes ${start}-${end}/${totalSize}`,
           'Accept-Ranges': 'bytes',
-          'Cache-Control': 'public, max-age=31536000, immutable',
+          'Cache-Control': isSignedDeliveryEnabled() ? 'private, no-store' : 'public, max-age=31536000, immutable',
         },
       });
     }
 
-    const result = await getVideoFromStorage(video.storagePath);
+    const result = await getVideoFromStorage(rendition?.storagePath ?? video.storagePath);
+    void recordVideoDelivery({ ...deliveryMetadata, bytes: result.buffer.length }).catch(() => {});
     return new Response(new Uint8Array(result.buffer), {
       headers: {
         'Content-Type': result.contentType || video.mimeType,
         'Content-Length': String(result.buffer.length),
         'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Cache-Control': isSignedDeliveryEnabled() ? 'private, no-store' : 'public, max-age=31536000, immutable',
         'X-Content-Type-Options': 'nosniff',
       },
     });

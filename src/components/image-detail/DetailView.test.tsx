@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, act } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { DetailView } from './DetailView';
-import type { GeneratedLinks, ImageRecord } from '@/types';
+import type { GeneratedLinks, ImageRecord, ImageVersionRecord } from '@/types';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
@@ -22,6 +22,8 @@ const image: ImageRecord = {
   tags: 'hero',
   altText: 'Hero image',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: true,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
@@ -29,11 +31,28 @@ const image: ImageRecord = {
 
 const links: GeneratedLinks = {
   direct: 'https://cdn.example/hero.webp',
+  directUrl: 'https://cdn.example/hero.webp',
   html: '<img src="https://cdn.example/hero.webp" alt="Hero image" />',
   markdown: '![Hero image](https://cdn.example/hero.webp)',
   css: "background-image: url('https://cdn.example/hero.webp');",
   transformBase: 'http://localhost:3000/api/serve/2024/01/hero-abc.webp',
 };
+
+const versions: ImageVersionRecord[] = [{
+  id: 'version-1',
+  imageId: image.id,
+  version: 1,
+  label: 'original',
+  originalName: 'hero-original.webp',
+  storagePath: '2024/01/hero-abc.webp',
+  publicUrl: 'https://cdn.example/hero.webp',
+  width: 800,
+  height: 600,
+  fileSize: 20480,
+  format: 'webp',
+  mimeType: 'image/webp',
+  createdAt: '2024-01-01T00:00:00.000Z',
+}];
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>;
@@ -51,15 +70,16 @@ describe('DetailView', () => {
   afterEach(() => vi.useRealTimers());
 
   it('renders preview, meta, transform, and link panels', () => {
-    render(<DetailView image={image} links={links} />, { wrapper });
+    render(<DetailView image={image} links={links} versions={versions} />, { wrapper });
     expect(screen.getByAltText('Hero image')).toBeInTheDocument();
     expect(screen.getByText('Details')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'hero-original.webp' })).toBeInTheDocument();
     expect(screen.getByText('Transform')).toBeInTheDocument();
     expect(screen.getByText('Links')).toBeInTheDocument();
   });
 
   it('switches to a transformed preview when transform params change', () => {
-    render(<DetailView image={image} links={links} />, { wrapper });
+    render(<DetailView image={image} links={links} versions={versions} />, { wrapper });
 
     fireEvent.click(screen.getByRole('button', { name: /150×150 Thumb/ }));
     act(() => {
@@ -75,7 +95,7 @@ describe('DetailView', () => {
   });
 
   it('resets to the original preview', () => {
-    render(<DetailView image={image} links={links} />, { wrapper });
+    render(<DetailView image={image} links={links} versions={versions} />, { wrapper });
 
     fireEvent.click(screen.getByRole('button', { name: /150×150 Thumb/ }));
     act(() => {

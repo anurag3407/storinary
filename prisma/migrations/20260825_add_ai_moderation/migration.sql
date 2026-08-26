@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Image" ADD COLUMN "aiModerated" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Image" ADD COLUMN "aiModerationScore" DOUBLE PRECISION;

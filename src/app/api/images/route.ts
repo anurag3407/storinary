@@ -3,6 +3,9 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { bulkDeleteFromStorage } from '@/lib/storage';
 import { serializeImage } from '@/lib/utils';
+import { authorizeDashboardOrReadApiKey } from '@/lib/media-auth';
+import { recordApiKeyUsage } from '@/lib/api-keys';
+import { dispatchWebhooks } from '@/lib/webhooks';
 import type { BulkDeleteResponse, ImagesListResponse } from '@/types';
 
 export const runtime = 'nodejs';
@@ -14,6 +17,9 @@ type SortField = (typeof SORT_FIELDS)[number];
  * GET /api/images — list images with pagination, search, and filters.
  */
 export async function GET(request: NextRequest) {
+  const auth = await authorizeDashboardOrReadApiKey(request);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const searchParams = request.nextUrl.searchParams;
 
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
@@ -23,6 +29,8 @@ export async function GET(request: NextRequest) {
   );
   const search = searchParams.get('search') || undefined;
   const folder = searchParams.get('folder') || undefined;
+  const metadata = searchParams.get('metadata') || undefined;
+  const collectionId = searchParams.get('collectionId') || undefined;
   const sortRaw = searchParams.get('sort') || 'createdAt';
   const orderRaw = searchParams.get('order') || 'desc';
 
@@ -42,6 +50,22 @@ export async function GET(request: NextRequest) {
   if (folder) {
     where.folder = folder;
   }
+  const metadataFilters = [...new URLSearchParams(metadata ?? '')]
+    .filter(([field]) => field)
+    .map(([field, value]) => ({
+      metadata: {
+        some: {
+          value: { contains: value },
+          field: { externalId: field, active: true },
+        },
+      },
+    }));
+  if (metadataFilters.length > 0) {
+    where.AND = metadataFilters;
+  }
+  if (collectionId) {
+    where.collections = { some: { collectionId } };
+  }
 
   try {
     const [items, total] = await Promise.all([
@@ -54,7 +78,7 @@ export async function GET(request: NextRequest) {
       prisma.image.count({ where }),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       images: items.map(serializeImage),
       pagination: {
         page,
@@ -63,6 +87,11 @@ export async function GET(request: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     } satisfies ImagesListResponse);
+
+    if (auth.keyId) {
+      await recordApiKeyUsage(auth.keyId, 'read', { assets: items.length });
+    }
+    return response;
   } catch (error) {
     console.error('API /api/images error:', error);
     const msg = error instanceof Error ? error.message : String(error);
@@ -110,6 +139,13 @@ export async function DELETE(request: NextRequest) {
   const result = await prisma.image.deleteMany({
     where: { id: { in: ids } },
   });
+
+  if (result.count > 0) {
+    void dispatchWebhooks('image.deleted', {
+      ids: images.map((image) => image.id),
+      count: result.count,
+    });
+  }
 
   const response: BulkDeleteResponse = {
     success: !storageError,

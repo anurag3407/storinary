@@ -20,6 +20,7 @@ const baseProps = {
   onDeselectAll: vi.fn(),
   onBulkDelete: vi.fn(),
   onBulkCopy: vi.fn(),
+  onBulkDownload: vi.fn(),
 };
 
 describe('GalleryToolbar', () => {
@@ -56,6 +57,9 @@ describe('GalleryToolbar', () => {
     unmount();
     render(<GalleryToolbar {...baseProps} selectedCount={3} />);
     expect(screen.getByText('3 selected')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Download ZIP/ })
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /Delete Selected/ })
     ).toBeInTheDocument();

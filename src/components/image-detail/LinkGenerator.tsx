@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
-import type { GeneratedLinks, ImageRecord, TransformParams } from '@/types';
+import type { GeneratedLinks, TransformParams } from '@/types';
 import styles from './LinkGenerator.module.css';
 
 interface LinkGeneratorProps {
-  image: ImageRecord;
   links: GeneratedLinks;
   transformParams?: TransformParams;
 }
@@ -20,12 +19,31 @@ interface LinkRow {
 }
 
 function buildTransformUrl(links: GeneratedLinks, params: TransformParams): string | null {
+  if (links.transformUrl && new URLSearchParams(links.transformUrl.split('?')[1] || '').has('token')) {
+    return links.transformUrl;
+  }
+
   const q = new URLSearchParams();
   if (params.w) q.set('w', String(params.w));
   if (params.h) q.set('h', String(params.h));
   if (params.q) q.set('q', String(params.q));
   if (params.fmt) q.set('fmt', params.fmt);
   if (params.fit) q.set('fit', params.fit);
+  if (params.g) q.set('g', params.g);
+  if (params.ar) q.set('ar', params.ar);
+  if (params.b) q.set('b', params.b);
+  if (typeof params.a === 'number') q.set('a', String(params.a));
+  for (const effect of params.e ?? []) {
+    if (effect.grayscale) q.append('e', 'grayscale');
+    else if (effect.sepia !== undefined) q.append('e', `sepia:${effect.sepia}`);
+    else if (effect.blur !== undefined) q.append('e', `blur:${effect.blur}`);
+    else if (effect.sharpen !== undefined) q.append('e', `sharpen:${effect.sharpen}`);
+    else if (effect.saturation !== undefined) {
+      q.append('e', `saturation:${Math.round(effect.saturation * 100)}`);
+    }
+  }
+  if (params.dpr) q.set('dpr', String(params.dpr));
+
   const s = q.toString();
   return s ? `${links.transformBase}?${s}` : null;
 }

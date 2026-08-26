@@ -17,6 +17,8 @@ const MOCK_IMAGE = {
   tags: '',
   altText: '',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: false,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',

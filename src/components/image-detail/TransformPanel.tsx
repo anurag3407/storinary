@@ -86,7 +86,7 @@ export function TransformPanel({ image, onTransformChange }: TransformPanelProps
         <div className={`${styles.field} ${styles.full}`}>
           <CompressionSelector
             idPrefix="tf"
-            quality={params.q ?? 80}
+            quality={typeof params.q === 'number' ? params.q : 80}
             onChange={(q) => update({ ...params, q })}
           />
         </div>

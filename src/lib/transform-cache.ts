@@ -27,8 +27,28 @@ export function transformCacheKey(
   if (params.q) qs.set('q', String(params.q));
   if (params.fmt) qs.set('fmt', params.fmt);
   if (params.fit) qs.set('fit', params.fit);
+  if (params.g) qs.set('g', params.g);
+  if (params.ar) qs.set('ar', params.ar);
+  if (params.b) qs.set('b', params.b);
+  if (typeof params.a === 'number') qs.set('a', String(params.a));
+  if (params.e?.length) qs.set('e', params.e.map(serializeEffect).join(','));
+  if (params.brightness !== undefined) qs.set('brightness', String(params.brightness));
+  if (params.contrast !== undefined) qs.set('contrast', String(params.contrast));
+  if (params.gamma !== undefined) qs.set('gamma', String(params.gamma));
+  if (params.dpr) qs.set('dpr', String(params.dpr));
+  if (params.t) qs.set('t', params.t);
+  if (params.text) qs.set('text', params.text);
+  if (params.overlayId) qs.set('overlay', params.overlayId);
   const query = qs.toString();
   return query ? `${storageKey}?${query}` : storageKey;
+}
+
+function serializeEffect(effect: NonNullable<TransformParams['e']>[number]): string {
+  if (effect.grayscale) return 'grayscale';
+  if (effect.sepia !== undefined) return `sepia:${effect.sepia}`;
+  if (effect.blur !== undefined) return `blur:${effect.blur}`;
+  if (effect.sharpen !== undefined) return `sharpen:${effect.sharpen}`;
+  return `saturation:${Math.round((effect.saturation ?? 1) * 100)}`;
 }
 
 export class TransformCache {

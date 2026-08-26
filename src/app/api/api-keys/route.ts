@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     if (typeof body?.name === 'string' && body.name.trim()) name = body.name;
     if (Array.isArray(body?.scopes)) {
-      const allowed = ['upload', 'read', 'video-upload'];
+      const allowed = ['upload', 'read', 'video-upload', 'write', 'delete'];
       scopes = [...new Set(body.scopes)].filter((scope: unknown) =>
         typeof scope === 'string' && allowed.includes(scope)
       ).join(',');

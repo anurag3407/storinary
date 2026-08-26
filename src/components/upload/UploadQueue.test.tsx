@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/ToastProvider';
 import { UploadQueue } from './UploadQueue';
 import type { UploadItem as UploadItemType } from '@/types';
@@ -15,8 +15,12 @@ function makeItem(id: string): UploadItemType {
     previewUrl: 'blob:preview',
     status: 'pending',
     progress: 0,
-    options: { removeBg: false, compress: true, folder: '/', tags: '' },
+    options: { removeBg: false, compress: true, moderate: false, folder: '/', tags: '' },
   };
+}
+
+function makeErrorItem(id: string): UploadItemType {
+  return { ...makeItem(id), status: 'error', error: 'network failed', attempts: 1 };
 }
 
 describe('UploadQueue', () => {
@@ -50,5 +54,16 @@ describe('UploadQueue', () => {
       wrapper,
     });
     expect(screen.getByText('1 file in queue')).toBeInTheDocument();
+  });
+
+  it('retries failed items through the queue callback', () => {
+    const onRetry = vi.fn();
+    render(
+      <UploadQueue items={[makeErrorItem('failed')]} onRemove={vi.fn()} onRetry={onRetry} />,
+      { wrapper }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledWith('failed');
   });
 });

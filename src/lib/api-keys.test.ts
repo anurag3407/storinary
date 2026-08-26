@@ -1,12 +1,19 @@
 // @vitest-environment node
 import { createHash } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { authenticateApiKey, createRequestSignature, createApiKey } from './api-keys';
+import {
+  authenticateApiKey,
+  authenticateReadApiKey,
+  createRequestSignature,
+  createApiKey,
+  recordApiKeyUsage,
+} from './api-keys';
 
-const { createMock, findUniqueMock, updateMock } = vi.hoisted(() => ({
+const { createMock, findUniqueMock, updateMock, upsertMock } = vi.hoisted(() => ({
   createMock: vi.fn(),
   findUniqueMock: vi.fn(),
   updateMock: vi.fn(),
+  upsertMock: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -15,6 +22,9 @@ vi.mock('@/lib/prisma', () => ({
       create: createMock,
       findUnique: findUniqueMock,
       update: updateMock,
+    },
+    apiKeyUsageEvent: {
+      upsert: upsertMock,
     },
   },
 }));
@@ -26,10 +36,69 @@ function makeRequest(secret?: string) {
 }
 
 describe('API key credentials', () => {
+  const expectedHash = createHash('sha256').update('stor_live_test').digest('hex');
+
   beforeEach(() => {
     createMock.mockReset();
     findUniqueMock.mockReset();
     updateMock.mockReset();
+    upsertMock.mockReset();
+  });
+
+  it('rejects upload-only keys when authenticating reads', async () => {
+    updateMock.mockResolvedValue({});
+    findUniqueMock.mockResolvedValue({
+      id: 'upload-key',
+      hashedKey: expectedHash,
+      revokedAt: null,
+      scopes: 'upload',
+    });
+
+    await expect(authenticateReadApiKey(makeRequest('stor_live_test'))).resolves.toMatchObject({
+      ok: false,
+      status: 403,
+      error: 'API key lacks read scope',
+    });
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
+  it('records bounded aggregate usage and swallows recorder failures', async () => {
+    upsertMock.mockRejectedValueOnce(new Error('database unavailable')).mockResolvedValueOnce({});
+
+    await expect(recordApiKeyUsage('key-id', 'upload', {
+      assets: 2.2,
+      errors: -1,
+      bytes: Number.MAX_SAFE_INTEGER,
+    })).resolves.toBeUndefined();
+    await expect(recordApiKeyUsage('key-id', 'read', { assets: 3 })).resolves.toBeUndefined();
+
+    expect(upsertMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({
+        apiKeyId_periodStart_action: expect.objectContaining({ action: 'read' }),
+      }),
+      create: expect.objectContaining({ requests: 1, assets: 3, errors: 0, bytes: BigInt(0) }),
+      update: expect.objectContaining({
+        requests: { increment: 1 },
+        assets: { increment: 3 },
+        errors: { increment: 0 },
+        bytes: { increment: BigInt(0) },
+      }),
+    }));
+  });
+
+  it('requires the upload scope before updating key state', async () => {
+    findUniqueMock.mockResolvedValue({
+      id: 'read-key',
+      hashedKey: expectedHash,
+      revokedAt: null,
+      scopes: 'read',
+    });
+
+    await expect(authenticateApiKey(makeRequest('stor_live_test'))).resolves.toMatchObject({
+      ok: false,
+      status: 403,
+    });
+    expect(updateMock).not.toHaveBeenCalled();
   });
 
   it('creates and returns the plaintext secret exactly once', async () => {

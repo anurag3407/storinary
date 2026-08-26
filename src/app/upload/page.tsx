@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { DropZone } from '@/components/upload/DropZone';
 import { UploadQueue } from '@/components/upload/UploadQueue';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { useUpload } from '@/hooks/useUpload';
+import type { UploadPresetRecord } from '@/lib/upload-presets';
 import styles from './upload.module.css';
 
 export default function UploadPage() {
@@ -20,8 +21,12 @@ export default function UploadPage() {
     startUpload,
     reset,
   } = useUpload();
+  const { selectedPreset, selectUploadPreset } = useUpload();
   const { toast } = useToast();
   const { copy } = useClipboard();
+  const [presets, setPresets] = useState<UploadPresetRecord[]>([]);
+  const [importUrls, setImportUrls] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
   const { items, globalOptions, isUploading } = state;
   const pendingCount = items.filter((i) => i.status === 'pending').length;
@@ -49,6 +54,28 @@ export default function UploadPage() {
     return () => window.removeEventListener('paste', handler);
   }, [addFiles, toast]);
 
+  useEffect(() => {
+    fetch('/api/upload-presets?active=true', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : { presets: [] }))
+      .then((data) => setPresets(data.presets ?? []))
+      .catch(() => setPresets([]));
+  }, []);
+
+  const handleSelectPreset = (name: string) => {
+    selectUploadPreset(name);
+    const preset = presets.find((item) => item.name === name);
+    if (!preset) return;
+    updateGlobalOptions({
+      folder: preset.folder,
+      tags: preset.tags,
+      compress: preset.compress,
+      quality: preset.quality,
+      maxWidth: preset.maxWidth,
+      removeBg: preset.removeBg,
+      moderate: preset.moderate,
+    });
+  };
+
   const handleClearAll = () => {
     reset();
     toast.info('Queue cleared');
@@ -61,6 +88,41 @@ export default function UploadPage() {
       toast.warning(`Uploaded ${result.completed}, ${result.failed} failed`);
     } else if (result.completed > 0) {
       toast.success(`Uploaded ${result.completed} image(s) successfully`);
+    }
+  };
+
+  const importFromUrls = async () => {
+    const urls = importUrls
+      .split(/\r?\n|,\s*/)
+      .map((url) => url.trim())
+      .filter(Boolean);
+    if (urls.length === 0) return;
+
+    setIsImporting(true);
+    try {
+      const response = await fetch('/api/import/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          urls,
+          folder: globalOptions.folder,
+          tags: globalOptions.tags,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({ error: 'Import failed' }));
+        throw new Error(body.error || 'Import failed');
+      }
+      const body = await response.json();
+      if (body.errors?.length) {
+        toast.warning(`Imported ${body.images.length}, ${body.errors.length} failed`);
+      } else {
+        toast.success(`Imported ${body.images.length} image(s)`);
+      }
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Import failed');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -123,13 +185,37 @@ export default function UploadPage() {
 
       <UploadSettings
         options={globalOptions}
+        presets={presets}
+        selectedPreset={selectedPreset}
+        onPresetChange={handleSelectPreset}
         onChange={updateGlobalOptions}
         disabled={isUploading}
       />
 
       <DropZone onFilesAdded={addFiles} disabled={isUploading} />
 
-      <UploadQueue items={items} onRemove={removeFile} />
+      <section className={styles.importPanel}>
+        <label htmlFor="image-import-urls">Import image URLs</label>
+        <textarea
+          id="image-import-urls"
+          className="nb-input"
+          rows={3}
+          value={importUrls}
+          onChange={(event) => setImportUrls(event.target.value)}
+          placeholder="https://example.com/photo.jpg&#10;https://example.com/banner.png"
+        />
+        <div>
+          <span>Public HTTPS URLs only. Maximum 10 per batch.</span>
+          <Button onClick={() => void importFromUrls()} loading={isImporting} disabled={!importUrls.trim()}>
+            Import Images
+          </Button>
+        </div>
+        {isImporting && (
+          <p role="status">Importing URLs. Results appear in your toast notifications.</p>
+        )}
+      </section>
+
+      <UploadQueue items={items} onRemove={removeFile} onRetry={() => void startUpload()} />
 
       {doneItems.length > 0 && (
         <div className={styles.completedPanel}>

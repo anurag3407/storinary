@@ -15,6 +15,7 @@ export interface UploadDefaults {
   quality: number;
   maxWidth: number;
   removeBg: boolean;
+  moderate: boolean;
   folder: string;
   tags: string;
 }
@@ -24,6 +25,7 @@ export const DEFAULT_UPLOAD_OPTIONS: UploadDefaults = {
   quality: 80,
   maxWidth: 2048,
   removeBg: false,
+  moderate: false,
   folder: '/',
   tags: '',
 };
@@ -40,6 +42,7 @@ export function sanitizeUploadDefaults(raw: unknown): UploadDefaults {
 
   if (typeof o.compress === 'boolean') base.compress = o.compress;
   if (typeof o.removeBg === 'boolean') base.removeBg = o.removeBg;
+  if (typeof o.moderate === 'boolean') base.moderate = o.moderate;
 
   if (
     typeof o.quality === 'number' &&

@@ -1,8 +1,9 @@
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { transformCache } from '@/lib/transform-cache';
+import { createSignedUrlToken } from '@/lib/signed-delivery';
 
 const { getFromStorageMock, getPublicUrlMock, transformImageMock, diskCacheGetMock, diskCacheSetMock } =
   vi.hoisted(() => ({
@@ -16,6 +17,25 @@ const { getFromStorageMock, getPublicUrlMock, transformImageMock, diskCacheGetMo
 vi.mock('@/lib/storage', () => ({
   getFromStorage: getFromStorageMock,
   getPublicUrl: getPublicUrlMock,
+}));
+
+const { namedTransformFindManyMock } = vi.hoisted(() => ({
+  namedTransformFindManyMock: vi.fn().mockResolvedValue([]),
+}));
+const { imageFindUniqueMock, recordImageDeliveryMock } = vi.hoisted(() => ({
+  imageFindUniqueMock: vi.fn().mockResolvedValue({ id: 'img-1', fileSize: 10 }),
+  recordImageDeliveryMock: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  prisma: {
+    namedTransformation: { findMany: namedTransformFindManyMock },
+    image: { findUnique: imageFindUniqueMock },
+  },
+}));
+
+vi.mock('@/lib/delivery-analytics', () => ({
+  recordImageDelivery: recordImageDeliveryMock,
 }));
 
 vi.mock('@/lib/image-processing', () => ({
@@ -41,6 +61,9 @@ const context = (path: string[]) => ({
 
 describe('GET /api/serve/[...path]', () => {
   beforeEach(() => {
+    namedTransformFindManyMock.mockReset().mockResolvedValue([]);
+    imageFindUniqueMock.mockReset().mockResolvedValue({ id: 'img-1', fileSize: 10 });
+    recordImageDeliveryMock.mockClear();
     getFromStorageMock.mockReset();
     getPublicUrlMock.mockReset();
     transformImageMock.mockReset();
@@ -85,7 +108,8 @@ describe('GET /api/serve/[...path]', () => {
     expect(response.headers.get('cache-control')).toContain('max-age=31536000');
     expect(transformImageMock).toHaveBeenCalledWith(
       expect.any(Buffer),
-      expect.objectContaining({ w: 200, q: 70 })
+      expect.objectContaining({ w: 200, q: 70 }),
+      undefined
     );
   });
 
@@ -97,6 +121,36 @@ describe('GET /api/serve/[...path]', () => {
       context(['2024', '01', 'a.webp'])
     );
     expect(response.status).toBe(404);
+  });
+
+  it('loads a tracked overlay before transformation', async () => {
+    imageFindUniqueMock
+      .mockResolvedValueOnce({ id: 'img-1', fileSize: 100 })
+      .mockResolvedValueOnce({ storagePath: 'overlays/logo.png' });
+    getFromStorageMock
+      .mockResolvedValueOnce({ buffer: Buffer.from('source'), contentType: 'image/webp' })
+      .mockResolvedValueOnce({ buffer: Buffer.from('overlay'), contentType: 'image/png' });
+    transformImageMock.mockResolvedValue({
+      buffer: Buffer.from('output'),
+      contentType: 'image/webp',
+      format: 'webp',
+    });
+
+    const response = await GET(
+      makeRequest(['2024', '01', 'a.webp'], '?w=100&overlay=overlay-1'),
+      context(['2024', '01', 'a.webp'])
+    );
+
+    expect(response.status).toBe(200);
+    expect(imageFindUniqueMock).toHaveBeenNthCalledWith(2, {
+      where: { id: 'overlay-1' },
+      select: { storagePath: true },
+    });
+    expect(transformImageMock).toHaveBeenCalledWith(
+      Buffer.from('source'),
+      expect.objectContaining({ overlayId: 'overlay-1' }),
+      Buffer.from('overlay')
+    );
   });
 
   it('serves repeated transforms from cache without re-processing', async () => {
@@ -138,5 +192,54 @@ describe('GET /api/serve/[...path]', () => {
       context(['2024', '01', 'a.webp'])
     );
     expect(response.status).toBe(500);
+  });
+
+  describe('with signed delivery enabled', () => {
+    const originalSecret = process.env.STORINARY_SIGNED_URL_SECRET;
+
+    beforeEach(() => {
+      process.env.STORINARY_SIGNED_URL_SECRET = 'test-signing-secret';
+      getFromStorageMock.mockResolvedValue({
+        buffer: Buffer.from('original'),
+        contentType: 'image/webp',
+      });
+      transformImageMock.mockResolvedValue({
+        buffer: Buffer.from('transformed'),
+        contentType: 'image/webp',
+        format: 'webp',
+      });
+    });
+
+    afterEach(() => {
+      if (originalSecret === undefined) delete process.env.STORINARY_SIGNED_URL_SECRET;
+      else process.env.STORINARY_SIGNED_URL_SECRET = originalSecret;
+    });
+
+    it('rejects a missing or invalid token before storage access', async () => {
+      const missing = await GET(
+        makeRequest(['2024', '01', 'a.webp'], '?w=200'),
+        context(['2024', '01', 'a.webp'])
+      );
+      const invalid = await GET(
+        makeRequest(['2024', '01', 'a.webp'], '?w=200&token=bad'),
+        context(['2024', '01', 'a.webp'])
+      );
+
+      expect(missing.status).toBe(403);
+      expect(invalid.status).toBe(403);
+      expect(getFromStorageMock).not.toHaveBeenCalled();
+    });
+
+    it('accepts a valid token and disables shared caching', async () => {
+      const futureSeconds = Math.floor(Date.now() / 1000) + 300;
+      const token = createSignedUrlToken('2024/01/a.webp', futureSeconds);
+      const response = await GET(
+        makeRequest(['2024', '01', 'a.webp'], `?w=200&token=${encodeURIComponent(token)}`),
+        context(['2024', '01', 'a.webp'])
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    });
   });
 });

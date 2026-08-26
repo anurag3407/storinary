@@ -12,15 +12,28 @@ const { imageMock, bulkDeleteFromStorageMock } = vi.hoisted(() => ({
   bulkDeleteFromStorageMock: vi.fn(),
 }));
 
+const { readAuthMock, recordUsageMock } = vi.hoisted(() => ({
+  readAuthMock: vi.fn(),
+  recordUsageMock: vi.fn(),
+}));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     image: imageMock,
   },
 }));
 
+const { dispatchWebhooksMock } = vi.hoisted(() => ({ dispatchWebhooksMock: vi.fn() }));
+
+vi.mock('@/lib/webhooks', () => ({ dispatchWebhooks: dispatchWebhooksMock }));
+
 vi.mock('@/lib/storage', () => ({
   bulkDeleteFromStorage: bulkDeleteFromStorageMock,
 }));
+
+vi.mock('@/lib/media-auth', () => ({ authorizeDashboardOrReadApiKey: readAuthMock }));
+
+vi.mock('@/lib/api-keys', () => ({ recordApiKeyUsage: recordUsageMock }));
 
 const MOCK_ROW = {
   id: 'img-1',
@@ -36,6 +49,8 @@ const MOCK_ROW = {
   tags: '',
   altText: '',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: false,
   createdAt: new Date('2024-01-01T00:00:00Z'),
   updatedAt: new Date('2024-01-01T00:00:00Z'),
@@ -43,6 +58,8 @@ const MOCK_ROW = {
 
 describe('GET /api/images', () => {
   beforeEach(() => {
+    readAuthMock.mockReset().mockResolvedValue({ ok: true, keyId: 'read-key' });
+    recordUsageMock.mockReset().mockResolvedValue(undefined);
     imageMock.findMany.mockReset();
     imageMock.count.mockReset();
   });
@@ -64,6 +81,18 @@ describe('GET /api/images', () => {
       total: 1,
       totalPages: 1,
     });
+    expect(readAuthMock).toHaveBeenCalledWith(request);
+    expect(recordUsageMock).toHaveBeenCalledWith('read-key', 'read', { assets: 1 });
+  });
+
+  it('rejects requests without dashboard or read-key authorization', async () => {
+    readAuthMock.mockResolvedValue({ ok: false, status: 401, error: 'Unauthorized' });
+
+    const response = await GET(new NextRequest('http://localhost/api/images'));
+
+    expect(response.status).toBe(401);
+    expect(imageMock.findMany).not.toHaveBeenCalled();
+    expect(recordUsageMock).not.toHaveBeenCalled();
   });
 
   it('passes search and folder filters', async () => {

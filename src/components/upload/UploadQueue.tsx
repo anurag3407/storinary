@@ -7,9 +7,10 @@ import styles from './UploadQueue.module.css';
 interface UploadQueueProps {
   items: UploadItemType[];
   onRemove: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
-export function UploadQueue({ items, onRemove }: UploadQueueProps) {
+export function UploadQueue({ items, onRemove, onRetry }: UploadQueueProps) {
   if (items.length === 0) return null;
 
   return (
@@ -22,7 +23,7 @@ export function UploadQueue({ items, onRemove }: UploadQueueProps) {
       </div>
       <div className={styles.list}>
         {items.map((item) => (
-          <UploadItemRow key={item.id} item={item} onRemove={onRemove} />
+          <UploadItemRow key={item.id} item={item} onRemove={onRemove} onRetry={onRetry} />
         ))}
       </div>
     </div>

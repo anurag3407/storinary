@@ -62,12 +62,14 @@ describe('sanitizeUploadDefaults', () => {
       folder: '/blog',
       tags: '',
       removeBg: false,
+      moderate: false,
     });
     expect(result).toEqual({
       compress: false,
       quality: 60,
       maxWidth: 1024,
       removeBg: false,
+      moderate: false,
       folder: '/blog',
       tags: '',
     });

@@ -23,6 +23,8 @@ function makeImage(id: string): ImageRecord {
     tags: '',
     altText: '',
     bgRemoved: false,
+    aiModerated: false,
+    aiModerationScore: null,
     compressed: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

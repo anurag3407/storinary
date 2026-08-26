@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { serializeImageVersion } from '@/lib/asset-versions';
 import { generateLinks, serializeImage } from '@/lib/utils';
 import type { ImageDetailResponse } from '@/types';
 
@@ -7,7 +8,13 @@ import type { ImageDetailResponse } from '@/types';
  */
 export async function getImageDetail(id: string): Promise<ImageDetailResponse | null> {
   try {
-    const image = await prisma.image.findUnique({ where: { id } });
+    const image = await prisma.image.findUnique({
+      where: { id },
+      include: {
+        versions: { orderBy: { version: 'desc' } },
+        metadata: { include: { field: { select: { externalId: true } } } },
+      },
+    });
     if (!image) return null;
 
     const links = generateLinks(
@@ -19,6 +26,7 @@ export async function getImageDetail(id: string): Promise<ImageDetailResponse | 
 
     return {
       image: serializeImage(image),
+      versions: image.versions.map(serializeImageVersion),
       links,
     };
   } catch (error) {

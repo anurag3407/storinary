@@ -41,3 +41,59 @@ export async function removeBg(
 
   return blob;
 }
+
+export async function createSubjectMask(
+  imageSource: File | Blob | string,
+  onProgress?: (progress: BgRemovalProgress) => void
+): Promise<Blob> {
+  const { segmentForeground } = await import('@imgly/background-removal');
+  return segmentForeground(imageSource, {
+    model: 'isnet',
+    output: { format: 'image/x-alpha8' },
+    progress: onProgress
+      ? (key, current, total) => onProgress({ key, current, total })
+      : undefined,
+  });
+}
+
+export type ContentSafetyResult = {
+  safe: boolean;
+  score: number;
+  threshold: number;
+};
+
+export async function analyzeSubjectMask(
+  mask: Blob,
+  threshold = 0.82
+): Promise<ContentSafetyResult> {
+  if (!Number.isFinite(threshold) || threshold < 0.5 || threshold > 1) {
+    throw new Error('Moderation threshold must be between 0.5 and 1');
+  }
+
+  const bitmap = await createImageBitmap(mask);
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('Canvas unavailable for moderation');
+
+    context.drawImage(bitmap, 0, 0);
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let visiblePixels = 0;
+    let totalPixels = 0;
+    for (let index = 3; index < data.length; index += 4) {
+      totalPixels += 1;
+      if (data[index] > 24) visiblePixels += 1;
+    }
+
+    const coverage = totalPixels ? visiblePixels / totalPixels : 0;
+    return {
+      safe: coverage <= threshold,
+      score: Number(coverage.toFixed(4)),
+      threshold,
+    };
+  } finally {
+    bitmap.close();
+  }
+}

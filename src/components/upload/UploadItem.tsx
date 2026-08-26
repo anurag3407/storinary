@@ -13,9 +13,10 @@ import styles from './UploadItem.module.css';
 interface UploadItemProps {
   item: UploadItemType;
   onRemove: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
-export function UploadItem({ item, onRemove }: UploadItemProps) {
+export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
   const { copy } = useClipboard();
   const { toast } = useToast();
 
@@ -36,6 +37,11 @@ export function UploadItem({ item, onRemove }: UploadItemProps) {
         </span>
         <span className={styles.size}>{formatBytes(item.file.size)}</span>
         {item.error && <span className={styles.error}>{item.error}</span>}
+        {item.moderation && (
+          <span className={styles.size}>
+            Local moderation: {item.moderation.safe ? 'passed' : 'blocked'} ({Math.round(item.moderation.score * 100)}%)
+          </span>
+        )}
       </div>
 
       <div className={styles.status}>
@@ -55,6 +61,13 @@ export function UploadItem({ item, onRemove }: UploadItemProps) {
           </>
         )}
 
+        {item.status === 'moderating' && (
+          <>
+            <Spinner size="sm" />
+            <Badge variant="info">AI Review</Badge>
+          </>
+        )}
+
         {item.status === 'uploading' && (
           <div className={styles.progressWrap}>
             <ProgressBar value={item.progress} size="sm" showLabel />
@@ -70,7 +83,20 @@ export function UploadItem({ item, onRemove }: UploadItemProps) {
           </>
         )}
 
-        {item.status === 'error' && <Badge variant="danger">Error</Badge>}
+        {item.status === 'error' && (
+          <>
+            <Badge variant="danger">Error</Badge>
+            {onRetry && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onRetry(item.id)}
+              >
+                Retry
+              </Button>
+            )}
+          </>
+        )}
       </div>
 
       {(item.status === 'pending' || item.status === 'error') && (

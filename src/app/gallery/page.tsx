@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { GalleryToolbar } from '@/components/gallery/GalleryToolbar';
+import { FolderManager } from '@/components/gallery/FolderManager';
 import { ImageGrid } from '@/components/gallery/ImageGrid';
 import { Pagination } from '@/components/gallery/Pagination';
 import { Header } from '@/components/layout/Header';
@@ -13,6 +14,9 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { useImages } from '@/hooks/useImages';
 import { useToast } from '@/hooks/useToast';
 import styles from './gallery.module.css';
+import type { CollectionRecord } from '@/lib/collections';
+import type { FolderRecord } from '@/lib/folders';
+import type { MetadataFieldRecord } from '@/lib/structured-metadata';
 
 export default function GalleryPage() {
   const {
@@ -35,6 +39,50 @@ export default function GalleryPage() {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [collections, setCollections] = useState<CollectionRecord[]>([]);
+  const [managedFolders, setManagedFolders] = useState<FolderRecord[]>([]);
+  const [metadataFields, setMetadataFields] = useState<MetadataFieldRecord[]>([]);
+  const [isManagingFolders, setIsManagingFolders] = useState(false);
+
+  const loadCollections = useCallback(async () => {
+    const response = await fetch('/api/collections', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    setCollections(data.collections ?? []);
+  }, []);
+
+  useEffect(() => {
+    void loadCollections();
+  }, [loadCollections]);
+
+  const loadFolders = useCallback(async () => {
+    try {
+      const response = await fetch('/api/folders', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setManagedFolders(data.folders ?? []);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    void loadFolders();
+  }, [loadFolders]);
+
+  const loadMetadataFields = useCallback(async () => {
+    try {
+      const response = await fetch('/api/metadata-fields', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setMetadataFields((data.fields ?? []).filter(
+        (field: MetadataFieldRecord) => field.type === 'enum' && field.active
+      ));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    void loadMetadataFields();
+  }, [loadMetadataFields]);
 
   const selectedCount = selectedIds.size;
 
@@ -107,7 +155,94 @@ export default function GalleryPage() {
     toast.success(`${selected.length} URL(s) copied!`);
   };
 
-  const folders = Array.from(new Set(images.map((i) => i.folder))).sort();
+  const handleBulkDownload = async () => {
+    if (selectedCount === 0) return;
+    setIsArchiving(true);
+    try {
+      const response = await fetch('/api/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Archive failed');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'storinary.zip';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Archive downloaded');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not download archive');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleAddToCollection = async (collectionId: string) => {
+    try {
+      const response = await fetch(`/api/collections/${collectionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', imageIds: Array.from(selectedIds) }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success(`Added ${selectedCount} image(s) to collection`);
+      await loadCollections();
+    } catch {
+      toast.error('Could not update collection');
+    }
+  };
+
+  const folders = Array.from(
+    new Set([...images.map((image) => image.folder), ...managedFolders.map((folder) => folder.path)])
+  ).sort();
+
+  const renameFolder = async (from: string, to: string) => {
+    setIsManagingFolders(true);
+    try {
+      const response = await fetch('/api/folders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({ error: 'Rename failed' }));
+        throw new Error(body.error || 'Rename failed');
+      }
+      toast.success('Folder renamed');
+      setFilters({ folder: to, page: 1 });
+      await Promise.all([loadFolders(), refresh()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not rename folder');
+    } finally {
+      setIsManagingFolders(false);
+    }
+  };
+
+  const deleteFolder = async (path: string) => {
+    setIsManagingFolders(true);
+    try {
+      const response = await fetch(`/api/folders?path=${encodeURIComponent(path)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({ error: 'Delete failed' }));
+        throw new Error(body.error || 'Delete failed');
+      }
+      toast.success('Folder deleted');
+      if (filters.folder === path) setFilters({ folder: undefined, page: 1 });
+      await loadFolders();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete folder');
+    } finally {
+      setIsManagingFolders(false);
+    }
+  };
 
   return (
     <div className={styles.page}>
@@ -122,10 +257,23 @@ export default function GalleryPage() {
         selectedCount={selectedCount}
         totalCount={pagination.total}
         folders={folders}
+        metadataFields={metadataFields}
         onSelectAll={selectAll}
         onDeselectAll={deselectAll}
         onBulkDelete={() => setConfirmDelete(true)}
         onBulkCopy={handleBulkCopy}
+        onBulkDownload={handleBulkDownload}
+        onAddToCollection={(id) => void handleAddToCollection(id)}
+        isArchiving={isArchiving}
+        collections={collections}
+      />
+
+      <FolderManager
+        folders={managedFolders}
+        isBusy={isManagingFolders}
+        onSelectFolder={(path) => setFilters({ folder: path || undefined, page: 1 })}
+        onRenameFolder={renameFolder}
+        onDeleteFolder={deleteFolder}
       />
 
       {isLoading && (

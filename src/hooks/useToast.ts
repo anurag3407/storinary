@@ -8,6 +8,7 @@ export function useToast() {
   if (!context) throw new Error('useToast must be used within ToastProvider');
 
   return {
+    addToast: (toastData: Parameters<typeof context.addToast>[0]) => context.addToast(toastData),
     toast: {
       success: (message: string) => context.addToast({ message, type: 'success' }),
       error: (message: string) => context.addToast({ message, type: 'error' }),

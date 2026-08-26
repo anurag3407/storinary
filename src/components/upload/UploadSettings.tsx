@@ -6,14 +6,41 @@ import styles from './UploadSettings.module.css';
 
 interface UploadSettingsProps {
   options: UploadState['globalOptions'];
+  presets?: Array<{ id: string; name: string; unsigned: boolean }>;
+  selectedPreset?: string;
+  onPresetChange?: (name: string) => void;
   onChange: (options: Partial<UploadState['globalOptions']>) => void;
   disabled?: boolean;
 }
 
-export function UploadSettings({ options, onChange, disabled }: UploadSettingsProps) {
+export function UploadSettings({
+  options,
+  presets = [],
+  selectedPreset,
+  onPresetChange,
+  onChange,
+  disabled,
+}: UploadSettingsProps) {
   return (
     <div className={styles.card}>
       <h2 className={styles.title}>Upload Options</h2>
+      {presets.length > 0 && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="upload-preset">Upload Preset</label>
+          <select
+            id="upload-preset"
+            className="nb-select"
+            value={selectedPreset ?? ''}
+            disabled={disabled}
+            onChange={(event) => onPresetChange?.(event.target.value)}
+          >
+            <option value="">Manual settings</option>
+            {presets.filter((preset) => preset.unsigned).map((preset) => (
+              <option key={preset.id} value={preset.name}>{preset.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className={styles.grid}>
         <label className="nb-checkbox">
           <input

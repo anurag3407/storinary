@@ -563,17 +563,50 @@ export async function getVideoFromStorage(
     };
   }
 
-  if (provider === 'appwrite') {
-    const full = await getFromStorage(key);
-    return { ...full, totalSize: full.buffer.length };
+  const full =
+    provider === 'appwrite'
+      ? await getFromStorage(key)
+      : await (async () => {
+          const supabase = getSupabaseClient();
+          const bucket = getSupabaseBucket();
+          const { data, error } = await supabase.storage.from(bucket).download(key);
+          if (error || !data) throw new Error(`Video download failed: ${error?.message || 'No data'}`);
+          return {
+            buffer: Buffer.from(await data.arrayBuffer()),
+            contentType: data.type || 'video/mp4',
+          };
+        })();
+
+  const totalSize = full.buffer.length;
+  const match = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader) : null;
+  let start = 0;
+  let end = Math.min(1024 * 1024 - 1, totalSize - 1);
+  if (match) {
+    start = match[1] ? Number.parseInt(match[1], 10) : 0;
+    end = match[2]
+      ? Number.parseInt(match[2], 10)
+      : Math.min(start + 1024 * 1024 - 1, totalSize - 1);
   }
 
-  const supabase = getSupabaseClient();
-  const bucket = getSupabaseBucket();
-  const { data, error } = await supabase.storage.from(bucket).download(key);
-  if (error || !data) throw new Error(`Video download failed: ${error?.message || 'No data'}`);
-  const buffer = Buffer.from(await data.arrayBuffer());
-  return { buffer, contentType: data.type || 'video/mp4', totalSize: buffer.length };
+  start = Math.max(0, start);
+  end = Math.min(end, totalSize - 1);
+  if (!rangeHeader) {
+    return { ...full, totalSize };
+  }
+  if (!match || Number.isNaN(start) || Number.isNaN(end) || start > end) {
+    const rangeError = new Error('Range not satisfiable') as Error & { statusCode?: number; contentRange?: string };
+    rangeError.statusCode = 416;
+    rangeError.contentRange = `bytes */${totalSize}`;
+    throw rangeError;
+  }
+
+  return {
+    buffer: full.buffer.subarray(start, end + 1),
+    contentType: full.contentType,
+    totalSize,
+    rangeStatus: 206,
+    contentRange: `bytes ${start}-${end}/${totalSize}`,
+  };
 }
 
 /**
@@ -705,7 +738,9 @@ export async function listStorageObjects(
   folder?: string,
   limit: number = 1000,
   offset: number = 0
-): Promise<{ objects: StorageObject[] }> {
+): Promise<{ objects: StorageObject[]; nextOffset?: number }> {
+  if (limit > 1000) throw new Error('List limit cannot exceed 1000');
+
   const provider = getStorageProvider();
 
   if (provider === 'backblaze') {
@@ -731,14 +766,16 @@ export async function listStorageObjects(
     }
 
     const listData = await listRes.json();
+    const objects = (listData.files || []).map(
+      (file: { fileName: string; contentLength?: number; uploadTimestamp?: number }) => ({
+        key: file.fileName,
+        size: file.contentLength || 0,
+        lastModified: new Date(file.uploadTimestamp || Date.now()),
+      })
+    );
     return {
-      objects: (listData.files || []).map(
-        (file: { fileName: string; contentLength?: number; uploadTimestamp?: number }) => ({
-          key: file.fileName,
-          size: file.contentLength || 0,
-          lastModified: new Date(file.uploadTimestamp || Date.now()),
-        })
-      ),
+      objects,
+      nextOffset: listData.nextFileName && objects.length > 0 ? offset + objects.length : undefined,
     };
   }
 
@@ -746,12 +783,14 @@ export async function listStorageObjects(
     const { storage, config } = getAppwriteStorage();
     try {
       const response = await storage.listFiles(config.bucketId);
+      const objects = (response.files || []).map((file) => ({
+        key: file.$id,
+        size: file.sizeOriginal || 0,
+        lastModified: new Date(file.$createdAt || Date.now()),
+      }));
       return {
-        objects: (response.files || []).map((file) => ({
-          key: file.$id,
-          size: file.sizeOriginal || 0,
-          lastModified: new Date(file.$createdAt || Date.now()),
-        })),
+        objects,
+        nextOffset: response.files.length === limit ? offset + objects.length : undefined,
       };
     } catch (err: unknown) {
       const error = err as { message?: string };
@@ -770,12 +809,14 @@ export async function listStorageObjects(
 
   if (error) throw new Error(`List failed: ${error.message}`);
 
-  return {
-    objects: (data || []).map((obj) => ({
+  const objects = (data || []).map((obj) => ({
       key: folder ? `${folder}/${obj.name}` : obj.name,
       size: obj.metadata?.size || 0,
       lastModified: new Date(obj.updated_at || obj.created_at || Date.now()),
-    })),
+    }));
+  return {
+    objects,
+    nextOffset: data.length === limit ? offset + objects.length : undefined,
   };
 }
 

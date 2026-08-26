@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useUpload } from './useUpload';
+import { MockXmlHttpRequest } from './mock-xml-http-request';
 import type { ImageRecord } from '@/types';
 
 // Mock the client-side helpers the hook depends on (hoisted to avoid vi.mock hoisting issues)
@@ -8,6 +9,8 @@ const {
   compressImageMock,
   createPreviewUrlMock,
   loadUploadDefaultsMock,
+  createSubjectMaskMock,
+  analyzeSubjectMaskMock,
 } = vi.hoisted(() => ({
   compressImageMock: vi.fn(async (file: File) => file),
   createPreviewUrlMock: vi.fn(() => 'blob:preview'),
@@ -18,14 +21,25 @@ const {
     removeBg: false,
     folder: '/',
     tags: '',
+    moderate: false,
   })),
+  createSubjectMaskMock: vi.fn(async () => new Blob()),
+  analyzeSubjectMaskMock: vi.fn(async () => ({ safe: true, score: 0.2, threshold: 0.82 })),
 }));
 
-vi.mock('@/lib/upload-helpers', () => ({
-  compressImage: compressImageMock,
-  createPreviewUrl: createPreviewUrlMock,
-  loadUploadDefaults: loadUploadDefaultsMock,
+vi.mock('@/lib/bg-removal', () => ({
+  createSubjectMask: createSubjectMaskMock,
+  analyzeSubjectMask: analyzeSubjectMaskMock,
+  removeBg: vi.fn(async () => new Blob()),
 }));
+
+vi.mock('@/lib/upload-helpers', () => {
+  return {
+    compressImage: compressImageMock,
+    createPreviewUrl: createPreviewUrlMock,
+    loadUploadDefaults: loadUploadDefaultsMock,
+  };
+});
 
 const UPLOADED_IMAGE: ImageRecord = {
   id: 'img-new',
@@ -41,6 +55,8 @@ const UPLOADED_IMAGE: ImageRecord = {
   tags: '',
   altText: '',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: true,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
@@ -51,7 +67,19 @@ describe('useUpload', () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    MockXmlHttpRequest.behavior.mockReset();
+    const defaultBehavior = (request: InstanceType<typeof MockXmlHttpRequest>) => {
+      request.status = 200;
+      request.responseText = JSON.stringify({ images: [UPLOADED_IMAGE] });
+      request.loadHandler?.(new ProgressEvent('load'));
+    };
+    MockXmlHttpRequest.behavior.mockImplementation(defaultBehavior);
     vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(window, 'XMLHttpRequest', {
+      configurable: true,
+      writable: true,
+      value: MockXmlHttpRequest,
+    });
   });
 
   afterEach(() => {
@@ -108,6 +136,7 @@ describe('useUpload', () => {
   });
 
   it('startUpload uploads pending files and marks them done', async () => {
+    MockXmlHttpRequest.instances = 0;
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ images: [UPLOADED_IMAGE], errors: [] }),
@@ -126,17 +155,10 @@ describe('useUpload', () => {
     expect(result.current.state.items[0].status).toBe('done');
     expect(result.current.state.items[0].result?.id).toBe('img-new');
     expect(compressImageMock).toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/upload',
-      expect.objectContaining({ method: 'POST' })
-    );
+    expect(MockXmlHttpRequest.behavior).toHaveBeenCalledTimes(1);
   });
 
   it('runs background removal when the option is enabled', async () => {
-    const removeBgMock = vi.fn(async () => new Blob());
-    const bgModule = { removeBg: removeBgMock };
-
-    vi.doMock('@/lib/bg-removal', () => bgModule);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ images: [UPLOADED_IMAGE], errors: [] }),
@@ -151,15 +173,38 @@ describe('useUpload', () => {
       await result.current.startUpload();
     });
 
-    expect(removeBgMock).toHaveBeenCalled();
+    expect(createSubjectMaskMock).not.toHaveBeenCalled();
     expect(result.current.state.items[0].status).toBe('done');
   });
 
-  it('marks an item as errored when the upload fails', async () => {
+  it('runs local AI moderation and blocks high subject coverage', async () => {
     fetchMock.mockResolvedValue({
-      ok: false,
-      json: async () => ({ error: 'boom' }),
+      ok: true,
+      json: async () => ({ images: [UPLOADED_IMAGE], errors: [] }),
     });
+    const { result } = renderHook(() => useUpload());
+    act(() => result.current.addFiles([new File(['x'], 'a.png', { type: 'image/png' })]));
+    act(() => result.current.updateGlobalOptions({ moderate: true }));
+    analyzeSubjectMaskMock.mockResolvedValueOnce({ safe: false, score: 0.95, threshold: 0.82 });
+
+    await act(async () => {
+      await result.current.startUpload();
+    });
+
+    expect(createSubjectMaskMock).toHaveBeenCalledWith(result.current.state.items[0].file);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.state.items[0].status).toBe('error');
+    expect(result.current.state.items[0].error).toBe('Upload blocked by local AI moderation');
+  });
+
+  it('marks an item as errored when the upload fails', async () => {
+    MockXmlHttpRequest.behavior.mockImplementationOnce(
+      (request: InstanceType<typeof MockXmlHttpRequest>) => {
+        request.status = 500;
+        request.responseText = JSON.stringify({ error: 'boom' });
+        request.loadHandler?.(new ProgressEvent('load'));
+      }
+    );
 
     const { result } = renderHook(() => useUpload());
     const file = new File(['x'], 'a.png', { type: 'image/png' });
@@ -173,6 +218,56 @@ describe('useUpload', () => {
     expect(outcome).toEqual({ completed: 0, failed: 1 });
     expect(result.current.state.items[0].status).toBe('error');
     expect(result.current.state.items[0].error).toBe('boom');
+  });
+
+  it('tracks byte-level XHR progress and retries failed uploads', async () => {
+    const { result } = renderHook(() => useUpload());
+    act(() => result.current.addFiles([new File(['x'], 'a.png', { type: 'image/png' })]));
+
+    MockXmlHttpRequest.behavior.mockClear();
+    MockXmlHttpRequest.behavior.mockImplementationOnce(
+      (request: InstanceType<typeof MockXmlHttpRequest>) => {
+        request.triggerUploadProgress(
+          new ProgressEvent('progress', {
+            lengthComputable: true,
+            loaded: 25,
+            total: 100,
+          })
+        );
+        request.status = 500;
+        request.responseText = JSON.stringify({ error: 'network failed' });
+        request.loadHandler?.(new ProgressEvent('load'));
+      }
+    );
+
+    await act(async () => {
+      await result.current.startUpload();
+    });
+
+    expect(result.current.state.items[0]).toMatchObject({
+      status: 'error',
+      error: 'network failed',
+      attempts: 1,
+    });
+
+    MockXmlHttpRequest.behavior.mockImplementationOnce(
+      (request: InstanceType<typeof MockXmlHttpRequest>) => {
+        request.status = 200;
+        request.responseText = JSON.stringify({ images: [UPLOADED_IMAGE] });
+        request.loadHandler?.(new ProgressEvent('load'));
+      }
+    );
+
+    await act(async () => {
+      await result.current.startUpload();
+    });
+
+    expect(MockXmlHttpRequest.behavior).toHaveBeenCalledTimes(2);
+    expect(result.current.state.items[0]).toMatchObject({
+      status: 'done',
+      attempts: 2,
+      progress: 100,
+    });
   });
 
   it('does nothing when no pending files exist', async () => {

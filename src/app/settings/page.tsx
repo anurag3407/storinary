@@ -15,7 +15,20 @@ import {
   saveUploadDefaults,
   type UploadDefaults,
 } from '@/lib/upload-helpers';
-import type { ApiKeyRecord, CreateApiKeyResponse, StatsResponse } from '@/types';
+import type {
+  ApiKeyRecord,
+  ApiKeyUsageSummary,
+  CreateApiKeyResponse,
+  CreateWebhookResponse,
+  StatsResponse,
+  UpdateWebhookResponse,
+  WebhookDeliveryRecord,
+  WebhookEndpointRecord,
+} from '@/types';
+import type { UploadPresetRecord } from '@/lib/upload-presets';
+import type { NamedTransformationRecord } from '@/lib/named-transformations';
+import type { OrphanedObject, StorageAuditResult } from '@/lib/storage-audit';
+import { MetadataFieldManager } from '@/components/settings/MetadataFieldManager';
 import styles from './settings.module.css';
 
 const BACKBLAZE_SETUP_STEPS = [
@@ -97,6 +110,14 @@ const APPWRITE_SETUP_STEPS = [
   },
 ];
 
+const API_KEY_SCOPE_OPTIONS = [
+  { value: 'upload', label: 'Upload images' },
+  { value: 'read', label: 'Read images' },
+  { value: 'video-upload', label: 'Upload videos' },
+  { value: 'write', label: 'Edit media metadata' },
+  { value: 'delete', label: 'Delete media' },
+] as const;
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
@@ -124,10 +145,36 @@ export default function SettingsPage() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [apiKeys, setApiKeys] = useState<ApiKeyRecord[]>([]);
+  const [apiKeyUsage, setApiKeyUsage] = useState<ApiKeyUsageSummary | null>(null);
+  const [apiKeyUsageDays, setApiKeyUsageDays] = useState(30);
   const [newKeyName, setNewKeyName] = useState('');
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(['upload', 'read']);
   const [creatingKey, setCreatingKey] = useState(false);
   const [revealedSecret, setRevealedSecret] = useState('');
   const [revealedKeyId, setRevealedKeyId] = useState('');
+  const [webhooks, setWebhooks] = useState<WebhookEndpointRecord[]>([]);
+  const [webhookName, setWebhookName] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [creatingWebhook, setCreatingWebhook] = useState(false);
+  const [revealedWebhookSecret, setRevealedWebhookSecret] = useState('');
+  const [revealedWebhookId, setRevealedWebhookId] = useState('');
+  const [deliveries, setDeliveries] = useState<WebhookDeliveryRecord[]>([]);
+  const [presets, setPresets] = useState<UploadPresetRecord[]>([]);
+  const [presetName, setPresetName] = useState('');
+  const [presetFolder, setPresetFolder] = useState('/');
+  const [presetTags, setPresetTags] = useState('');
+  const [presetUnsigned, setPresetUnsigned] = useState(false);
+  const [presetResourceType, setPresetResourceType] = useState<'image' | 'video'>('image');
+  const [presetRenditions, setPresetRenditions] = useState(true);
+  const [transformations, setTransformations] = useState<NamedTransformationRecord[]>([]);
+  const [transformationName, setTransformationName] = useState('');
+  const [transformationParams, setTransformationParams] = useState('');
+  const [orphanAudit, setOrphanAudit] = useState<StorageAuditResult | null>(null);
+  const [orphanError, setOrphanError] = useState('');
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [isDeletingOrphans, setIsDeletingOrphans] = useState(false);
+  const [confirmOrphans, setConfirmOrphans] = useState(false);
+  const [orphanConfirmation, setOrphanConfirmation] = useState('');
 
   const testConnection = async (silent = false) => {
     setConnection('checking');
@@ -153,6 +200,10 @@ export default function SettingsPage() {
     setOptions(loadUploadDefaults());
     testConnection(true);
     loadApiKeys();
+    loadWebhooks();
+    loadDeliveries();
+    loadPresets();
+    loadTransformations();
     fetch('/api/auth/status')
       .then((res) => res.json())
       .then((data) => setAuthStatus(data?.enabled ? 'on' : 'off'))
@@ -162,11 +213,217 @@ export default function SettingsPage() {
 
   const loadApiKeys = async () => {
     try {
-      const res = await fetch('/api/api-keys', { cache: 'no-store' });
-      if (!res.ok) throw new Error();
-      setApiKeys((await res.json()).keys ?? []);
+      const [keysRes, usageRes] = await Promise.all([
+        fetch('/api/api-keys', { cache: 'no-store' }),
+        fetch(`/api/api-keys/usage?days=${apiKeyUsageDays}`, { cache: 'no-store' }),
+      ]);
+      if (!keysRes.ok || !usageRes.ok) throw new Error();
+      const [keysData, usageData] = await Promise.all([
+        keysRes.json(),
+        usageRes.json() as Promise<ApiKeyUsageSummary>,
+      ]);
+      setApiKeys(keysData.keys ?? []);
+      setApiKeyUsage(usageData);
     } catch {
       toast.error('Could not load API keys');
+    }
+  };
+
+  const handleApiKeyUsageRangeChange = (days: number) => {
+    setApiKeyUsageDays(days);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/api-keys/usage?days=${days}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error();
+        setApiKeyUsage(await res.json());
+      } catch {
+        toast.error('Could not load API key usage');
+      }
+    })();
+  };
+
+  const loadTransformations = async () => {
+    try {
+      const res = await fetch('/api/named-transformations', { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      setTransformations((await res.json()).transformations ?? []);
+    } catch {
+      toast.error('Could not load named transformations');
+    }
+  };
+
+  const handleCreateTransformation = async () => {
+    try {
+      const params = Object.fromEntries(new URLSearchParams(transformationParams));
+      const res = await fetch('/api/named-transformations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: transformationName, params, active: true }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setTransformations((current) => [...current, data.transformation]);
+      setTransformationName('');
+      setTransformationParams('');
+      toast.success('Named transformation created');
+    } catch {
+      toast.error('Use a valid name and transform query');
+    }
+  };
+
+  const handleDeleteTransformation = async (id: string) => {
+    try {
+      const res = await fetch(`/api/named-transformations/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setTransformations((current) => current.filter((item) => item.id !== id));
+      toast.success('Named transformation deleted');
+    } catch {
+      toast.error('Could not delete named transformation');
+    }
+  };
+
+  const loadPresets = async () => {
+    try {
+      const res = await fetch('/api/upload-presets', { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      setPresets((await res.json()).presets ?? []);
+    } catch {
+      toast.error('Could not load upload presets');
+    }
+  };
+
+  const handleCreatePreset = async () => {
+    try {
+      const res = await fetch('/api/upload-presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: presetName,
+          folder: presetFolder,
+          tags: presetTags,
+          unsigned: presetUnsigned,
+          resourceType: presetResourceType,
+          renditions: presetResourceType === 'video' ? presetRenditions : false,
+          active: true,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setPresets((current) => [...current, data.preset]);
+      setPresetName('');
+      setPresetFolder('/');
+      setPresetTags('');
+      setPresetUnsigned(false);
+      setPresetResourceType('image');
+      setPresetRenditions(true);
+      toast.success('Upload preset created');
+    } catch {
+      toast.error('Could not create upload preset');
+    }
+  };
+
+  const handleTogglePreset = async (preset: UploadPresetRecord) => {
+    try {
+      const res = await fetch(`/api/upload-presets/${preset.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !preset.active }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setPresets((current) => current.map((item) => (item.id === preset.id ? data.preset : item)));
+      toast.success(preset.active ? 'Upload preset paused' : 'Upload preset activated');
+    } catch {
+      toast.error('Could not update upload preset');
+    }
+  };
+
+  const handleDeletePreset = async (id: string) => {
+    try {
+      const res = await fetch(`/api/upload-presets/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setPresets((current) => current.filter((preset) => preset.id !== id));
+      toast.success('Upload preset deleted');
+    } catch {
+      toast.error('Could not delete upload preset');
+    }
+  };
+
+  const loadWebhooks = async () => {
+    try {
+      const res = await fetch('/api/webhooks', { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      setWebhooks((await res.json()).webhooks ?? []);
+    } catch {
+      toast.error('Could not load webhooks');
+    }
+  };
+
+  const loadDeliveries = async () => {
+    try {
+      const res = await fetch('/api/webhooks/deliveries?limit=10', { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      setDeliveries((await res.json()).deliveries ?? []);
+    } catch {
+      toast.error('Could not load webhook deliveries');
+    }
+  };
+
+  const handleCreateWebhook = async () => {
+    setCreatingWebhook(true);
+    try {
+      const res = await fetch('/api/webhooks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: webhookName || 'Production site', url: webhookUrl }),
+      });
+      if (!res.ok) throw new Error();
+      const data: CreateWebhookResponse = await res.json();
+      setWebhooks((current) => [data.webhook, ...current]);
+      setRevealedWebhookId(data.webhook.id);
+      setRevealedWebhookSecret(data.webhook.secret);
+      setWebhookName('');
+      setWebhookUrl('');
+      toast.success('Webhook created');
+    } catch {
+      toast.error('Use a public HTTPS URL');
+    } finally {
+      setCreatingWebhook(false);
+    }
+  };
+
+  const handleUpdateWebhook = async (
+    id: string,
+    body: { active?: boolean; rotateSecret?: boolean },
+    successMessage: string
+  ) => {
+    try {
+      const res = await fetch(`/api/webhooks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error();
+      const data: UpdateWebhookResponse = await res.json();
+      setWebhooks((current) => current.map((webhook) => (webhook.id === id ? data.webhook : webhook)));
+      if (data.secret) {
+        setRevealedWebhookId(id);
+        setRevealedWebhookSecret(data.secret);
+      }
+      toast.success(successMessage);
+    } catch {
+      toast.error('Could not update webhook');
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      const res = await fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setWebhooks((current) => current.filter((webhook) => webhook.id !== id));
+      toast.success('Webhook deleted');
+    } catch {
+      toast.error('Could not delete webhook');
     }
   };
 
@@ -176,7 +433,10 @@ export default function SettingsPage() {
       const res = await fetch('/api/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName || 'Default key' }),
+        body: JSON.stringify({
+          name: newKeyName || 'Default key',
+          scopes: newKeyScopes.length ? newKeyScopes : ['upload', 'read'],
+        }),
       });
       if (!res.ok) throw new Error();
       const data: CreateApiKeyResponse = await res.json();
@@ -184,6 +444,7 @@ export default function SettingsPage() {
       setRevealedKeyId(data.key.id);
       setRevealedSecret(data.key.secret);
       setNewKeyName('');
+      setNewKeyScopes(['upload', 'read']);
       toast.success('API key created');
     } catch {
       toast.error('Could not create API key');
@@ -281,6 +542,58 @@ export default function SettingsPage() {
     }
   };
 
+  const loadOrphanAudit = async (offset = orphanAudit?.nextOffset ?? 0) => {
+    setIsAuditing(true);
+    setOrphanError('');
+    try {
+      const response = await fetch(`/api/storage/orphans?offset=${offset}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Audit failed');
+      const data = (await response.json()) as StorageAuditResult;
+      setOrphanAudit((current) => (
+        offset === 0 ? data : current ? {
+          scanned: current.scanned + data.scanned,
+          orphans: [...current.orphans, ...data.orphans],
+          nextOffset: data.nextOffset,
+        } : data
+      ));
+    } catch {
+      setOrphanError('Could not complete the storage audit');
+      toast.error('Storage audit failed');
+    } finally {
+      setIsAuditing(false);
+    }
+  };
+
+  const deleteOrphanedFiles = async () => {
+    if (!orphanAudit?.orphans.length) return;
+    setIsDeletingOrphans(true);
+    try {
+      for (let index = 0; index < orphanAudit.orphans.length; index += 200) {
+        const response = await fetch('/api/storage/orphans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keys: orphanAudit.orphans.slice(index, index + 200).map((item) => item.key) }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({ error: 'Cleanup failed' }));
+          throw new Error(body.error || 'Cleanup failed');
+        }
+      }
+      toast.success(`Deleted ${orphanAudit.orphans.length} orphaned file(s)`);
+      setConfirmOrphans(false);
+      setOrphanConfirmation('');
+      await loadOrphanAudit(0);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete orphaned files');
+    } finally {
+      setIsDeletingOrphans(false);
+    }
+  };
+
+  const orphanDeleteConfirmed =
+    Boolean(orphanAudit?.orphans.length) &&
+    orphanConfirmation.trim().toUpperCase() === `DELETE ${orphanAudit!.orphans.length} FILES`;
+
   const deleteConfirmed = deleteInput.trim().toUpperCase() === 'DELETE ALL';
 
   return (
@@ -340,9 +653,46 @@ export default function SettingsPage() {
               onChange={(event) => setNewKeyName(event.target.value)}
               placeholder="Production site"
             />
-            <Button onClick={handleCreateApiKey} loading={creatingKey}>
+            <Button onClick={handleCreateApiKey} loading={creatingKey} disabled={newKeyScopes.length === 0}>
               Create Key
             </Button>
+          </div>
+
+          <fieldset className={styles.scopeSelector}>
+            <legend>Select scopes</legend>
+            <div>
+              {API_KEY_SCOPE_OPTIONS.map((scope) => (
+                <label key={scope.value}>
+                  <input
+                    checked={newKeyScopes.includes(scope.value)}
+                    type="checkbox"
+                    onChange={(event) => {
+                      setNewKeyScopes((current) =>
+                        event.target.checked
+                          ? [...current, scope.value]
+                          : current.filter((value) => value !== scope.value)
+                      );
+                    }}
+                  />
+                  <span>{scope.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div className={styles.usageControls}>
+            <label>
+              Usage range
+              <select
+                value={apiKeyUsageDays}
+                onChange={(event) => handleApiKeyUsageRangeChange(Number(event.target.value))}
+              >
+                <option value={1}>Last day</option>
+                <option value={7}>Last 7 days</option>
+                <option value={30}>Last 30 days</option>
+                <option value={90}>Last 90 days</option>
+              </select>
+            </label>
           </div>
 
           {revealedSecret && (
@@ -367,6 +717,18 @@ export default function SettingsPage() {
                 <div>
                   <strong>{key.name}</strong>
                   <small>{`••••${key.lastFour} · created ${key.createdAt.slice(0, 10)}`}</small>
+                  {(() => {
+                    const usage = apiKeyUsage?.keys.find((item) => item.id === key.id)?.usage;
+                    if (!usage) return null;
+                    return (
+                      <dl className={styles.usageMetrics}>
+                        <div><dt>Requests</dt><dd>{usage.requests}</dd></div>
+                        <div><dt>Assets</dt><dd>{usage.assets}</dd></div>
+                        <div><dt>Errors</dt><dd>{usage.errors}</dd></div>
+                        <div><dt>Bytes</dt><dd>{usage.bytes.toLocaleString()}</dd></div>
+                      </dl>
+                    );
+                  })()}
                 </div>
                 <div className={styles.statusRow}>
                   <Badge variant="default">{key.scopes.join(' · ')}</Badge>
@@ -382,6 +744,194 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ── Section 0.6: Outbound Webhooks ──────────────── */}
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Upload Presets</h2>
+          <p className={styles.cardDescription}>
+            Named upload policies enforce folder, tags, compression, and moderation.
+            Image presets use browser compression and moderation. Video presets
+            enforce the video-upload scope, can enable 360p/720p renditions, and
+            require a scoped API key even when unsigned.
+          </p>
+
+          <div className={styles.presetCreator}>
+            <input aria-label="Preset name" className="nb-input" placeholder="website_hero" value={presetName} onChange={(event) => setPresetName(event.target.value)} />
+            <input aria-label="Preset folder" className="nb-input" placeholder="/website/hero" value={presetFolder} onChange={(event) => setPresetFolder(event.target.value)} />
+            <input aria-label="Preset tags" className="nb-input" placeholder="hero, website" value={presetTags} onChange={(event) => setPresetTags(event.target.value)} />
+            <select aria-label="Preset resource type" value={presetResourceType} onChange={(event) => {
+              const next = event.target.value === 'video' ? 'video' : 'image';
+              setPresetResourceType(next);
+              if (next !== 'video') setPresetRenditions(true);
+            }}>
+              <option value="image">Images</option>
+              <option value="video">Videos</option>
+            </select>
+            <label className={styles.inlineCheckbox}>
+              <input type="checkbox" checked={presetUnsigned} onChange={(event) => setPresetUnsigned(event.target.checked)} />
+              Unsigned
+            </label>
+            <label className={styles.inlineCheckbox}>
+              <input type="checkbox" checked={presetUnsigned} onChange={(event) => setPresetUnsigned(event.target.checked)} />
+              Unsigned
+            </label>
+            {presetResourceType === 'video' && (
+              <label className={styles.inlineCheckbox}>
+                <input type="checkbox" checked={presetRenditions} onChange={(event) => setPresetRenditions(event.target.checked)} />
+                Renditions
+              </label>
+            )}
+            <Button onClick={handleCreatePreset} disabled={!presetName.trim()}>Create</Button>
+          </div>
+
+          <div className={styles.keyList}>
+            {presets.map((preset) => (
+              <div key={preset.id} className={styles.keyRow}>
+                <div>
+                  <strong>{preset.name}</strong>
+                  <small>
+                    {`${preset.resourceType} · ${preset.folder} · ${preset.tags || 'no tags'} · q${preset.quality} · max ${preset.maxWidth}px${preset.resourceType === 'video' && preset.renditions ? ' · 360p/720p' : ''}`}
+                  </small>
+                </div>
+                <div className={styles.statusRow}>
+                  <Badge variant={preset.active ? 'success' : 'default'}>{preset.active ? 'Active' : 'Paused'}</Badge>
+                  <Badge variant={preset.unsigned ? 'warning' : 'info'}>{preset.unsigned ? 'Unsigned' : 'Signed'}</Badge>
+                  <Button variant="secondary" size="sm" onClick={() => handleTogglePreset(preset)}>
+                    {preset.active ? 'Pause' : 'Activate'}
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDeletePreset(preset.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Section 0.7: Named Transformations ─────────── */}
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Named Transformations</h2>
+          <p className={styles.cardDescription}>
+            Reusable image pipelines. Use them on any public or signed delivery URL with{' '}
+            <code>?t=name</code>; explicit query values override the named defaults.
+          </p>
+
+          <div className={styles.presetCreator}>
+            <input aria-label="Transformation name" className="nb-input" placeholder="hero_card" value={transformationName} onChange={(event) => setTransformationName(event.target.value)} />
+            <input aria-label="Transformation parameters" className="nb-input" placeholder="w=640&h=360&fit=cover&q=auto" value={transformationParams} onChange={(event) => setTransformationParams(event.target.value)} />
+            <Button onClick={handleCreateTransformation} disabled={!transformationName.trim() || !transformationParams.trim()}>Create</Button>
+          </div>
+
+          <div className={styles.keyList}>
+            {transformations.map((transformation) => (
+              <div key={transformation.id} className={styles.keyRow}>
+                <div>
+                  <strong>{transformation.name}</strong>
+                  <small>{transformation.params}</small>
+                </div>
+                <div className={styles.statusRow}>
+                  <Badge variant="default">{`?t=${transformation.name}`}</Badge>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteTransformation(transformation.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <MetadataFieldManager />
+
+        {/* ── Section 0.8: Outbound Webhooks ──────────────── */}
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Named Transformations</h2>
+          <p className={styles.cardDescription}>
+            Reusable image pipelines. Use them on any public or signed delivery URL with
+            <code> ?t=name</code>; explicit query values override the named defaults.
+          </p>
+
+          <div className={styles.presetCreator}>
+            <input aria-label="Transformation name" className="nb-input" placeholder="hero_card" value={transformationName} onChange={(event) => setTransformationName(event.target.value)} />
+            <input aria-label="Transformation parameters" className="nb-input" placeholder="w=640&h=360&fit=cover&q=auto" value={transformationParams} onChange={(event) => setTransformationParams(event.target.value)} />
+            <Button onClick={handleCreateTransformation} disabled={!transformationName.trim() || !transformationParams.trim()}>Create</Button>
+          </div>
+
+          <div className={styles.keyList}>
+            {transformations.map((transformation) => (
+              <div key={transformation.id} className={styles.keyRow}>
+                <div>
+                  <strong>{transformation.name}</strong>
+                  <small>{transformation.params}</small>
+                </div>
+                <div className={styles.statusRow}>
+                  <Badge variant="default">?t={transformation.name}</Badge>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteTransformation(transformation.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Section 0.8: Outbound Webhooks ──────────────── */}
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Outbound Webhooks</h2>
+          <p className={styles.cardDescription}>
+            Receive signed image and video events. Deliveries use HMAC-SHA256 over{' '}
+            <code>{'{timestamp}.{body}'}</code>, with HTTPS and private-network protection.
+          </p>
+
+          <div className={styles.webhookCreator}>
+            <input aria-label="Webhook name" className="nb-input" placeholder="Production site" value={webhookName} onChange={(event) => setWebhookName(event.target.value)} />
+            <input aria-label="Webhook HTTPS URL" className="nb-input" inputMode="url" placeholder="https://example.com/storinary-webhooks" value={webhookUrl} onChange={(event) => setWebhookUrl(event.target.value)} />
+            <Button onClick={handleCreateWebhook} loading={creatingWebhook} disabled={!webhookUrl.trim()}>
+              Add Webhook
+            </Button>
+          </div>
+
+          {revealedWebhookSecret && (
+            <div className={styles.revealedSecret}>
+              <code>{revealedWebhookSecret}</code>
+              <Button variant="secondary" size="sm" onClick={async () => { await copy(revealedWebhookSecret); toast.success('Signing secret copied'); }}>
+                Copy
+              </Button>
+            </div>
+          )}
+
+          <div className={styles.keyList}>
+            {webhooks.map((webhook) => (
+              <div key={webhook.id} className={styles.keyRow}>
+                <div>
+                  <strong>{webhook.name}</strong>
+                  <small>{webhook.url}</small>
+                </div>
+                <div className={styles.statusRow}>
+                  <Badge variant={webhook.active ? 'success' : 'default'}>{webhook.active ? 'Active' : 'Paused'}</Badge>
+                  {revealedWebhookId === webhook.id && revealedWebhookSecret ? (
+                    <Button variant="ghost" size="sm" onClick={() => setRevealedWebhookSecret('')}>Hide</Button>
+                  ) : null}
+                  <Button variant="secondary" size="sm" onClick={() => handleUpdateWebhook(webhook.id, { active: !webhook.active }, webhook.active ? 'Webhook paused' : 'Webhook activated')}>
+                    {webhook.active ? 'Pause' : 'Activate'}
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => handleUpdateWebhook(webhook.id, { rotateSecret: true }, 'Signing secret rotated')}>
+                    Rotate
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteWebhook(webhook.id)}>Delete</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {deliveries.length > 0 && (
+            <div className={styles.deliveryList}>
+              <h3>Recent deliveries</h3>
+              {deliveries.map((delivery) => (
+                <div key={delivery.id} className={styles.deliveryRow}>
+                  <strong>{delivery.eventType}</strong>
+                  <span>{new Date(delivery.createdAt).toLocaleString()}</span>
+                  <Badge variant={delivery.status === 'delivered' ? 'success' : delivery.status === 'failed' ? 'danger' : 'default'}>
+                    {`${delivery.status} · ${delivery.attempts}`}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ── Section 1: Connection Status ─────────────────── */}
@@ -516,6 +1066,17 @@ export default function SettingsPage() {
                 }
               />
               Remove Background
+            </label>
+
+            <label className="nb-checkbox">
+              <input
+                type="checkbox"
+                checked={options.moderate}
+                onChange={(e) =>
+                  setOptions({ ...options, moderate: e.target.checked })
+                }
+              />
+              Local AI Moderation
             </label>
 
             <div className={styles.field}>
@@ -661,8 +1222,94 @@ export default function SettingsPage() {
               Reset Database
             </Button>
           </div>
+
+          <div className={styles.dangerRow}>
+            <div>
+              <h3 className={styles.dangerActionTitle}>Orphan Cleanup</h3>
+              <p className={styles.dangerActionDesc}>
+                Scan storage for files missing from the database. Nothing is
+                deleted until you explicitly confirm the reviewed list.
+              </p>
+            </div>
+            <Button variant="danger" onClick={() => void loadOrphanAudit(0)} loading={isAuditing}>
+              Audit Storage
+            </Button>
+          </div>
+
+          {orphanError && <p className={styles.dangerActionDesc}>{orphanError}</p>}
+          {orphanAudit && (
+            <div className={styles.orphanPanel}>
+              <p>
+                Scanned {orphanAudit.scanned} object(s); found{' '}
+                <strong>{orphanAudit.orphans.length}</strong> unreferenced.
+              </p>
+              {orphanAudit.orphans.length > 0 ? (
+                <>
+                  <ul className={styles.orphanList}>
+                    {orphanAudit.orphans.slice(0, 50).map((object: OrphanedObject) => (
+                      <li key={object.key}>
+                        <code>{object.key}</code>
+                        <span>{(object.size / 1024).toFixed(1)} KB</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {orphanAudit.orphans.length > 50 && (
+                    <p className={styles.dangerActionDesc}>
+                      Showing first 50 of {orphanAudit.orphans.length}.
+                    </p>
+                  )}
+                  <Button variant="danger" onClick={() => setConfirmOrphans(true)}>
+                    Review Deletion
+                  </Button>
+                </>
+              ) : (
+                <p className={styles.dangerActionDesc}>No orphans found in this scan.</p>
+              )}
+              {orphanAudit.nextOffset !== undefined && (
+                <Button variant="secondary" onClick={() => void loadOrphanAudit()} loading={isAuditing}>
+                  Continue Scan
+                </Button>
+              )}
+            </div>
+          )}
         </section>
       </div>
+
+      <Modal
+        isOpen={confirmOrphans}
+        onClose={() => {
+          setConfirmOrphans(false);
+          setOrphanConfirmation('');
+        }}
+        title="Delete orphaned files?"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmOrphans(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={() => void deleteOrphanedFiles()}
+              loading={isDeletingOrphans}
+              disabled={!orphanDeleteConfirmed}
+            >
+              Delete Files
+            </Button>
+          </>
+        }
+      >
+        <p>
+          This permanently deletes <strong>{orphanAudit?.orphans.length ?? 0}</strong> files from
+          storage. Paths are checked against the database again before deletion.
+        </p>
+        <p className={styles.modalHint}>
+          Type <strong>DELETE {orphanAudit?.orphans.length ?? 0} FILES</strong> to confirm.
+        </p>
+        <input
+          className="nb-input"
+          value={orphanConfirmation}
+          onChange={(event) => setOrphanConfirmation(event.target.value)}
+          placeholder={`DELETE ${orphanAudit?.orphans.length ?? 0} FILES`}
+        />
+      </Modal>
 
       {/* ── Delete All Confirmation Modal ─────────────────── */}
       <Modal

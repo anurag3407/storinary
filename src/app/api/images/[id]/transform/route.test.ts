@@ -13,9 +13,14 @@ const { findUniqueMock, getFromStorageMock, transformImageMock, diskCacheGetMock
     diskCacheSetMock: vi.fn().mockResolvedValue(undefined),
   }));
 
+  const { namedTransformFindManyMock } = vi.hoisted(() => ({
+    namedTransformFindManyMock: vi.fn(),
+  }));
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     image: { findUnique: findUniqueMock },
+    namedTransformation: { findMany: namedTransformFindManyMock },
   },
 }));
 
@@ -50,6 +55,8 @@ const ROW = {
   tags: '',
   altText: '',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: false,
   createdAt: new Date('2024-01-01T00:00:00Z'),
   updatedAt: new Date('2024-01-01T00:00:00Z'),
@@ -63,6 +70,7 @@ function makeRequest(query = '') {
 
 describe('GET /api/images/:id/transform', () => {
   beforeEach(() => {
+    namedTransformFindManyMock.mockReset().mockResolvedValue([]);
     findUniqueMock.mockReset();
     getFromStorageMock.mockReset();
     transformImageMock.mockReset();
@@ -107,7 +115,8 @@ describe('GET /api/images/:id/transform', () => {
     expect(response.headers.get('content-type')).toBe('image/jpeg');
     expect(transformImageMock).toHaveBeenCalledWith(
       expect.any(Buffer),
-      expect.objectContaining({ w: 100, fmt: 'jpeg', q: 50 })
+      expect.objectContaining({ w: 100, fmt: 'jpeg', q: 50 }),
+      undefined
     );
   });
 

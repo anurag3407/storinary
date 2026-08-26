@@ -22,6 +22,8 @@ const image: ImageRecord = {
   tags: '',
   altText: 'Hero image',
   bgRemoved: false,
+  aiModerated: false,
+  aiModerationScore: null,
   compressed: true,
   createdAt: new Date(Date.now() - 3600 * 1000).toISOString(),
   updatedAt: new Date(Date.now() - 3600 * 1000).toISOString(),

@@ -10,6 +10,7 @@ const options: UploadState['globalOptions'] = {
   maxWidth: 2048,
   folder: '/',
   tags: '',
+  moderate: false,
 };
 
 describe('UploadSettings', () => {
