@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+import Link from 'next/link';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -24,6 +26,16 @@ export function Header({ title, description, actions }: HeaderProps) {
         >
           ☰
         </button>
+        <Link href="/" className={styles.mobileLogo} aria-label="Storinary Home">
+          <Image
+            src="/logo.png"
+            alt="Storinary"
+            width={140}
+            height={36}
+            className={styles.logoImg}
+            priority
+          />
+        </Link>
         <div className={styles.headingGroup}>
           <h1 className={styles.title}>{title}</h1>
           {description && <p className={styles.description}>{description}</p>}

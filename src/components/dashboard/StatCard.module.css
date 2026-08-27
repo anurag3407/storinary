@@ -3,8 +3,11 @@
   border-radius: var(--nb-radius);
   box-shadow: var(--nb-shadow-lg);
   padding: 20px;
-  text-align: center;
+  text-align: left;
   transition: var(--nb-transition);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .card:hover {
@@ -12,23 +15,41 @@
   box-shadow: var(--nb-shadow-xl);
 }
 
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .icon {
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 28px;
   line-height: 1;
+}
+
+.subBadge {
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1.5px solid var(--nb-black);
+  padding: 2px 8px;
+  border-radius: 20px;
+  color: var(--nb-black);
 }
 
 .value {
   font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-4xl);
-  line-height: 1;
+  font-size: var(--nb-text-3xl);
+  line-height: 1.1;
   margin-bottom: 4px;
   word-break: break-word;
+  color: var(--nb-black);
 }
 
 .label {
-  font-size: var(--nb-text-sm);
-  font-weight: 600;
+  font-size: var(--nb-text-xs);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  color: #333;
 }

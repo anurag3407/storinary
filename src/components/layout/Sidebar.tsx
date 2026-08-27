@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
@@ -13,12 +15,10 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-const FREE_STORAGE_BYTES = 1 * 1024 * 1024 * 1024; // 1 GB
-
 export function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [storageUsedBytes, setStorageUsedBytes] = useState(0);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
 
   // Toggle from Header hamburger (mobile)
   useEffect(() => {
@@ -32,28 +32,29 @@ export function Sidebar() {
     setIsOpen(false);
   }, [pathname]);
 
-  // Fetch storage stats
+  // Fetch real storage stats
   useEffect(() => {
     fetch('/api/stats')
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data && typeof data.totalStorageBytes === 'number') {
-          setStorageUsedBytes(data.totalStorageBytes);
+        if (data) {
+          setStats(data);
         }
       })
       .catch(() => {
         /* stats unavailable */
       });
-  }, []);
+  }, [pathname]);
 
-  const pct = Math.min(
-    100,
-    Math.round((storageUsedBytes / FREE_STORAGE_BYTES) * 100)
-  );
-  const usedFormatted =
-    storageUsedBytes >= 1024 * 1024 * 1024
-      ? `${(storageUsedBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
-      : `${(storageUsedBytes / (1024 * 1024)).toFixed(1)} MB`;
+  // Hide sidebar on standalone landing / login page
+  if (pathname === '/login') {
+    return null;
+  }
+
+  const usedFormatted = stats?.totalStorageFormatted || '0 B';
+  const limitFormatted = stats?.storageLimitFormatted || '2 GB';
+  const pct = stats?.storagePercentage ?? 0;
+  const providerDisplay = stats?.providerName || 'Cloud Storage';
 
   return (
     <>
@@ -62,10 +63,14 @@ export function Sidebar() {
       )}
       <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
         <Link href="/" className={styles.logo} onClick={() => setIsOpen(false)}>
-          <span className={styles.logoIcon} aria-hidden="true">
-            🗂️
-          </span>
-          STORINARY
+          <Image
+            src="/logo.png"
+            alt="Storinary"
+            width={160}
+            height={40}
+            className={styles.logoImg}
+            priority
+          />
         </Link>
 
         <nav className={styles.nav} aria-label="Main navigation">
@@ -89,13 +94,25 @@ export function Sidebar() {
         </nav>
 
         <div className={styles.storageBox}>
-          <span className={styles.storageLabel}>Storage</span>
-          <span className={styles.storageValue}>
-            {usedFormatted} / 1 GB
-          </span>
-          <div className={styles.storageBar} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-            <div className={styles.storageFill} style={{ width: `${pct}%` }} />
+          <div className={styles.storageHeader}>
+            <span className={styles.storageLabel}>Storage ({providerDisplay})</span>
           </div>
+          <span className={styles.storageValue}>
+            {usedFormatted} / {limitFormatted}
+          </span>
+          <div
+            className={styles.storageBar}
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={styles.storageFill}
+              style={{ width: `${Math.min(100, Math.max(pct > 0 ? 3 : 0, pct))}%` }}
+            />
+          </div>
+          <span className={styles.storageSub}>{pct}% used</span>
         </div>
       </aside>
     </>

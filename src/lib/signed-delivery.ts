@@ -6,7 +6,7 @@ export const MIN_SIGNED_URL_TTL_SECONDS = 60;
 export const MAX_SIGNED_URL_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function getSigningSecret(): string {
-  return process.env[SIGNING_SECRET_NAME] || process.env.STORINARY_ADMIN_PASSWORD || '';
+  return process.env[SIGNING_SECRET_NAME] || '';
 }
 
 function constantTimeEqual(left: string, right: string): boolean {

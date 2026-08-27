@@ -16,28 +16,25 @@
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px;
+  justify-content: center;
+  padding: 16px;
   background-color: var(--nb-yellow);
-  border-bottom: var(--nb-border);
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-2xl);
-  font-weight: 400;
-  color: var(--nb-black);
-  letter-spacing: 0.5px;
   border-bottom: var(--nb-border);
   text-decoration: none;
   flex-shrink: 0;
+  transition: var(--nb-transition);
 }
 
 .logo:hover {
-  background-color: var(--nb-yellow);
+  background-color: #ffd633;
   color: var(--nb-black);
   transform: none;
 }
 
-.logoIcon {
-  font-size: var(--nb-text-2xl);
+.logoImg {
+  max-width: 170px;
+  height: auto;
+  object-fit: contain;
 }
 
 .nav {
@@ -92,39 +89,56 @@
 }
 
 .storageBox {
-  padding: 20px;
+  padding: 18px 20px;
   border-top: var(--nb-border);
+  background-color: #faf8f5;
   flex-shrink: 0;
+}
+
+.storageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .storageLabel {
   display: block;
-  font-size: var(--nb-text-xs);
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: #666;
 }
 
 .storageValue {
   display: block;
-  font-weight: 700;
+  font-weight: 800;
   font-size: var(--nb-text-sm);
-  margin: 4px 0 8px;
+  margin: 4px 0 6px;
+  color: var(--nb-black);
 }
 
 .storageBar {
-  height: 14px;
+  height: 12px;
   border: 2px solid var(--nb-black);
   border-radius: 4px;
-  background-color: var(--nb-bg);
+  background-color: var(--nb-white);
   overflow: hidden;
 }
 
 .storageFill {
   height: 100%;
   background-color: var(--nb-blue);
-  transition: width 0.5s ease;
+  transition: width 0.4s ease-in-out;
+}
+
+.storageSub {
+  display: block;
+  font-size: 11px;
+  color: #777;
+  font-weight: 600;
+  margin-top: 4px;
+  text-align: right;
 }
 
 .backdrop {

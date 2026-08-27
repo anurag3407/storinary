@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { Archivo_Black, Inter } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/ToastProvider';
-import { Sidebar } from '@/components/layout/Sidebar';
+import { AppShell } from '@/components/layout/AppShell';
 
 const archivoBlack = Archivo_Black({
-  weight: '400', // Archivo Black only has one weight
+  weight: '400',
   subsets: ['latin'],
   variable: '--nb-font-heading',
   display: 'swap',
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s — Storinary',
   },
   description:
-    'Free, self-hosted Cloudinary alternative. Bulk upload, transform, and serve images from Supabase Storage.',
+    'Free, self-hosted Cloudinary alternative for Sayalabs. Bulk upload, transform, and serve images from Appwrite, Backblaze B2, or Supabase Storage.',
 };
 
 export default function RootLayout({
@@ -35,12 +35,7 @@ export default function RootLayout({
     <html lang="en" className={`${archivoBlack.variable} ${inter.variable}`}>
       <body>
         <ToastProvider>
-          <div className="app-layout">
-            <Sidebar />
-            <main className="app-main">
-              <div className="app-content">{children}</div>
-            </main>
-          </div>
+          <AppShell>{children}</AppShell>
         </ToastProvider>
       </body>
     </html>

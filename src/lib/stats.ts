@@ -3,12 +3,18 @@ import { serializeImage } from '@/lib/utils';
 import { getStorageProviderInfo } from '@/lib/storage';
 import type { StatsResponse } from '@/types';
 
-function formatStorage(bytes: number): string {
-  if (bytes === 0) return '0 B';
+export function formatStorage(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B';
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
+  const val = bytes / Math.pow(k, i);
+  const formatted = Number.isInteger(val)
+    ? val.toString()
+    : val < 10 && i > 0
+      ? parseFloat(val.toFixed(2)).toString()
+      : parseFloat(val.toFixed(1)).toString();
+  return `${formatted} ${sizes[i]}`;
 }
 
 /**
@@ -23,44 +29,51 @@ export async function getStats(): Promise<StatsResponse> {
   const [
     totalImagesResult,
     storageResult,
+    imageVersionsStorageResult,
     imagesByFormatResult,
     imagesByFolderResult,
     recentUploadsResult,
     uploadsThisMonthResult,
     totalVideosResult,
     videoStorageResult,
+    videoVersionsStorageResult,
+    videoRenditionsStorageResult,
+    videoHlsStorageResult,
   ] = await Promise.allSettled([
-    prisma.image.count(),
-    prisma.image.aggregate({ _sum: { fileSize: true } }),
-    prisma.image.groupBy({ by: ['format'], _count: true }),
-    prisma.image.groupBy({ by: ['folder'], _count: true }),
-    prisma.image.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }),
-    prisma.image.count({ where: { createdAt: { gte: firstOfMonth } } }),
-    prisma.video.count(),
-    prisma.video.aggregate({ _sum: { fileSize: true } }),
+    prisma.image?.count?.() ?? Promise.resolve(0),
+    prisma.image?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
+    prisma.imageVersion?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
+    prisma.image?.groupBy?.({ by: ['format'], _count: true }) ??
+      Promise.resolve([]),
+    prisma.image?.groupBy?.({ by: ['folder'], _count: true }) ??
+      Promise.resolve([]),
+    prisma.image?.findMany?.({ orderBy: { createdAt: 'desc' }, take: 10 }) ??
+      Promise.resolve([]),
+    prisma.image?.count?.({ where: { createdAt: { gte: firstOfMonth } } }) ??
+      Promise.resolve(0),
+    prisma.video?.count?.() ?? Promise.resolve(0),
+    prisma.video?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
+    prisma.videoVersion?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
+    prisma.videoRendition?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
+    prisma.videoHlsPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
+      Promise.resolve({ _sum: { totalFileSize: 0 } }),
   ]);
-
-  const results = [
-    totalImagesResult,
-    storageResult,
-    imagesByFormatResult,
-    imagesByFolderResult,
-    recentUploadsResult,
-    uploadsThisMonthResult,
-    totalVideosResult,
-    videoStorageResult,
-  ];
-  for (const r of results) {
-    if (r.status === 'rejected') {
-      console.error('getStats DB query failed:', r.reason);
-    }
-  }
 
   const totalImages = totalImagesResult.status === 'fulfilled' ? totalImagesResult.value : 0;
   const totalStorageBytes =
-    storageResult.status === 'fulfilled' && storageResult.value._sum.fileSize
+    (storageResult.status === 'fulfilled' && storageResult.value._sum.fileSize
       ? storageResult.value._sum.fileSize
-      : 0;
+      : 0) +
+    (imageVersionsStorageResult.status === 'fulfilled' &&
+    imageVersionsStorageResult.value._sum.fileSize
+      ? imageVersionsStorageResult.value._sum.fileSize
+      : 0);
+
   const imagesByFormat =
     imagesByFormatResult.status === 'fulfilled' ? imagesByFormatResult.value : [];
   const imagesByFolder =
@@ -71,13 +84,37 @@ export async function getStats(): Promise<StatsResponse> {
     uploadsThisMonthResult.status === 'fulfilled' ? uploadsThisMonthResult.value : 0;
   const totalVideos =
     totalVideosResult.status === 'fulfilled' ? totalVideosResult.value : 0;
-  const totalVideoBytes =
-    videoStorageResult.status === 'fulfilled' && videoStorageResult.value._sum.fileSize
-      ? videoStorageResult.value._sum.fileSize
-      : 0;
-  const allStorageBytes = totalStorageBytes + totalVideoBytes;
 
+  const totalVideoBytes =
+    (videoStorageResult.status === 'fulfilled' && videoStorageResult.value._sum.fileSize
+      ? videoStorageResult.value._sum.fileSize
+      : 0) +
+    (videoVersionsStorageResult.status === 'fulfilled' &&
+    videoVersionsStorageResult.value._sum.fileSize
+      ? videoVersionsStorageResult.value._sum.fileSize
+      : 0) +
+    (videoRenditionsStorageResult.status === 'fulfilled' &&
+    videoRenditionsStorageResult.value._sum.fileSize
+      ? videoRenditionsStorageResult.value._sum.fileSize
+      : 0) +
+    (videoHlsStorageResult.status === 'fulfilled' &&
+    videoHlsStorageResult.value._sum.totalFileSize
+      ? videoHlsStorageResult.value._sum.totalFileSize
+      : 0);
+
+  const allStorageBytes = totalStorageBytes + totalVideoBytes;
   const providerInfo = getStorageProviderInfo();
+
+  let storageLimitBytes = 2 * 1024 * 1024 * 1024; // 2 GB for Appwrite
+  if (providerInfo.provider === 'backblaze') {
+    storageLimitBytes = 10 * 1024 * 1024 * 1024; // 10 GB for Backblaze B2
+  } else if (providerInfo.provider === 'supabase') {
+    storageLimitBytes = 1 * 1024 * 1024 * 1024; // 1 GB for Supabase Free
+  }
+
+  const storagePercentage = Number(
+    Math.min(100, Math.max(0, (allStorageBytes / storageLimitBytes) * 100)).toFixed(1)
+  );
 
   return {
     totalImages,
@@ -85,6 +122,9 @@ export async function getStats(): Promise<StatsResponse> {
     totalVideoBytes,
     totalStorageBytes: allStorageBytes,
     totalStorageFormatted: formatStorage(allStorageBytes),
+    storageLimitBytes,
+    storageLimitFormatted: formatStorage(storageLimitBytes),
+    storagePercentage,
     imagesByFormat: Object.fromEntries(
       imagesByFormat.map((g) => [g.format, g._count])
     ),
@@ -98,6 +138,6 @@ export async function getStats(): Promise<StatsResponse> {
     storageBucket: providerInfo.bucket,
     storageEndpoint: providerInfo.endpoint,
     isConfigured: providerInfo.isConfigured,
-    supabaseBucket: providerInfo.bucket, // backwards compatibility
+    supabaseBucket: providerInfo.bucket,
   };
 }

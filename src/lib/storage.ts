@@ -115,16 +115,18 @@ export function sanitizeAppwriteFileId(key: string): string {
     clean = 'file';
   }
 
-  // If length > 36, preserve the extension and truncate the stem
+  // If length > 36, preserve the extension and inject deterministic hash of original key
   if (clean.length > 36) {
+    const hash = crypto.createHash('sha256').update(key).digest('hex').slice(0, 8);
     const lastDot = clean.lastIndexOf('.');
     if (lastDot > 0 && lastDot < clean.length - 1) {
       const ext = clean.slice(lastDot);
       const stem = clean.slice(0, lastDot);
-      const maxStemLen = Math.max(1, 36 - ext.length);
-      clean = stem.slice(0, maxStemLen) + ext;
+      // stem length = 36 - ext.length - 1 (hyphen) - 8 (hash)
+      const maxStemLen = Math.max(1, 27 - ext.length);
+      clean = `${stem.slice(0, maxStemLen)}-${hash}${ext}`;
     } else {
-      clean = clean.slice(0, 36);
+      clean = `${clean.slice(0, 27)}-${hash}`;
     }
   }
 

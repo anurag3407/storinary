@@ -366,6 +366,9 @@ export interface StatsResponse {
   totalVideoBytes?: number;
   totalStorageBytes: number;
   totalStorageFormatted: string; // e.g., "1.2 GB"
+  storageLimitBytes?: number;
+  storageLimitFormatted?: string;
+  storagePercentage?: number;
   imagesByFormat: Record<string, number>; // e.g., { "webp": 500, "jpeg": 300 }
   imagesByFolder: Record<string, number>; // e.g., { "/": 200, "/products": 100 }
   recentUploads: ImageRecord[]; // last 10 uploads
@@ -489,6 +492,7 @@ export interface StatCardProps {
   value: string | number;
   icon: React.ReactNode;
   color?: string; // CSS variable name, e.g., "var(--nb-yellow)"
+  sub?: string;
 }
 
 export interface PaginationProps {

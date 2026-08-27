@@ -15,7 +15,7 @@ import styles from './page.module.css';
 export const metadata: Metadata = {
   title: 'Dashboard',
   description:
-    'Overview of your image CDN. View storage stats, recent uploads, and quick actions.',
+    'Overview of your image CDN. View real storage stats, recent uploads, and delivery analytics.',
 };
 
 export const dynamic = 'force-dynamic';
@@ -49,43 +49,55 @@ export default async function DashboardPage() {
   }
 
   const folderCount = Object.keys(stats.imagesByFolder).length;
+  const totalMedia = (stats.totalImages || 0) + (stats.totalVideos || 0);
+  const providerLabel = stats.providerName || 'Appwrite Storage';
+  const limitLabel = stats.storageLimitFormatted || '2 GB';
 
   return (
     <>
       <Header
         title="Dashboard"
-        description="Overview of your image CDN."
+        description={`Live overview of your media CDN — connected to ${providerLabel}.`}
         actions={
-          <Link href="/upload">
-            <Button icon="⬆️">Quick Upload</Button>
-          </Link>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <Link href="/upload">
+              <Button icon="⬆️">Upload Image</Button>
+            </Link>
+            <Link href="/videos">
+              <Button variant="secondary" icon="🎬">Video Library</Button>
+            </Link>
+          </div>
         }
       />
 
       <div className={styles.statsGrid}>
         <StatCard
-          label="Total Images"
-          value={stats.totalImages.toLocaleString()}
+          label="Total Media Assets"
+          value={totalMedia.toLocaleString()}
           icon="📷"
           color="var(--nb-yellow)"
+          sub={`${stats.totalImages} img • ${stats.totalVideos || 0} vid`}
         />
         <StatCard
-          label="Storage Used"
+          label="Real Storage Used"
           value={stats.totalStorageFormatted}
           icon="💾"
           color="var(--nb-blue)"
+          sub={`${stats.storagePercentage || 0}% of ${limitLabel}`}
         />
         <StatCard
-          label="This Month"
+          label="Uploaded This Month"
           value={stats.uploadsThisMonth.toLocaleString()}
           icon="📅"
           color="var(--nb-mint)"
+          sub="Current billing cycle"
         />
         <StatCard
-          label="Folders"
+          label="Virtual Folders"
           value={folderCount.toLocaleString()}
           icon="📁"
           color="var(--nb-lavender)"
+          sub="Organized library"
         />
       </div>
 

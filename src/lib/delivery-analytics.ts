@@ -73,6 +73,12 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
   from.setHours(0, 0, 0, 0);
   from.setDate(from.getDate() - (days - 1));
 
+  const isPostgres = Boolean(
+    process.env.DATABASE_URL &&
+      (process.env.DATABASE_URL.startsWith('postgres://') ||
+        process.env.DATABASE_URL.startsWith('postgresql://'))
+  );
+
   const [
     totalAggregate,
     imageAggregate,
@@ -93,10 +99,15 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
       _sum: { bytes: true },
       where: { createdAt: { gte: from }, videoId: { not: null } },
     }),
-    prisma.$queryRaw<Array<{ day: string; events: number; bytes: number }>>(Prisma.sql`
-      SELECT strftime('%Y-%m-%d', "createdAt") AS day, COUNT(*) AS events, COALESCE(SUM("bytes"), 0) AS bytes
-      FROM "DeliveryEvent" WHERE "createdAt" >= ${from} GROUP BY day
-    `),
+    isPostgres
+      ? prisma.$queryRaw<Array<{ day: string; events: number | bigint; bytes: number | bigint }>>(Prisma.sql`
+          SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') AS day, COUNT(*)::int AS events, COALESCE(SUM("bytes"), 0)::int AS bytes
+          FROM "DeliveryEvent" WHERE "createdAt" >= ${from} GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD')
+        `).catch(() => [] as Array<{ day: string; events: number; bytes: number }>)
+      : prisma.$queryRaw<Array<{ day: string; events: number | bigint; bytes: number | bigint }>>(Prisma.sql`
+          SELECT strftime('%Y-%m-%d', "createdAt") AS day, COUNT(*) AS events, COALESCE(SUM("bytes"), 0) AS bytes
+          FROM "DeliveryEvent" WHERE "createdAt" >= ${from} GROUP BY day
+        `).catch(() => [] as Array<{ day: string; events: number; bytes: number }>),
     prisma.deliveryEvent.groupBy({
       by: ['imageId'],
       _count: true,
@@ -156,8 +167,8 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
   for (const row of rawGroupedDays) {
     const bucket = dayBuckets.get(row.day);
     if (!bucket) continue;
-    bucket.events += Number(row.events);
-    bucket.bytes += Number(row.bytes);
+    bucket.events += Number(row.events) || 0;
+    bucket.bytes += Number(row.bytes) || 0;
   }
 
   return {
