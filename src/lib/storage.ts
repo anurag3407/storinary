@@ -826,6 +826,14 @@ export async function listStorageObjects(
  * Construct the public CDN / view URL for a storage object.
  */
 export function getPublicUrl(key: string): string {
+  const cleanKey = key.replace(/^\/+/, '');
+  const cdnBase = process.env.STORINARY_CDN_URL;
+
+  if (cdnBase) {
+    const base = cdnBase.replace(/\/+$/, '');
+    return `${base}/api/serve/${cleanKey}`;
+  }
+
   const provider = getStorageProvider();
 
   if (provider === 'backblaze') {

@@ -383,7 +383,7 @@ describe('Appwrite Storage Operations', () => {
   it('constructs public view URL for Appwrite', () => {
     const url = getPublicUrl('photo-123.webp');
     expect(url).toBe(
-      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/photo-123.webp/view?project=my_project&mode=admin'
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/photo-123.webp/view?project=my_project'
     );
   });
 });

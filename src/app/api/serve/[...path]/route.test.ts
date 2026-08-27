@@ -70,16 +70,21 @@ describe('GET /api/serve/[...path]', () => {
     transformCache.clear();
   });
 
-  it('redirects to the CDN when there are no transforms', async () => {
-    getPublicUrlMock.mockReturnValue('https://cdn.example/2024/01/a.webp');
+  it('serves original binary directly when there are no transforms', async () => {
+    getFromStorageMock.mockResolvedValue({
+      buffer: Buffer.from('original-file-bytes'),
+      contentType: 'image/webp',
+    });
 
     const response = await GET(
       makeRequest(['2024', '01', 'a.webp']),
       context(['2024', '01', 'a.webp'])
     );
 
-    expect(response.status).toBe(301); // NextResponse.redirect(_, 301)
-    expect(response.headers.get('location')).toBe('https://cdn.example/2024/01/a.webp');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/webp');
+    const bytes = Buffer.from(await response.arrayBuffer());
+    expect(bytes.toString()).toBe('original-file-bytes');
   });
 
   it('returns 404 for an empty path', async () => {

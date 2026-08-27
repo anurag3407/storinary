@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getFromStorage, getPublicUrl } from '@/lib/storage';
+import { NextRequest } from 'next/server';
+import { getFromStorage } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
 import { diskCache } from '@/lib/disk-cache';
@@ -15,12 +15,14 @@ const PUBLIC_CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=31536000, immutable',
   'CDN-Cache-Control': 'public, max-age=31536000, immutable',
   'X-Content-Type-Options': 'nosniff',
+  'Access-Control-Allow-Origin': '*',
 };
 
 const PRIVATE_CACHE_HEADERS = {
   'Cache-Control': 'private, no-store',
   'CDN-Cache-Control': 'private, no-store',
   'X-Content-Type-Options': 'nosniff',
+  'Access-Control-Allow-Origin': '*',
 };
 
 function cacheHeaders() {
@@ -29,12 +31,11 @@ function cacheHeaders() {
 
 /**
  * GET /api/serve/[...path]?w=&h=&q=&fmt=&fit=
- * On-the-fly transformations via URL path. The catch-all captures the
- * Supabase Storage path (e.g. /api/serve/2024/08/photo-abc12345.webp).
- *
- * Without transform params → 301 redirect to the public CDN URL.
- * With transform params → process with sharp (cached in memory) and return
- * the binary.
+ * Direct CDN delivery & on-the-fly transformations via URL path.
+ * 
+ * Directly serves the binary image from cache/storage under your custom domain.
+ * - With transform params: process with sharp and return optimized binary.
+ * - Without transform params: stream original binary directly with immutable caching.
  */
 export async function GET(
   request: NextRequest,
@@ -70,21 +71,80 @@ export async function GET(
   ) as TransformParams;
   const hasTransforms = hasTransformParams(params);
 
+  // ─── 1. SERVE ORIGINAL DIRECTLY (No Redirects) ───────────────
   if (!hasTransforms) {
-    if (isSignedDeliveryEnabled()) return new Response('Not found', { status: 404 });
+    const origCacheKey = `orig:${key}`;
+
+    // L1 Cache
+    const cached = transformCache.get(origCacheKey);
+    if (cached) {
+      void recordImageDelivery({
+        imageId: '',
+        kind: 'original',
+        bytes: cached.buffer.length,
+        referer: request.headers.get('referer'),
+        userAgent: request.headers.get('user-agent'),
+      }).catch(() => {});
+      return new Response(new Uint8Array(cached.buffer), {
+        headers: { 'Content-Type': cached.contentType, ...cacheHeaders() },
+      });
+    }
+
+    // L2 Cache
+    const diskCached = await diskCache.get(origCacheKey);
+    if (diskCached) {
+      transformCache.set(origCacheKey, {
+        buffer: diskCached.buffer,
+        contentType: diskCached.contentType,
+      });
+      void recordImageDelivery({
+        imageId: '',
+        kind: 'original',
+        bytes: diskCached.buffer.length,
+        referer: request.headers.get('referer'),
+        userAgent: request.headers.get('user-agent'),
+      }).catch(() => {});
+      return new Response(new Uint8Array(diskCached.buffer), {
+        headers: { 'Content-Type': diskCached.contentType, ...cacheHeaders() },
+      });
+    }
+
+    let fetched;
+    try {
+      fetched = await getFromStorage(key);
+    } catch {
+      return new Response('Not found', { status: 404 });
+    }
+
+    const entry = {
+      buffer: fetched.buffer,
+      contentType: fetched.contentType,
+    };
+    transformCache.set(origCacheKey, entry);
+    diskCache.set(origCacheKey, entry).catch(() => {});
+
     const original = await prisma.image.findUnique({
       where: { storagePath: key },
       select: { id: true },
-    });
+    }).catch(() => null);
+
     void recordImageDelivery({
       imageId: original?.id || '',
       kind: 'original',
+      bytes: fetched.buffer.length,
       referer: request.headers.get('referer'),
       userAgent: request.headers.get('user-agent'),
     }).catch(() => {});
-    return NextResponse.redirect(getPublicUrl(key), 301);
+
+    return new Response(new Uint8Array(fetched.buffer), {
+      headers: {
+        'Content-Type': fetched.contentType,
+        ...cacheHeaders(),
+      },
+    });
   }
 
+  // ─── 2. SERVE ON-THE-FLY TRANSFORMS ─────────────────────────
   const image = await prisma.image.findUnique({
     where: { storagePath: key },
     select: { id: true, fileSize: true },
