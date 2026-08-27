@@ -16,8 +16,8 @@
 .logo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 16px;
+  gap: 12px;
+  padding: 16px 18px;
   background-color: var(--nb-yellow);
   border-bottom: var(--nb-border);
   text-decoration: none;
@@ -31,10 +31,35 @@
   transform: none;
 }
 
-.logoImg {
-  max-width: 170px;
-  height: auto;
-  object-fit: contain;
+.logoMark {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid var(--nb-black);
+  box-shadow: var(--nb-shadow-sm);
+  background: var(--nb-white);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.logoBrand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.logoTitle {
+  font-family: var(--nb-font-heading);
+  font-size: 18px;
+  color: var(--nb-black);
+  letter-spacing: 0.5px;
+}
+
+.logoSub {
+  font-size: 10px;
+  font-weight: 800;
+  color: #444;
+  letter-spacing: 0.5px;
 }
 
 .nav {

@@ -45,7 +45,20 @@ export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
       </div>
 
       <div className={styles.status}>
-        {item.status === 'pending' && <Badge variant="default">Pending</Badge>}
+        {item.status === 'pending' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Badge variant="default">Pending</Badge>
+            {onRetry && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onRetry(item.id)}
+              >
+                Upload
+              </Button>
+            )}
+          </div>
+        )}
 
         {item.status === 'compressing' && (
           <>

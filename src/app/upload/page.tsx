@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { DropZone } from '@/components/upload/DropZone';
 import { UploadQueue } from '@/components/upload/UploadQueue';
@@ -32,6 +32,17 @@ export default function UploadPage() {
   const pendingCount = items.filter((i) => i.status === 'pending').length;
   const doneItems = items.filter((i) => i.status === 'done' && i.result);
 
+  const handleFilesAdded = useCallback(
+    (files: File[]) => {
+      addFiles(files);
+      // Auto-start upload for instant, seamless UX
+      setTimeout(() => {
+        void startUpload();
+      }, 50);
+    },
+    [addFiles, startUpload]
+  );
+
   // Keyboard shortcut: Ctrl/Cmd + V pastes images into the queue
   useEffect(() => {
     const handler = (e: ClipboardEvent) => {
@@ -48,11 +59,14 @@ export default function UploadPage() {
         e.preventDefault();
         addFiles(files);
         toast.info(`Pasted ${files.length} image(s)`);
+        setTimeout(() => {
+          void startUpload();
+        }, 50);
       }
     };
     window.addEventListener('paste', handler);
     return () => window.removeEventListener('paste', handler);
-  }, [addFiles, toast]);
+  }, [addFiles, startUpload, toast]);
 
   useEffect(() => {
     fetch('/api/upload-presets?active=true', { cache: 'no-store' })
@@ -192,7 +206,7 @@ export default function UploadPage() {
         disabled={isUploading}
       />
 
-      <DropZone onFilesAdded={addFiles} disabled={isUploading} />
+      <DropZone onFilesAdded={handleFilesAdded} disabled={isUploading} />
 
       <section className={styles.importPanel}>
         <label htmlFor="image-import-urls">Import image URLs</label>
@@ -215,7 +229,13 @@ export default function UploadPage() {
         )}
       </section>
 
-      <UploadQueue items={items} onRemove={removeFile} onRetry={() => void startUpload()} />
+      <UploadQueue
+        items={items}
+        onRemove={removeFile}
+        onRetry={() => void startUpload()}
+        onUploadAll={handleUploadAll}
+        isUploading={isUploading}
+      />
 
       {doneItems.length > 0 && (
         <div className={styles.completedPanel}>

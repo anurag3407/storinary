@@ -65,12 +65,16 @@ export function Sidebar() {
         <Link href="/" className={styles.logo} onClick={() => setIsOpen(false)}>
           <Image
             src="/logo.png"
-            alt="Storinary"
-            width={160}
-            height={40}
-            className={styles.logoImg}
+            alt="Storinary Mark"
+            width={38}
+            height={38}
+            className={styles.logoMark}
             priority
           />
+          <div className={styles.logoBrand}>
+            <span className={styles.logoTitle}>STORINARY</span>
+            <span className={styles.logoSub}>BY SAYALABS</span>
+          </div>
         </Link>
 
         <nav className={styles.nav} aria-label="Main navigation">
