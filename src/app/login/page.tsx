@@ -66,8 +66,7 @@ export default function LoginPage() {
         setError(data?.error || 'Incorrect admin password');
         return;
       }
-      router.push(nextPath);
-      router.refresh();
+      window.location.href = nextPath || '/';
     } catch {
       setError('Login connection failed');
     } finally {

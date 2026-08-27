@@ -91,7 +91,7 @@ export function ImageCard({
         </span>
         <div className={styles.metaRow}>
           <span>{formatBytes(image.fileSize)}</span>
-          <span>{formatRelativeTime(image.createdAt)}</span>
+          <span suppressHydrationWarning>{formatRelativeTime(image.createdAt)}</span>
         </div>
       </div>
 

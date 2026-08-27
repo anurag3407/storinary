@@ -41,7 +41,7 @@ export function RecentUploads({ images }: RecentUploadsProps) {
             />
             <div className={styles.info}>
               <span className={styles.name}>{image.originalName}</span>
-              <span className={styles.meta}>
+              <span className={styles.meta} suppressHydrationWarning>
                 {formatBytes(image.fileSize)} · {formatRelativeTime(image.createdAt)}
               </span>
             </div>

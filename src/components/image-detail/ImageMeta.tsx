@@ -229,7 +229,7 @@ export function ImageMeta({ image, versions = [] }: ImageMetaProps) {
           </tr>
           <tr>
             <th>Uploaded</th>
-            <td title={new Date(image.createdAt).toLocaleString()}>
+            <td title={new Date(image.createdAt).toLocaleString()} suppressHydrationWarning>
               {formatRelativeTime(image.createdAt)}
             </td>
           </tr>
