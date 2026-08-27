@@ -842,7 +842,7 @@ export function getPublicUrl(key: string): string {
   if (provider === 'appwrite') {
     const config = getAppwriteConfig();
     const fileId = sanitizeAppwriteFileId(key);
-    return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}&mode=admin`;
+    return `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/view?project=${config.projectId}`;
   }
 
   // Supabase
