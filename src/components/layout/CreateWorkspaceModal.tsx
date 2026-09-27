@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
 import styles from './CreateWorkspaceModal.module.css';
 
 interface CreateWorkspaceModalProps {
@@ -18,6 +19,7 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreated }: CreateWorks
   const [isManualSlug, setIsManualSlug] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { createOrganization, isClerk } = useAppAuth();
 
   const generateSlug = (val: string) => {
     return val
@@ -56,6 +58,23 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreated }: CreateWorks
     }
 
     try {
+      if (isClerk) {
+        const created = await createOrganization({ name: name.trim(), slug: finalSlug });
+        if (created) {
+          if (onCreated) {
+            onCreated(created);
+          } else {
+            window.location.reload();
+          }
+          onClose();
+          return;
+        } else {
+          setError('Failed to create workspace with Clerk');
+          setLoading(false);
+          return;
+        }
+      }
+
       const result = await authClient.organization.create({
         name: name.trim(),
         slug: finalSlug,

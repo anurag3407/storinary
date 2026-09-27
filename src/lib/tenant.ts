@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { rawPrisma } from '@/lib/prisma';
 import { currentTenantScope } from '@/lib/prisma-scope';
+import { isClerkEnabled } from '@/lib/auth-config';
+import { getClerkTenantId } from '@/lib/clerk-auth';
 
 /**
  * Raised when a request has no active organization. Routes translate this into
@@ -41,6 +43,10 @@ export async function getTenantId(request?: Request): Promise<string> {
       select: { organizationId: true, revokedAt: true },
     });
     if (key && !key.revokedAt) return key.organizationId;
+  }
+
+  if (isClerkEnabled()) {
+    return await getClerkTenantId(request);
   }
 
   const session = await auth.api.getSession({ headers: requestHeaders });

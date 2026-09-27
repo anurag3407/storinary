@@ -1,7 +1,7 @@
 .actions {
   display: flex;
-  gap: var(--nb-space-5);
-  margin-top: var(--nb-space-4);
+  gap: var(--ui-space-5);
+  margin-top: var(--ui-space-4);
 }
 
 .link {

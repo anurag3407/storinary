@@ -1,32 +1,32 @@
 .card {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-lg);
-  padding: var(--nb-space-6);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-lg);
+  padding: var(--ui-space-6);
   overflow: hidden;
 }
 
 .title {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-xl);
-  margin-bottom: var(--nb-space-4);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-xl);
+  margin-bottom: var(--ui-space-4);
 }
 
 .editableValue {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
   flex-wrap: wrap;
 }
 
 .muted {
-  color: #999;
+  color: var(--ui-text-subtle);
 }
 
 .tags {
   display: inline-flex;
-  gap: 6px;
+  gap: var(--ui-space-2);
   flex-wrap: wrap;
   align-items: center;
 }
@@ -37,24 +37,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--nb-white);
-  border: 2px solid var(--nb-black);
+  background-color: var(--ui-white);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  transition: var(--nb-transition);
+  transition: var(--ui-transition);
   flex-shrink: 0;
 }
 
 .editBtn:hover {
-  background-color: var(--nb-yellow);
+  background-color: var(--ui-accent);
   transform: translate(-1px, -1px);
-  box-shadow: var(--nb-shadow-sm);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 @media (max-width: 768px) {
   .card {
-    padding: var(--nb-space-4);
+    padding: var(--ui-space-4);
     overflow-x: auto;
   }
 }
@@ -90,8 +90,8 @@
 }
 
 .versionList button {
-  border: 1px solid var(--nb-black);
-  background: var(--nb-white);
+  border: 1px solid var(--ui-border);
+  background: var(--ui-white);
   border-radius: 4px;
   padding: .15rem .45rem;
   cursor: pointer;

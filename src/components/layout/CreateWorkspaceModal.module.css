@@ -1,17 +1,17 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--ui-space-4);
 }
 
 .introBox {
-  background-color: #f8f7f2;
-  border: 2px dashed var(--nb-black);
-  padding: 12px 14px;
+  background-color: var(--ui-bg-subtle);
+  border: 1px dashed var(--ui-border-strong);
+  padding: var(--ui-space-3) var(--ui-space-4);
   border-radius: 6px;
   font-size: 13px;
   line-height: 1.5;
-  color: #333;
+  color: var(--ui-text);
 }
 
 .introBox p {
@@ -21,69 +21,67 @@
 .formGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--ui-space-2);
 }
 
 .label {
   font-size: 12px;
   font-weight: 800;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--nb-black);
+  color: var(--ui-text);
 }
 
 .input {
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--ui-space-3) var(--ui-space-3);
   font-size: 14px;
   font-weight: 600;
-  border: 2px solid var(--nb-black);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 6px;
-  background: var(--nb-white);
-  box-shadow: 2px 2px 0 var(--nb-black);
+  background: var(--ui-white);
+  box-shadow: var(--ui-shadow-sm);
   outline: none;
   font-family: inherit;
 }
 
 .input:focus {
-  background: #fffdf0;
-  box-shadow: 3px 3px 0 var(--nb-black);
+  background: var(--ui-warning-soft);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .previewBox {
-  background: #f0fdf4;
-  border: 2px solid #22c55e;
+  background: var(--ui-success-soft);
+  border: 1px solid var(--ui-success-border);
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: var(--ui-space-3) var(--ui-space-3);
   font-size: 12px;
-  color: #15803d;
+  color: var(--ui-success-text);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ui-space-1);
 }
 
 .previewLabel {
   font-weight: 800;
-  text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.5px;
 }
 
 .previewCode {
-  font-family: var(--nb-font-mono, monospace);
+  font-family: var(--ui-font-mono, monospace);
   font-weight: 700;
   word-break: break-all;
-  background: #dcfce7;
-  padding: 4px 6px;
+  background: var(--ui-success-soft);
+  padding: var(--ui-space-1) var(--ui-space-2);
   border-radius: 4px;
-  border: 1px solid #86efac;
+  border: 1px solid var(--ui-success-border);
 }
 
 .errorBanner {
-  background-color: #fee2e2;
-  border: 2px solid #ef4444;
-  color: #b91c1c;
-  padding: 10px 12px;
+  background-color: var(--ui-danger-soft);
+  border: 1px solid var(--ui-danger-border);
+  color: var(--ui-danger);
+  padding: var(--ui-space-3) var(--ui-space-3);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 700;
@@ -92,6 +90,6 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: var(--ui-space-3);
   margin-top: 8px;
 }

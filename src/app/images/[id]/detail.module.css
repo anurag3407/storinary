@@ -1,7 +1,7 @@
 .detailLayout {
   display: grid;
   grid-template-columns: 3fr 2fr;
-  gap: var(--nb-space-8);
+  gap: var(--ui-space-8);
   align-items: start;
 }
 
@@ -14,29 +14,29 @@
 .infoColumn {
   display: flex;
   flex-direction: column;
-  gap: var(--nb-space-6);
+  gap: var(--ui-space-6);
   min-width: 0;
 }
 
 .signedCard {
   display: grid;
-  gap: var(--nb-space-3);
-  padding: var(--nb-space-4);
-  border: 2px solid var(--nb-purple);
-  border-radius: var(--nb-radius);
-  background: color-mix(in srgb, var(--nb-purple) 8%, transparent);
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius);
+  background: color-mix(in srgb, var(--ui-accent) 8%, transparent);
 }
 
 .signedCard h2 {
   margin: 0;
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-lg);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-lg);
 }
 
 .signedCard code {
   overflow-wrap: anywhere;
-  font-family: var(--nb-font-mono);
-  font-size: var(--nb-text-xs);
+  font-family: var(--ui-font-mono);
+  font-size: var(--ui-text-xs);
 }
 
 .signedCard small {

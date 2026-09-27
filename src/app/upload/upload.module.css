@@ -1,23 +1,23 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--nb-space-6);
+  gap: var(--ui-space-6);
 }
 
 .completedPanel {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-lg);
-  padding: var(--nb-space-6);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-lg);
+  padding: var(--ui-space-6);
 }
 
 .importPanel {
   display: grid;
-  gap: var(--nb-space-3);
-  padding: var(--nb-space-5);
-  border: var(--nb-border);
-  box-shadow: var(--nb-shadow-lg);
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-5);
+  border: var(--ui-hairline);
+  box-shadow: var(--ui-shadow-lg);
   background: white;
 }
 
@@ -30,37 +30,37 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--nb-space-3);
+  gap: var(--ui-space-3);
 }
 
 .importPanel span {
-  color: #666;
-  font-size: var(--nb-text-sm);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-sm);
 }
 
 .completedHeader {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--nb-space-3);
-  margin-bottom: var(--nb-space-4);
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-4);
   flex-wrap: wrap;
 }
 
 .completedTitle {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-xl);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-xl);
 }
 
 .completedCount {
-  font-size: var(--nb-text-sm);
-  color: #666;
+  font-size: var(--ui-text-sm);
+  color: var(--ui-text-muted);
   font-weight: 600;
 }
 
 .completedActions {
   display: flex;
-  gap: var(--nb-space-3);
+  gap: var(--ui-space-3);
   flex-wrap: wrap;
 }
 

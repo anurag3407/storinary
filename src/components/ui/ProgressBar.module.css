@@ -1,14 +1,14 @@
 .wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
   width: 100%;
 }
 
 .container {
   flex: 1;
-  background-color: var(--nb-white);
-  border: 2px solid var(--nb-black);
+  background-color: var(--ui-white);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -23,13 +23,13 @@
 
 .fill {
   height: 100%;
-  background-color: var(--nb-green);
-  border-right: 2px solid var(--nb-black);
+  background-color: var(--ui-success);
+  border-right: 1px solid var(--ui-border);
   transition: width 0.3s ease;
 }
 
 .label {
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 700;
   white-space: nowrap;
   min-width: 40px;

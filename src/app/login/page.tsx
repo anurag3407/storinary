@@ -5,6 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
+import { SignIn, SignUp } from '@clerk/nextjs';
 import styles from './login.module.css';
 
 type Mode = 'sign-in' | 'sign-up';
@@ -22,6 +24,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { isClerk } = useAppAuth();
 
   const nextPath = searchParams.get('next');
   const callbackURL = nextPath?.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/';
@@ -228,87 +231,109 @@ function LoginForm() {
             )}
 
             {/* Auth Form */}
-            <form className={styles.authForm} onSubmit={submit}>
-              {mode === 'sign-up' && (
+            {isClerk ? (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '1rem 0' }}>
+                {mode === 'sign-in' ? (
+                  <SignIn
+                    routing="hash"
+                    signUpUrl="/login?mode=sign-up"
+                    fallbackRedirectUrl={callbackURL}
+                  />
+                ) : (
+                  <SignUp
+                    routing="hash"
+                    signInUrl="/login?mode=sign-in"
+                    fallbackRedirectUrl="/onboarding"
+                  />
+                )}
+              </div>
+            ) : (
+              <form className={styles.authForm} onSubmit={submit}>
+                {mode === 'sign-up' && (
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel} htmlFor="name">
+                      Full Name
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      className={styles.fieldInput}
+                      placeholder="e.g. Anurag Mishra"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel} htmlFor="name">
-                    Full Name
+                  <label className={styles.inputLabel} htmlFor="email">
+                    Work Email
                   </label>
                   <input
-                    id="name"
-                    type="text"
+                    id="email"
+                    type="email"
                     className={styles.fieldInput}
-                    placeholder="e.g. Anurag Mishra"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
+                    placeholder="name@sayalabs.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
                     required
                   />
                 </div>
-              )}
 
-              <div className={styles.inputGroup}>
-                <label className={styles.inputLabel} htmlFor="email">
-                  Work Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  className={styles.fieldInput}
-                  placeholder="name@sayalabs.in"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
-              </div>
+                <div className={styles.inputGroup}>
+                  <div className={styles.inputLabel}>
+                    <label htmlFor="password">Password</label>
+                    {mode === 'sign-in' && (
+                      <Link href="/forgot-password" className={styles.forgotLink}>
+                        Forgot?
+                      </Link>
+                    )}
+                  </div>
+                  <div className={styles.fieldWrapper}>
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      className={styles.fieldInput}
+                      placeholder={mode === 'sign-up' ? 'Minimum 8 characters' : 'Enter your password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className={styles.passwordToggle}
+                      onClick={() => setShowPassword(!showPassword)}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                </div>
 
-              <div className={styles.inputGroup}>
-                <div className={styles.inputLabel}>
-                  <label htmlFor="password">Password</label>
-                  {mode === 'sign-in' && (
-                    <Link href="/forgot-password" className={styles.forgotLink}>
-                      Forgot?
-                    </Link>
+                <button type="submit" className={styles.submitBtn} disabled={loading}>
+                  {loading ? (
+                    <span>Authenticating…</span>
+                  ) : mode === 'sign-in' ? (
+                    <>Sign In ➔</>
+                  ) : (
+                    <>Create Free Account ➔</>
                   )}
-                </div>
-                <div className={styles.fieldWrapper}>
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    className={styles.fieldInput}
-                    placeholder={mode === 'sign-up' ? 'Minimum 8 characters' : 'Enter your password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={8}
-                    autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className={styles.passwordToggle}
-                    onClick={() => setShowPassword(!showPassword)}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? '🙈' : '👁️'}
-                  </button>
-                </div>
-              </div>
-
-              <button type="submit" className={styles.submitBtn} disabled={loading}>
-                {loading ? (
-                  <span>Authenticating…</span>
-                ) : mode === 'sign-in' ? (
-                  <>Sign In ➔</>
-                ) : (
-                  <>Create Free Account ➔</>
-                )}
-              </button>
-            </form>
+                </button>
+              </form>
+            )}
 
             <div className={styles.cardFooter}>
-              <span>🔒 Protected by Better Auth • TLS 1.3 Session Security</span>
+              <span>
+                {isClerk
+                  ? '🔒 Protected by Clerk • Enterprise Identity & Session Security'
+                  : '🔒 Protected by Better Auth • TLS 1.3 Session Security'}
+              </span>
             </div>
           </div>
         </div>

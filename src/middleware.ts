@@ -1,7 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextFetchEvent, NextRequest, NextResponse } from 'next/server';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { checkRateLimit, getRateLimitRule } from '@/lib/rate-limit';
+import { isClerkEnabled, hasClerkPublishableKey } from '@/lib/auth-config';
 
 function getSessionToken(request: NextRequest): string | null {
+  if (isClerkEnabled()) {
+    return (
+      request.cookies.get('__session')?.value ||
+      request.cookies.get('__client_uat')?.value ||
+      request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+      null
+    );
+  }
+
   return (
     request.cookies.get('__Secure-storinary.session_token')?.value ||
     request.cookies.get('storinary.session_token')?.value ||
@@ -32,7 +43,10 @@ function isProtectedPage(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest) {
+async function applyRateLimitAndRouteAuth(
+  request: NextRequest,
+  clerkUserId?: string | null
+): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const rule = getRateLimitRule(pathname, request.method);
   if (rule) {
@@ -50,10 +64,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!PUBLIC_API.some((pattern) => pattern.test(pathname))) {
-    // Optimistic redirect only. Every API route still validates the Better
-    // Auth session, email verification, membership, and active organization.
-    const sessionCookie = getSessionToken(request);
-    if (!sessionCookie) {
+    const isAuthenticated = clerkUserId
+      ? true
+      : Boolean(getSessionToken(request));
+
+    if (!isAuthenticated) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
@@ -66,6 +81,29 @@ export async function middleware(request: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+const clerkHandler =
+  isClerkEnabled() && hasClerkPublishableKey()
+    ? clerkMiddleware(async (auth, req) => {
+        try {
+          const authObj = await auth();
+          return applyRateLimitAndRouteAuth(req, authObj?.userId);
+        } catch {
+          return applyRateLimitAndRouteAuth(req);
+        }
+      })
+    : null;
+
+export async function middleware(
+  request: NextRequest,
+  event?: NextFetchEvent
+): Promise<NextResponse> {
+  if (clerkHandler && event) {
+    const clerkRes = await clerkHandler(request, event);
+    return (clerkRes || NextResponse.next()) as NextResponse;
+  }
+  return applyRateLimitAndRouteAuth(request);
 }
 
 export const config = { matcher: ['/((?!_next|favicon\\.ico).*)'] };

@@ -1,19 +1,13 @@
 import type { Metadata } from 'next';
-import { Archivo_Black, Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { AuthProvider } from '@/components/auth/AuthProvider';
 import { AppShell } from '@/components/layout/AppShell';
-
-const archivoBlack = Archivo_Black({
-  weight: '400',
-  subsets: ['latin'],
-  variable: '--nb-font-heading',
-  display: 'swap',
-});
 
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--nb-font-body',
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -32,10 +26,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${archivoBlack.variable} ${inter.variable}`}>
+    <html lang="en" className={inter.variable}>
       <body>
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
         </ToastProvider>
       </body>
     </html>

@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth';
 import { authenticateScopedApiKey, type ApiKeyScope } from '@/lib/api-keys';
 import { enterTenantScope } from '@/lib/prisma-scope';
+import { isClerkEnabled } from '@/lib/auth-config';
+import { authorizeClerkDashboard } from '@/lib/clerk-auth';
 
 export type Authorization =
   | { ok: true; keyId: string | null; organizationId: string }
@@ -21,6 +23,9 @@ function hasApiKey(request: Request): boolean {
  * Prisma call in this request is tenant-filtered.
  */
 async function authorizeDashboard(request: Request): Promise<Authorization> {
+  if (isClerkEnabled()) {
+    return await authorizeClerkDashboard(request);
+  }
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return { ok: false, status: 401, error: 'Unauthorized' };
   if (!session.user.emailVerified) {

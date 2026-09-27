@@ -5,24 +5,24 @@
   z-index: 2000;
   display: flex;
   flex-direction: column-reverse;
-  gap: 12px;
+  gap: var(--ui-space-3);
   max-width: calc(100vw - 48px);
 }
 
 .toast {
-  border: var(--nb-border);
-  box-shadow: var(--nb-shadow-md);
-  padding: 12px 20px;
-  border-radius: var(--nb-radius);
+  border: var(--ui-hairline);
+  box-shadow: var(--ui-shadow-md);
+  padding: var(--ui-space-3) var(--ui-space-5);
+  border-radius: var(--ui-radius);
   min-width: 300px;
   max-width: 420px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: var(--ui-space-3);
   animation: toastIn 0.2s ease-out;
-  background-color: var(--nb-white);
-  color: var(--nb-black);
+  background-color: var(--ui-white);
+  color: var(--ui-text);
 }
 
 .toast.leaving {
@@ -30,49 +30,49 @@
 }
 
 .success {
-  border-color: var(--nb-green);
+  border-color: var(--ui-success);
 }
 
 .error {
-  border-color: var(--nb-pink);
+  border-color: var(--ui-danger);
 }
 
 .info {
-  border-color: var(--nb-blue);
+  border-color: var(--ui-accent);
 }
 
 .warning {
-  border-color: var(--nb-orange);
+  border-color: var(--ui-warning);
 }
 
 .message {
-  font-size: var(--nb-text-sm);
+  font-size: var(--ui-text-sm);
   font-weight: 600;
   line-height: 1.4;
 }
 
 .dismiss {
   background: none;
-  border: 2px solid var(--nb-black);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   width: 26px;
   height: 26px;
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
-  transition: var(--nb-transition);
+  transition: var(--ui-transition);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--nb-white);
+  background-color: var(--ui-white);
 }
 
 .dismiss:hover {
-  background-color: var(--nb-pink);
-  color: var(--nb-white);
+  background-color: var(--ui-danger);
+  color: var(--ui-white);
   transform: translate(-1px, -1px);
-  box-shadow: var(--nb-shadow-sm);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 @keyframes toastIn {

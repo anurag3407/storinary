@@ -1,25 +1,27 @@
 .dropzone {
-  border: 3px dashed var(--nb-black);
-  background-color: var(--nb-white);
-  border-radius: var(--nb-radius);
-  padding: 60px 40px;
+  border: 2px dashed var(--ui-border-strong);
+  background-color: var(--ui-surface);
+  border-radius: var(--ui-radius-lg);
+  padding: var(--ui-space-12) var(--ui-space-8);
   text-align: center;
   cursor: pointer;
-  transition: var(--nb-transition);
-  box-shadow: var(--nb-shadow-md);
+  transition: var(--ui-transition);
+  box-shadow: var(--ui-shadow-sm);
   outline: none;
 }
 
 .dropzone:hover {
-  box-shadow: var(--nb-shadow-lg);
-  transform: translate(-1px, -1px);
+  border-color: var(--ui-border-active);
+  background-color: var(--ui-surface-hover);
+  box-shadow: var(--ui-shadow-md);
+  transform: none;
 }
 
 .dragging {
-  border: 3px solid var(--nb-black);
-  background-color: var(--nb-yellow);
-  transform: scale(1.01);
-  box-shadow: var(--nb-shadow-lg);
+  border: 2px dashed var(--ui-accent);
+  background-color: var(--ui-accent-soft);
+  box-shadow: 0 0 0 3px var(--ui-accent-soft);
+  transform: none;
 }
 
 .disabled {
@@ -33,32 +35,31 @@
 }
 
 .title {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-xl);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-xl);
   margin-bottom: 4px;
 }
 
 .subtitle {
-  font-size: var(--nb-text-base);
-  color: #666;
+  font-size: var(--ui-text-base);
+  color: var(--ui-text-muted);
   margin-bottom: 12px;
 }
 
 .formats {
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #666;
-  background-color: var(--nb-bg);
-  border: 2px solid var(--nb-black);
+  color: var(--ui-text-muted);
+  background-color: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   display: inline-block;
-  padding: 6px 12px;
+  padding: var(--ui-space-2) var(--ui-space-3);
 }
 
 @media (max-width: 768px) {
   .dropzone {
-    padding: 40px 20px;
+    padding: var(--ui-space-8) var(--ui-space-5);
   }
 }

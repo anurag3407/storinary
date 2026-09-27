@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { middleware } from './middleware';
 import { resetRateLimits } from '@/lib/rate-limit';
@@ -237,6 +237,45 @@ describe('middleware', () => {
         makeRequest('/api/serve/2024/01/a.webp', {})
       );
       expect(res.status).toBe(200);
+    });
+
+    describe('when isclerk=true', () => {
+      const originalEnv = { ...process.env };
+      beforeEach(() => {
+        process.env.isclerk = 'true';
+      });
+      afterEach(() => {
+        process.env = { ...originalEnv };
+      });
+
+      it('rejects protected API routes when Clerk session is missing', async () => {
+        const res = await middleware(makeRequest('/api/stats'));
+        expect(res.status).toBe(401);
+      });
+
+      it('allows access to protected API routes when Clerk __session cookie is present', async () => {
+        const res = await middleware(
+          makeRequest('/api/stats', {
+            headers: { cookie: '__session=valid-clerk-token' },
+          })
+        );
+        expect(res.status).toBe(200);
+      });
+
+      it('redirects protected pages to /login when Clerk session is missing', async () => {
+        const res = await middleware(makeRequest('/upload'));
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toBe('http://localhost/login?next=%2Fupload');
+      });
+
+      it('allows access to protected pages when Clerk __session cookie is present', async () => {
+        const res = await middleware(
+          makeRequest('/upload', {
+            headers: { cookie: '__session=valid-clerk-token' },
+          })
+        );
+        expect(res.status).toBe(200);
+      });
     });
   });
 });

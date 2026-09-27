@@ -1,6 +1,15 @@
 import type { NextConfig } from 'next';
 
+const isClerk =
+  (process.env.isclerk || process.env.IS_CLERK || '').trim().toLowerCase() === 'true';
+const isResend =
+  (process.env.isresend || process.env.IS_RESEND || '').trim().toLowerCase() === 'true';
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_IS_CLERK: String(isClerk),
+    NEXT_PUBLIC_IS_RESEND: String(isResend),
+  },
   // Allow images from storage providers & external sources
   images: {
     remotePatterns: [
@@ -22,7 +31,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['sharp'],
+  serverExternalPackages: ['sharp', 'resend', 'nodemailer'],
 
   // Allow large uploads via server actions
   experimental: {
@@ -48,7 +57,7 @@ const nextConfig: NextConfig = {
       const externals = Array.isArray(config.externals)
         ? config.externals
         : [];
-      externals.push('@imgly/background-removal', 'nodemailer');
+      externals.push('@imgly/background-removal', 'nodemailer', 'resend');
       config.externals = externals;
     }
     return config;

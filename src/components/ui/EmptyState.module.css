@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: var(--ui-space-12) var(--ui-space-5);
   text-align: center;
 }
 
@@ -13,14 +13,14 @@
 }
 
 .title {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-2xl);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-2xl);
   margin-bottom: 8px;
 }
 
 .description {
-  font-size: var(--nb-text-base);
-  color: #666;
+  font-size: var(--ui-text-base);
+  color: var(--ui-text-muted);
   margin-bottom: 24px;
   max-width: 400px;
 }

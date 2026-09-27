@@ -1,40 +1,45 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background-color: var(--nb-yellow);
-  color: var(--nb-black);
-  border: 2px solid var(--nb-black);
-  border-radius: 2px;
-  box-shadow: var(--nb-shadow-sm);
-  line-height: 1.4;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-1) var(--ui-space-3);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  letter-spacing: 0.01em;
+  background-color: var(--ui-neutral-soft);
+  color: var(--ui-neutral-text);
+  border: 1px solid var(--ui-neutral-border);
+  border-radius: var(--ui-radius-full);
+  white-space: nowrap;
+  line-height: 1.5;
 }
 
 .default {
-  background-color: var(--nb-yellow);
-  color: var(--nb-black);
+  background-color: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
+  border-color: var(--ui-accent-border);
 }
 
 .success {
-  background-color: var(--nb-green);
-  color: var(--nb-black);
+  background-color: var(--ui-success-soft);
+  color: var(--ui-success-text);
+  border-color: var(--ui-success-border);
 }
 
 .danger {
-  background-color: var(--nb-pink);
-  color: var(--nb-white);
+  background-color: var(--ui-danger-soft);
+  color: var(--ui-danger-text);
+  border-color: var(--ui-danger-border);
 }
 
 .info {
-  background-color: var(--nb-blue);
-  color: var(--nb-white);
+  background-color: var(--ui-info-soft);
+  color: var(--ui-info-text);
+  border-color: var(--ui-info-border);
 }
 
 .warning {
-  background-color: var(--nb-orange);
-  color: var(--nb-black);
+  background-color: var(--ui-warning-soft);
+  color: var(--ui-warning-text);
+  border-color: var(--ui-warning-border);
 }

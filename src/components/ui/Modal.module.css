@@ -1,20 +1,20 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(12, 10, 9, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: var(--ui-space-5);
 }
 
 .modal {
-  background-color: var(--nb-white);
-  border: 4px solid var(--nb-black);
-  border-radius: var(--nb-radius);
-  box-shadow: 10px 10px 0px 0px var(--nb-black);
-  padding: 32px;
+  background-color: var(--ui-white);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-sm);
+  padding: var(--ui-space-8);
   max-width: 480px;
   width: 100%;
   position: relative;
@@ -27,14 +27,14 @@
   right: 12px;
   width: 32px;
   height: 32px;
-  background-color: var(--nb-pink);
-  color: var(--nb-white);
-  border: 2px solid var(--nb-black);
+  background-color: var(--ui-danger);
+  color: var(--ui-white);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   font-weight: bold;
   font-size: 14px;
   cursor: pointer;
-  transition: var(--nb-transition);
+  transition: var(--ui-transition);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,29 +43,28 @@
 
 .closeButton:hover {
   transform: translate(-1px, -1px);
-  box-shadow: var(--nb-shadow-sm);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .closeButton:active {
-  transform: translate(2px, 2px);
-  box-shadow: var(--nb-shadow-none);
+  box-shadow: var(--ui-shadow-none);
 }
 
 .title {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-2xl);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-2xl);
   margin-bottom: 12px;
-  padding-right: 32px;
+  padding-right: var(--ui-space-8);
 }
 
 .body {
   margin-bottom: 24px;
-  font-size: var(--nb-text-base);
+  font-size: var(--ui-text-base);
 }
 
 .actions {
   display: flex;
-  gap: 12px;
+  gap: var(--ui-space-3);
   justify-content: flex-end;
   flex-wrap: wrap;
 }

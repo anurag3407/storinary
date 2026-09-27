@@ -1,21 +1,21 @@
 .toolbar {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-lg);
-  padding: var(--nb-space-4);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-lg);
+  padding: var(--ui-space-4);
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--ui-space-3);
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--nb-space-6);
+  margin-bottom: var(--ui-space-6);
 }
 
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--ui-space-3);
   align-items: center;
 }
 
@@ -26,25 +26,24 @@
 .right {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--ui-space-3);
   align-items: center;
 }
 
 .selectedInfo {
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
-  background-color: var(--nb-yellow);
-  border: 2px solid var(--nb-black);
+  background-color: var(--ui-accent);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 2px;
-  box-shadow: var(--nb-shadow-sm);
-  padding: 4px 12px;
+  box-shadow: var(--ui-shadow-sm);
+  padding: var(--ui-space-1) var(--ui-space-3);
 }
 
 .showing {
-  font-size: var(--nb-text-xs);
-  color: #666;
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-muted);
   font-weight: 600;
 }
 

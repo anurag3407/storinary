@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { CreateWorkspaceModal } from '@/components/layout/CreateWorkspaceModal';
 import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { CompressionSelector } from '@/components/upload/CompressionSelector';
@@ -141,6 +142,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { copy } = useClipboard();
+  const { signOut: authSignOut, isClerk } = useAppAuth();
 
   const [activeOrg, setActiveOrg] = useState<ActiveOrgData | null>(null);
   const [loadingOrg, setLoadingOrg] = useState(true);
@@ -577,7 +579,11 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     try {
-      await authClient.signOut();
+      if (isClerk) {
+        await authSignOut();
+      } else {
+        await authClient.signOut();
+      }
     } finally {
       router.push('/login');
       router.refresh();

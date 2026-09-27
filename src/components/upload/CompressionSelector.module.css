@@ -1,92 +1,91 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--nb-space-4);
+  gap: var(--ui-space-4);
   grid-column: 1 / -1;
-  background-color: #faf9f6;
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  padding: var(--nb-space-4);
-  box-shadow: var(--nb-shadow-sm);
+  background-color: var(--ui-bg-subtle);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  padding: var(--ui-space-4);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ui-space-1);
 }
 
 .headerTitleRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--ui-space-3);
   flex-wrap: wrap;
 }
 
 .sectionLabel {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-sm);
-  text-transform: uppercase;
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-sm);
   letter-spacing: 0.5px;
-  color: var(--nb-black);
+  color: var(--ui-text);
 }
 
 .sectionSubtitle {
-  font-size: var(--nb-text-xs);
-  color: #666;
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-muted);
 }
 
 .statusBadge {
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 700;
-  padding: 4px 10px;
-  border: 2px solid var(--nb-black);
+  padding: var(--ui-space-1) var(--ui-space-3);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 999px;
-  box-shadow: 2px 2px 0px 0px var(--nb-black);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .tierHigh {
-  background-color: #ffd1d1;
-  color: #900;
+  background-color: var(--ui-danger-soft);
+  color: var(--ui-danger-text);
 }
 
 .tierBalanced {
-  background-color: var(--nb-yellow);
-  color: var(--nb-black);
+  background-color: var(--ui-accent);
+  color: var(--ui-text-inverse);
 }
 
 .tierLow {
-  background-color: #bbf2f6;
-  color: #004d61;
+  background-color: var(--ui-info-soft);
+  color: var(--ui-info-text);
 }
 
 /* ─── Preset Cards Grid ─── */
 .presetGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--nb-space-3);
+  gap: var(--ui-space-3);
 }
 
 .presetCard {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  padding: 12px 10px;
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  padding: var(--ui-space-3) var(--ui-space-3);
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ui-space-1);
   cursor: pointer;
-  box-shadow: var(--nb-shadow-sm);
-  transition: var(--nb-transition);
+  box-shadow: var(--ui-shadow-sm);
+  transition: var(--ui-transition);
   position: relative;
 }
 
 .presetCard:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--nb-shadow-md);
-  background-color: #fffde7;
+  transform: translate(-1px, -1px);
+  box-shadow: var(--ui-shadow-md);
+  background-color: var(--ui-surface-hover);
 }
 
 .presetCard:disabled {
@@ -95,16 +94,27 @@
   transform: none;
 }
 
-.presetCardActive {
-  background-color: var(--nb-yellow) !important;
-  transform: translate(-2px, -2px);
-  box-shadow: var(--nb-shadow-md);
+.presetCardActive,
+.presetCardActive:hover:not(:disabled) {
+  background-color: var(--ui-surface) !important;
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-soft);
+  transform: none;
+}
+
+.presetCardActive .presetTitle {
+  color: var(--ui-accent-text);
+}
+
+.presetCardActive .presetReduction {
+  background-color: var(--ui-accent-soft);
+  color: var(--ui-accent-text);
 }
 
 .presetTop {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ui-space-2);
 }
 
 .presetIcon {
@@ -112,38 +122,37 @@
 }
 
 .presetTitle {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-xs);
-  color: var(--nb-black);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text);
 }
 
 .presetReduction {
   font-size: 0.7rem;
   font-weight: 800;
-  text-transform: uppercase;
-  color: #000;
+  color: var(--ui-text);
   background-color: rgba(0, 0, 0, 0.06);
-  padding: 2px 6px;
+  padding: 2px var(--ui-space-2);
   border-radius: 4px;
   width: fit-content;
 }
 
 .presetDesc {
   font-size: 0.68rem;
-  color: #444;
+  color: var(--ui-text);
   line-height: 1.25;
   margin-top: 2px;
 }
 
 /* ─── Slider & Number Section ─── */
 .sliderSection {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  padding: var(--nb-space-4);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  padding: var(--ui-space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--nb-space-3);
+  gap: var(--ui-space-3);
 }
 
 .sliderHeader {
@@ -151,28 +160,28 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--ui-space-2);
 }
 
 .label {
-  font-family: var(--nb-font-heading);
-  font-size: var(--nb-text-sm);
-  color: var(--nb-black);
+  font-family: var(--ui-font-heading);
+  font-size: var(--ui-text-sm);
+  color: var(--ui-text);
 }
 
 .numericInputWrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
 }
 
 .reductionPill {
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 700;
-  background-color: #eee;
-  border: 1.5px solid var(--nb-black);
+  background-color: var(--ui-surface-inset);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
-  padding: 2px 8px;
+  padding: 2px var(--ui-space-2);
 }
 
 .numberInput {
@@ -184,19 +193,19 @@
 
 .percentSymbol {
   font-weight: 800;
-  font-size: var(--nb-text-sm);
-  color: var(--nb-black);
+  font-size: var(--ui-text-sm);
+  color: var(--ui-text);
 }
 
 .sliderControl {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ui-space-1);
 }
 
 .rangeInput {
   width: 100%;
-  accent-color: var(--nb-black);
+  accent-color: var(--ui-accent);
   cursor: pointer;
   height: 8px;
 }
@@ -211,17 +220,17 @@
   justify-content: space-between;
   font-size: 0.65rem;
   font-weight: 700;
-  color: #777;
+  color: var(--ui-text-subtle);
 }
 
 .hintBox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background-color: #f3f3f3;
-  border-left: 3px solid var(--nb-black);
-  padding: 8px 12px;
-  border-radius: 0 4px 4px 0;
+  gap: var(--ui-space-2);
+  background-color: var(--ui-bg-subtle);
+  border-left: 2px solid var(--ui-accent);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  border-radius: 0 var(--ui-radius) var(--ui-radius) 0;
 }
 
 .hintIcon {
@@ -229,8 +238,8 @@
 }
 
 .hintText {
-  font-size: var(--nb-text-xs);
-  color: #333;
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text);
   line-height: 1.4;
 }
 

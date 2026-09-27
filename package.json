@@ -33,6 +33,7 @@
     "vercel-build": "node scripts/vercel-build.js"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.7",
     "@imgly/background-removal": "^1.7.0",
     "@prisma/client": "^6.0.0",
     "@supabase/supabase-js": "^2.45.0",
@@ -45,6 +46,7 @@
     "nodemailer": "^10.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.30.0",
     "sharp": "^0.33.0"
   },
   "devDependencies": {

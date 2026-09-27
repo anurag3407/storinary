@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
+import { UserButton } from '@clerk/nextjs';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
@@ -24,6 +26,12 @@ export function Sidebar() {
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [activeOrgId, setActiveOrgId] = useState<string>('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const {
+    organizations: authOrgs,
+    activeOrganizationId: authActiveOrgId,
+    setActiveOrganization,
+    isClerk,
+  } = useAppAuth();
 
   // Toggle from Header hamburger (mobile)
   useEffect(() => {
@@ -39,6 +47,16 @@ export function Sidebar() {
 
   // Load organizations for workspace selector
   useEffect(() => {
+    if (isClerk) {
+      if (authOrgs && authOrgs.length > 0) {
+        setOrganizations(authOrgs);
+      }
+      if (authActiveOrgId) {
+        setActiveOrgId(authActiveOrgId);
+      }
+      return;
+    }
+
     void (async () => {
       try {
         const [orgsRes, sessionRes] = await Promise.all([
@@ -56,7 +74,7 @@ export function Sidebar() {
         /* auth unavailable */
       }
     })();
-  }, [pathname]);
+  }, [pathname, isClerk, authOrgs, authActiveOrgId]);
 
   const handleSelectWorkspace = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -66,9 +84,13 @@ export function Sidebar() {
     }
     if (val && val !== activeOrgId) {
       try {
-        await authClient.organization.setActive({ organizationId: val });
-        setActiveOrgId(val);
-        window.location.reload();
+        if (isClerk) {
+          await setActiveOrganization(val);
+        } else {
+          await authClient.organization.setActive({ organizationId: val });
+          setActiveOrgId(val);
+          window.location.reload();
+        }
       } catch (err) {
         console.error('Failed to switch workspace:', err);
       }
@@ -194,6 +216,12 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {isClerk && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem 1rem', borderTop: '1px solid var(--border-color, #e5e7eb)' }}>
+            <UserButton showName />
+          </div>
+        )}
 
         <div className={styles.storageBox}>
           <div className={styles.storageHeader}>

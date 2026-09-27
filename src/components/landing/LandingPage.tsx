@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
 import styles from './LandingPage.module.css';
 
 interface TransformationPreset {
@@ -132,7 +132,7 @@ curl -X POST https://storinary.sayalabs.in/api/v1_1/sayalabs/image/upload \\
 };
 
 export function LandingPage() {
-  const { data: session } = authClient.useSession();
+  const { session } = useAppAuth();
   const [activePreset, setActivePreset] = useState<TransformationPreset>(PRESETS[1]);
   const [activeCodeTab, setActiveCodeTab] = useState<'nextjs' | 'sdk' | 'curl' | 'migrate'>('nextjs');
   const [copiedUrl, setCopiedUrl] = useState(false);

@@ -1,15 +1,15 @@
 .card {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-lg);
-  padding: 24px;
-  margin-bottom: var(--nb-space-8);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-lg);
+  padding: var(--ui-space-6);
+  margin-bottom: var(--ui-space-8);
 }
 
 .title {
-  font-size: var(--nb-text-xl);
-  margin-bottom: var(--nb-space-4);
+  font-size: var(--ui-text-xl);
+  margin-bottom: var(--ui-space-4);
 }
 
 .list {
@@ -19,11 +19,11 @@
 .row {
   display: flex;
   align-items: center;
-  gap: var(--nb-space-4);
-  padding: 12px 8px;
-  border-bottom: 2px solid var(--nb-bg);
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-3) var(--ui-space-2);
+  border-bottom: 2px solid var(--ui-bg);
   border-radius: 4px;
-  transition: var(--nb-transition);
+  transition: var(--ui-transition);
 }
 
 .row:last-child {
@@ -31,17 +31,17 @@
 }
 
 .row:hover {
-  background-color: var(--nb-bg);
+  background-color: var(--ui-bg);
 }
 
 .thumb {
   width: 40px;
   height: 40px;
   object-fit: cover;
-  border: 2px solid var(--nb-black);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   flex-shrink: 0;
-  background-color: var(--nb-bg);
+  background-color: var(--ui-bg);
 }
 
 .info {
@@ -59,8 +59,8 @@
 }
 
 .meta {
-  font-size: var(--nb-text-xs);
-  color: #666;
+  font-size: var(--ui-text-xs);
+  color: var(--ui-text-muted);
 }
 
 .arrow {
@@ -70,25 +70,25 @@
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  font-size: var(--nb-text-lg);
+  font-size: var(--ui-text-lg);
   font-weight: 700;
-  background-color: var(--nb-yellow);
-  color: var(--nb-black);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-sm);
+  background-color: var(--ui-accent);
+  color: var(--ui-text-inverse);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-sm);
   text-decoration: none;
-  transition: var(--nb-transition);
+  transition: var(--ui-transition);
 }
 
 .arrow:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--nb-shadow-md);
-  background-color: var(--nb-yellow);
-  color: var(--nb-black);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--ui-shadow-md);
+  background-color: var(--ui-accent);
+  color: var(--ui-text-inverse);
 }
 
 .empty {
-  color: #666;
-  font-size: var(--nb-text-base);
+  color: var(--ui-text-muted);
+  font-size: var(--ui-text-base);
 }

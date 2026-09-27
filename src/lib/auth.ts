@@ -18,16 +18,24 @@ const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
  * `next build` can run in CI before secrets are provisioned; Better Auth
  * itself refuses to issue sessions without a valid secret.
  */
+import { isResendEnabled } from '@/lib/auth-config';
+
 function assertAuthConfig(): void {
   if (process.env.NODE_ENV === 'production' && !process.env.BETTER_AUTH_SECRET) {
     console.warn(
       '[auth] BETTER_AUTH_SECRET is not set. Sign-in and email verification will not work until it is configured.'
     );
   }
-  if (process.env.NODE_ENV === 'production' && !process.env.SMTP_HOST) {
-    console.warn(
-      '[auth] SMTP_HOST is not set. Verification, password reset, and invitation emails will fail to send.'
-    );
+  if (process.env.NODE_ENV === 'production') {
+    if (isResendEnabled() && !process.env.RESEND_API_KEY) {
+      console.warn(
+        '[auth] RESEND_API_KEY is not set while isresend=true. Verification, password reset, and invitation emails will fail to send.'
+      );
+    } else if (!isResendEnabled() && !process.env.SMTP_HOST) {
+      console.warn(
+        '[auth] SMTP_HOST is not set. Verification, password reset, and invitation emails will fail to send.'
+      );
+    }
   }
 }
 

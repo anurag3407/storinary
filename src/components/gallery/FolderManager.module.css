@@ -1,8 +1,8 @@
 .panel {
-  border: var(--nb-border);
-  box-shadow: var(--nb-shadow-lg);
+  border: var(--ui-hairline);
+  box-shadow: var(--ui-shadow-lg);
   background: white;
-  padding: var(--nb-space-4);
+  padding: var(--ui-space-4);
 }
 
 .header {
@@ -13,13 +13,13 @@
 
 .header h2 {
   margin: 0;
-  font-family: var(--nb-font-heading);
+  font-family: var(--ui-font-heading);
 }
 
 .list {
   display: grid;
-  gap: var(--nb-space-3);
-  margin-top: var(--nb-space-4);
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-4);
   padding: 0;
   list-style: none;
 }
@@ -28,7 +28,7 @@
   display: grid;
   grid-template-columns: minmax(140px, 0.8fr) minmax(160px, 0.8fr) auto;
   align-items: center;
-  gap: var(--nb-space-3);
+  gap: var(--ui-space-3);
 }
 
 .path {
@@ -43,7 +43,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--nb-space-2);
+  gap: var(--ui-space-2);
 }
 
 .actions input {

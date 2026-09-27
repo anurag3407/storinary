@@ -1,22 +1,22 @@
 .card {
-  background-color: var(--nb-white);
-  border: var(--nb-border);
-  border-radius: var(--nb-radius);
-  box-shadow: var(--nb-shadow-lg);
-  padding: 24px;
-  margin-bottom: var(--nb-space-8);
+  background-color: var(--ui-white);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-lg);
+  padding: var(--ui-space-6);
+  margin-bottom: var(--ui-space-8);
 }
 
 .title {
-  font-size: var(--nb-text-xl);
-  margin-bottom: var(--nb-space-5);
+  font-size: var(--ui-text-xl);
+  margin-bottom: var(--ui-space-5);
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: var(--nb-space-4);
-  margin-bottom: var(--nb-space-3);
+  gap: var(--ui-space-4);
+  margin-bottom: var(--ui-space-3);
 }
 
 .row:last-child {
@@ -26,15 +26,15 @@
 .label {
   width: 72px;
   flex-shrink: 0;
-  font-size: var(--nb-text-xs);
+  font-size: var(--ui-text-xs);
   font-weight: 700;
   letter-spacing: 0.5px;
 }
 
 .barContainer {
   flex: 1;
-  background-color: var(--nb-bg);
-  border: 2px solid var(--nb-black);
+  background-color: var(--ui-bg);
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   height: 24px;
   overflow: hidden;
@@ -49,6 +49,6 @@
   width: 48px;
   flex-shrink: 0;
   text-align: right;
-  font-size: var(--nb-text-sm);
+  font-size: var(--ui-text-sm);
   font-weight: 700;
 }

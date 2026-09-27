@@ -1,20 +1,20 @@
 .pagination {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: var(--ui-space-2);
   align-items: center;
   flex-wrap: wrap;
-  margin-top: var(--nb-space-6);
+  margin-top: var(--ui-space-6);
 }
 
 .ellipsis {
-  padding: 8px;
+  padding: var(--ui-space-2);
   font-weight: 700;
   user-select: none;
 }
 
 @media (max-width: 768px) {
   .pagination {
-    gap: 6px;
+    gap: var(--ui-space-2);
   }
 }

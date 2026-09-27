@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { useAppAuth } from '@/components/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import styles from './onboarding.module.css';
 
@@ -16,8 +17,28 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const {
+    isLoaded: authLoaded,
+    isSignedIn,
+    organizations: authOrgs,
+    createOrganization: authCreateOrg,
+    setActiveOrganization: authSetActiveOrg,
+    isClerk,
+  } = useAppAuth();
 
   useEffect(() => {
+    if (isClerk) {
+      if (authLoaded) {
+        if (!isSignedIn) {
+          router.replace('/login?next=/onboarding');
+          return;
+        }
+        setOrganizations(authOrgs);
+        setLoading(false);
+      }
+      return;
+    }
+
     void (async () => {
       try {
         const session = await authClient.getSession();
@@ -33,7 +54,7 @@ export default function OnboardingPage() {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, isClerk, authLoaded, isSignedIn, authOrgs]);
 
   const generateSlug = (val: string) => {
     return val
@@ -72,6 +93,18 @@ export default function OnboardingPage() {
     }
 
     try {
+      if (isClerk) {
+        const created = await authCreateOrg({ name: name.trim(), slug: finalSlug });
+        if (created) {
+          router.replace('/');
+          return;
+        } else {
+          setError('Could not create workspace with Clerk');
+          setCreating(false);
+          return;
+        }
+      }
+
       const result = await authClient.organization.create({
         name: name.trim(),
         slug: finalSlug,
@@ -97,6 +130,12 @@ export default function OnboardingPage() {
   const handleSelectExisting = async (orgId: string) => {
     setLoading(true);
     try {
+      if (isClerk) {
+        await authSetActiveOrg(orgId);
+        router.replace('/');
+        return;
+      }
+
       await authClient.organization.setActive({ organizationId: orgId });
       router.replace('/');
     } catch {
