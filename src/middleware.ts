@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie } from 'better-auth/cookies';
 import { checkRateLimit, getRateLimitRule } from '@/lib/rate-limit';
+
+function getSessionToken(request: NextRequest): string | null {
+  return (
+    request.cookies.get('__Secure-storinary.session_token')?.value ||
+    request.cookies.get('storinary.session_token')?.value ||
+    request.cookies.get('__Secure-storinary-session_token')?.value ||
+    request.cookies.get('storinary-session_token')?.value ||
+    null
+  );
+}
 
 const PROTECTED_PAGES = ['/', '/upload', '/gallery', '/videos', '/settings', '/onboarding'];
 const PUBLIC_API = [
@@ -43,7 +52,7 @@ export async function middleware(request: NextRequest) {
   if (!PUBLIC_API.some((pattern) => pattern.test(pathname))) {
     // Optimistic redirect only. Every API route still validates the Better
     // Auth session, email verification, membership, and active organization.
-    const sessionCookie = getSessionCookie(request, { cookiePrefix: 'storinary' });
+    const sessionCookie = getSessionToken(request);
     if (!sessionCookie) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

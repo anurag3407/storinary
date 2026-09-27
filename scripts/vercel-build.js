@@ -68,7 +68,12 @@ execSync('npx prisma generate --schema prisma/postgres/schema.prisma', {
 });
 
 console.log('🏗️ Building Next.js application...');
-execSync('npx next build', {
-  stdio: 'inherit',
-  env: process.env,
-});
+try {
+  execSync('npx next build', {
+    stdio: 'inherit',
+    env: process.env,
+  });
+} catch (err) {
+  console.error('❌ Next.js build failed:', err.message);
+  process.exit(1);
+}
