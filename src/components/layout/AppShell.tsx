@@ -1,13 +1,23 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { authClient } from '@/lib/auth-client';
 import { Sidebar } from '@/components/layout/Sidebar';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLandingOrLogin = pathname === '/login' || pathname === '/onboarding';
+  const { data: session } = authClient.useSession();
 
-  if (isLandingOrLogin) {
+  const isStandalone =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
+    pathname === '/landing' ||
+    pathname.startsWith('/accept-invitation') ||
+    (pathname === '/' && !session);
+
+  if (isStandalone) {
     return <div className="standalone-layout">{children}</div>;
   }
 

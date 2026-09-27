@@ -90,7 +90,15 @@ export function Sidebar() {
   }, [pathname]);
 
   // Hide sidebar on standalone landing / login / onboarding page
-  if (pathname === '/login' || pathname === '/onboarding') {
+  const isStandalone =
+    pathname === '/login' ||
+    pathname === '/onboarding' ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
+    pathname === '/landing' ||
+    pathname.startsWith('/accept-invitation');
+
+  if (isStandalone) {
     return null;
   }
 

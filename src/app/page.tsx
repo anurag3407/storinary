@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -9,31 +8,29 @@ import { DeliveryAnalyticsPanel } from '@/components/dashboard/DeliveryAnalytics
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { LandingPage } from '@/components/landing/LandingPage';
 import { getStats } from '@/lib/stats';
-import { getTenantId, TenantContextError } from '@/lib/tenant';
+import { getTenantIdOrNull } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
-  title: 'Dashboard',
+  title: 'Storinary — The Zero-Cost Cloudinary Alternative',
   description:
-    'Overview of your image CDN. View real storage stats, recent uploads, and delivery analytics.',
+    'Free, self-hosted Cloudinary alternative for Sayalabs. Bulk upload, transform, and serve images from Appwrite or Supabase Storage.',
 };
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
-  try {
-    await getTenantId();
-  } catch (error) {
-    if (error instanceof TenantContextError) {
-      redirect('/onboarding');
-    }
-    throw error;
+export default async function IndexPage() {
+  const tenantId = await getTenantIdOrNull();
+
+  // If visitor is unauthenticated, present the SaaS Landing Page
+  if (!tenantId) {
+    return <LandingPage />;
   }
 
   let stats: StatsResponse | null = null;
-
   try {
     stats = await getStats();
   } catch (error) {
@@ -75,7 +72,9 @@ export default async function DashboardPage() {
               <Button icon="⬆️">Upload Image</Button>
             </Link>
             <Link href="/videos">
-              <Button variant="secondary" icon="🎬">Video Library</Button>
+              <Button variant="secondary" icon="🎬">
+                Video Library
+              </Button>
             </Link>
           </div>
         }

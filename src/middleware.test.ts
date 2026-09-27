@@ -193,12 +193,9 @@ describe('middleware', () => {
       );
     });
 
-    it('redirects the root path with next=%2F', async () => {
+    it('allows public access to the root landing page', async () => {
       const res = await middleware(makeRequest('/'));
-      expect(res.status).toBe(307);
-      expect(res.headers.get('location')).toBe(
-        'http://localhost/login?next=%2F'
-      );
+      expect(res.status).toBe(200);
     });
 
     it('redirects image detail pages too', async () => {

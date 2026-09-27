@@ -11,7 +11,7 @@ function getSessionToken(request: NextRequest): string | null {
   );
 }
 
-const PROTECTED_PAGES = ['/', '/upload', '/gallery', '/videos', '/settings', '/onboarding'];
+const PROTECTED_PAGES = ['/upload', '/gallery', '/videos', '/settings', '/onboarding'];
 const PUBLIC_API = [
   /^\/api\/auth\//,
   /^\/api\/serve\//,
