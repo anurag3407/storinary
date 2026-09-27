@@ -153,7 +153,7 @@ describe('GET /api/videos/:id/poster', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/png');
-    expect(transformCache.get('videos/posters/video-1.webp?w=120&fmt=png')).toEqual({
+    expect(transformCache.get('videos/posters/video-1.webp?w=120&fmt=png')).toMatchObject({
       buffer: Buffer.from('disk'),
       contentType: 'image/png',
     });

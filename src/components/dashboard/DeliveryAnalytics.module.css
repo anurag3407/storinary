@@ -196,6 +196,149 @@
   padding: 8px 0;
 }
 
+.cacheCard {
+  margin-top: var(--nb-space-5);
+  border: 2px solid var(--nb-black);
+  border-radius: 8px;
+  background: #f0fdf4;
+  padding: 16px 20px;
+  box-shadow: var(--nb-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cacheHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cacheTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cacheBadge {
+  background: #22c55e;
+  color: #ffffff;
+  font-family: var(--nb-font-heading);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1.5px solid var(--nb-black);
+}
+
+.cacheRatio {
+  font-family: var(--nb-font-heading);
+  font-size: var(--nb-text-lg);
+  color: var(--nb-black);
+}
+
+.cacheSubtitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.cacheMeterContainer {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border: 1.5px solid var(--nb-black);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.cacheMeter {
+  height: 100%;
+  background: #22c55e;
+  transition: width 0.4s ease;
+}
+
+.cacheBreakdown {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.cacheStat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cacheDotMemory {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 1px solid var(--nb-black);
+}
+
+.cacheDotDisk {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 1px solid var(--nb-black);
+}
+
+.cacheDotMiss {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #eab308;
+  border: 1px solid var(--nb-black);
+}
+
+.cacheStatLabel {
+  font-weight: 700;
+  color: #444;
+}
+
+.cacheStatVal {
+  font-weight: 800;
+  color: var(--nb-black);
+}
+
+.itemInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.itemCachedBadge {
+  font-size: 10px;
+  font-weight: 800;
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+.itemStats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.itemBytes {
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
+}
+
 .errorBox {
   margin-top: 16px;
   background: #ffe5e5;

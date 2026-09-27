@@ -82,4 +82,69 @@ describe('TransformCache', () => {
     cache.clear();
     expect(cache.stats()).toEqual({ entries: 0, bytes: 0 });
   });
+
+  it('automatically computes ETag on set if omitted', () => {
+    const cache = new TransformCache(10, 1024);
+    cache.set('img', { buffer: Buffer.from('image-bytes'), contentType: 'image/png' });
+    const entry = cache.get('img');
+    expect(entry?.etag).toMatch(/^"[a-f0-9]{32}"$/);
+  });
+});
+
+describe('HTTP 304 and ETag helpers', () => {
+  it('correctly validates matching and non-matching ETags', async () => {
+    const { computeEtag, isNotModified } = await import('./transform-cache');
+    const etag = computeEtag(Buffer.from('hello-world'));
+    
+    // Exact match
+    const req1 = new Request('http://localhost', { headers: { 'if-none-match': etag } });
+    expect(isNotModified(req1, etag)).toBe(true);
+
+    // Weak match
+    const req2 = new Request('http://localhost', { headers: { 'if-none-match': `W/${etag}` } });
+    expect(isNotModified(req2, etag)).toBe(true);
+
+    // List of tags match
+    const req3 = new Request('http://localhost', { headers: { 'if-none-match': `"other", ${etag}` } });
+    expect(isNotModified(req3, etag)).toBe(true);
+
+    // Wildcard
+    const req4 = new Request('http://localhost', { headers: { 'if-none-match': '*' } });
+    expect(isNotModified(req4, etag)).toBe(true);
+
+    // Mismatch
+    const req5 = new Request('http://localhost', { headers: { 'if-none-match': '"different"' } });
+    expect(isNotModified(req5, etag)).toBe(false);
+
+    // Header missing
+    const req6 = new Request('http://localhost');
+    expect(isNotModified(req6, etag)).toBe(false);
+  });
+});
+
+describe('coalesceTransform', () => {
+  it('coalesces concurrent requests for the same key into a single invocation', async () => {
+    const { coalesceTransform } = await import('./transform-cache');
+    let callCount = 0;
+
+    const slowFactory = async () => {
+      callCount++;
+      await new Promise((r) => setTimeout(r, 20));
+      return { buffer: Buffer.from('data'), contentType: 'image/webp' };
+    };
+
+    // Run 5 concurrent requests
+    const results = await Promise.all([
+      coalesceTransform('concurrent-key', slowFactory),
+      coalesceTransform('concurrent-key', slowFactory),
+      coalesceTransform('concurrent-key', slowFactory),
+      coalesceTransform('concurrent-key', slowFactory),
+      coalesceTransform('concurrent-key', slowFactory),
+    ]);
+
+    expect(callCount).toBe(1);
+    for (const res of results) {
+      expect(res.buffer.toString()).toBe('data');
+    }
+  });
 });

@@ -4,7 +4,14 @@ import { runWithTenantScope } from '@/lib/prisma-scope';
 import { fetchRemoteAsset } from '@/lib/remote-import';
 import { transformImage } from '@/lib/image-processing';
 import { parseCloudinaryPath } from '@/lib/cloudinary-syntax';
-import { transformCache, transformCacheKey } from '@/lib/transform-cache';
+import {
+  transformCache,
+  transformCacheKey,
+  computeEtag,
+  isNotModified,
+  createNotModifiedResponse,
+  coalesceTransform,
+} from '@/lib/transform-cache';
 import { diskCache } from '@/lib/disk-cache';
 import { hasTransformParams, parseTransformParams } from '@/lib/utils';
 import type { TransformParams } from '@/types';
@@ -28,6 +35,25 @@ const PUBLIC_CACHE_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Access-Control-Allow-Origin': '*',
 };
+
+function isAllowedFetchDomain(targetUrl: string): boolean {
+  const allowed = process.env.STORINARY_ALLOWED_FETCH_DOMAINS;
+  if (!allowed || allowed.trim() === '*' || allowed.trim() === '') return true;
+
+  try {
+    const targetHost = new URL(targetUrl).hostname.toLowerCase();
+    const domainList = allowed.split(',').map((d) => d.trim().toLowerCase());
+    return domainList.some((domain) => {
+      if (domain.startsWith('*.')) {
+        const root = domain.slice(2);
+        return targetHost === root || targetHost.endsWith('.' + root);
+      }
+      return targetHost === domain;
+    });
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Cloudinary-compatible remote fetch delivery router:
@@ -86,6 +112,10 @@ export async function GET(
       });
     }
 
+    if (!isAllowedFetchDomain(remoteUrl)) {
+      return new Response('Remote domain is not allowed for fetch', { status: 403 });
+    }
+
     const queryParams = parseTransformParams(request.nextUrl.searchParams);
     const params: TransformParams = { ...pathTransforms, ...queryParams };
     const hasTransforms = hasTransformParams(params);
@@ -95,52 +125,69 @@ export async function GET(
     // L1 cache
     const cached = transformCache.get(cacheKey);
     if (cached) {
+      const etag = cached.etag || computeEtag(cached.buffer);
+      if (isNotModified(request, etag)) {
+        return createNotModifiedResponse(etag, PUBLIC_CACHE_HEADERS);
+      }
       return new Response(new Uint8Array(cached.buffer), {
-        headers: { 'Content-Type': cached.contentType, ...PUBLIC_CACHE_HEADERS },
+        headers: { 'Content-Type': cached.contentType, ETag: etag, ...PUBLIC_CACHE_HEADERS },
       });
     }
 
     // L2 disk cache
     const diskCached = await diskCache.get(cacheKey);
     if (diskCached) {
+      const etag = diskCached.etag || computeEtag(diskCached.buffer);
       transformCache.set(cacheKey, {
         buffer: diskCached.buffer,
         contentType: diskCached.contentType,
+        etag,
       });
+      if (isNotModified(request, etag)) {
+        return createNotModifiedResponse(etag, PUBLIC_CACHE_HEADERS);
+      }
       return new Response(new Uint8Array(diskCached.buffer), {
-        headers: { 'Content-Type': diskCached.contentType, ...PUBLIC_CACHE_HEADERS },
+        headers: { 'Content-Type': diskCached.contentType, ETag: etag, ...PUBLIC_CACHE_HEADERS },
       });
     }
 
-    // Fetch remote asset safely
-    let fetched;
+    // Coalesced fetch and transform execution
+    let resultEntry: { buffer: Buffer; contentType: string; etag: string };
     try {
-      fetched = await fetchRemoteAsset(remoteUrl, ALLOWED_FORMATS, MAX_REMOTE_SIZE);
+      resultEntry = await coalesceTransform(cacheKey, async () => {
+        const fetched = await fetchRemoteAsset(remoteUrl, ALLOWED_FORMATS, MAX_REMOTE_SIZE);
+
+        let resultBuffer = fetched.buffer;
+        let contentType = fetched.contentType;
+
+        if (hasTransforms) {
+          const transformed = await transformImage(
+            fetched.buffer,
+            params,
+            undefined,
+            request.headers.get('accept')
+          );
+          resultBuffer = transformed.buffer;
+          contentType = transformed.contentType;
+        }
+
+        const etag = computeEtag(resultBuffer);
+        const entry = { buffer: resultBuffer, contentType, etag };
+        transformCache.set(cacheKey, entry);
+        diskCache.set(cacheKey, entry).catch(() => {});
+        return entry;
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch remote asset';
       return new Response(msg, { status: 502 });
     }
 
-    let resultBuffer = fetched.buffer;
-    let contentType = fetched.contentType;
-
-    if (hasTransforms) {
-      const transformed = await transformImage(
-        fetched.buffer,
-        params,
-        undefined,
-        request.headers.get('accept')
-      );
-      resultBuffer = transformed.buffer;
-      contentType = transformed.contentType;
+    if (isNotModified(request, resultEntry.etag)) {
+      return createNotModifiedResponse(resultEntry.etag, PUBLIC_CACHE_HEADERS);
     }
 
-    const entry = { buffer: resultBuffer, contentType };
-    transformCache.set(cacheKey, entry);
-    diskCache.set(cacheKey, entry).catch(() => {});
-
-    return new Response(new Uint8Array(resultBuffer), {
-      headers: { 'Content-Type': contentType, ...PUBLIC_CACHE_HEADERS },
+    return new Response(new Uint8Array(resultEntry.buffer), {
+      headers: { 'Content-Type': resultEntry.contentType, ETag: resultEntry.etag, ...PUBLIC_CACHE_HEADERS },
     });
   });
 }

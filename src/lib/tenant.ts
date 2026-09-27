@@ -76,12 +76,43 @@ export async function tenantStoragePath(organizationId: string, path: string): P
 
 /** Resolve the tenant for a public delivery path from its immutable prefix. */
 export async function resolveTenantFromPath(path: string): Promise<string> {
-  const slug = path.replace(/^\/+/, '').split('/')[0];
-  if (!slug) throw new TenantContextError('Tenant path is required');
-  const organization = await rawPrisma.organization.findUnique({
-    where: { slug },
+  const clean = path.replace(/^\/+/, '');
+  const segments = clean.split('/');
+
+  // If path is multi-segment, the first segment MUST be the organization slug
+  if (segments.length > 1) {
+    const slug = segments[0];
+    const organization = await rawPrisma.organization.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!organization) throw new TenantContextError('Organization not found');
+    return organization.id;
+  }
+
+  // Single segment path (legacy un-prefixed asset or bare slug)
+  const slug = segments[0];
+  if (slug) {
+    const organization = await rawPrisma.organization.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (organization) return organization.id;
+  }
+
+  // Check if this key exists under a legacy/existing asset
+  const legacyImage = await rawPrisma.image.findFirst({
+    where: { storagePath: clean },
+    select: { organizationId: true },
+  });
+  if (legacyImage?.organizationId) return legacyImage.organizationId;
+
+  // Fallback to legacy organization if it exists
+  const legacyOrg = await rawPrisma.organization.findUnique({
+    where: { id: 'legacy' },
     select: { id: true },
   });
-  if (!organization) throw new TenantContextError('Organization not found');
-  return organization.id;
+  if (legacyOrg) return legacyOrg.id;
+
+  throw new TenantContextError('Organization not found');
 }

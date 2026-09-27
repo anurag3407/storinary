@@ -69,9 +69,12 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
     ? `${window.location.origin}/api/serve/${cloudinaryTransformStr ? cloudinaryTransformStr + '/' : ''}${cleanPath}`
     : `/api/serve/${cloudinaryTransformStr ? cloudinaryTransformStr + '/' : ''}${cleanPath}`;
 
+  const nextJsSnippet = `<Image src="${cloudinaryUrl}" alt="Media" width={800} height={600} />`;
+
   const rows: LinkRow[] = [
     { key: 'direct', label: 'Direct URL', text: links.direct },
     { key: 'cloudinary', label: 'Cloudinary URL', text: cloudinaryUrl },
+    { key: 'nextjs', label: 'Next.js Image', text: nextJsSnippet },
     { key: 'html', label: 'HTML', text: links.html },
     { key: 'markdown', label: 'Markdown', text: links.markdown },
     { key: 'css', label: 'CSS', text: links.css },
@@ -103,7 +106,26 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
 
   return (
     <div className={styles.card}>
-      <h2 className={styles.title}>Links</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h2 className={styles.title} style={{ margin: 0 }}>Links</h2>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: '#dcfce7',
+            color: '#15803d',
+            border: '1.5px solid #22c55e',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontWeight: 800,
+            padding: '2px 8px',
+          }}
+          title="Assets are served with immutable 1-year cache headers and edge CDN caching."
+        >
+          ⚡ Edge Cached & Ready
+        </span>
+      </div>
       <div className={styles.rows}>
         {rows.map((row) => (
           <div key={row.key} className={styles.row}>

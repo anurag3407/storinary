@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { CreateWorkspaceModal } from '@/components/layout/CreateWorkspaceModal';
 import { authClient } from '@/lib/auth-client';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
@@ -143,6 +144,7 @@ export default function SettingsPage() {
 
   const [activeOrg, setActiveOrg] = useState<ActiveOrgData | null>(null);
   const [loadingOrg, setLoadingOrg] = useState(true);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
   const [inviting, setInviting] = useState(false);
@@ -694,9 +696,14 @@ export default function SettingsPage() {
                     Namespace slug: <code style={{ background: '#e5e5e0', padding: '2px 6px', borderRadius: '4px' }}>{activeOrg.slug}</code>
                   </div>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => router.push('/onboarding')}>
-                  Switch Workspace
-                </Button>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <Button variant="secondary" size="sm" icon="✨" onClick={() => setIsCreateModalOpen(true)}>
+                    + New Organization
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => router.push('/onboarding')}>
+                    Switch Workspace
+                  </Button>
+                </div>
               </div>
 
               <div style={{ marginBottom: '20px' }}>
@@ -1518,6 +1525,15 @@ export default function SettingsPage() {
           action cannot be undone.
         </p>
       </Modal>
+
+      <CreateWorkspaceModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={() => {
+          loadOrganization();
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

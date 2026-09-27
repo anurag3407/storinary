@@ -9,11 +9,75 @@
  * header so edge caches absorb the long tail.
  */
 
+import crypto from 'node:crypto';
 import type { TransformParams } from '@/types';
 
 export interface CachedTransform {
   buffer: Buffer;
   contentType: string;
+  etag?: string;
+  imageId?: string;
+  originalName?: string;
+}
+
+/**
+ * Fast MD5 ETag computation for binary buffers.
+ */
+export function computeEtag(buffer: Buffer): string {
+  const hash = crypto.createHash('md5').update(buffer).digest('hex');
+  return `"${hash}"`;
+}
+
+/**
+ * Checks If-None-Match request header against ETag (supporting weak W/ prefix and list of tags).
+ */
+export function isNotModified(request: Request, etag: string): boolean {
+  const ifNoneMatch = request.headers.get('if-none-match');
+  if (!ifNoneMatch) return false;
+  if (ifNoneMatch.trim() === '*') return true;
+
+  const target = etag.replace(/^W\//, '').replace(/^"|"$/g, '').trim();
+  const candidates = ifNoneMatch.split(',').map((t) => t.trim().replace(/^W\//, '').replace(/^"|"$/g, ''));
+  return candidates.includes(target);
+}
+
+/**
+ * Creates an empty HTTP 304 Not Modified response with caching headers.
+ */
+export function createNotModifiedResponse(
+  etag: string,
+  extraHeaders: Record<string, string> = {}
+): Response {
+  return new Response(null, {
+    status: 304,
+    headers: {
+      ETag: etag,
+      ...extraHeaders,
+    },
+  });
+}
+
+/**
+ * In-flight promise map for single-flight request coalescing.
+ * Prevents CPU stampedes / dog-piling when a cold asset is requested concurrently.
+ */
+const inFlightTransforms = new Map<string, Promise<unknown>>();
+
+export function coalesceTransform<T extends CachedTransform>(
+  key: string,
+  factory: () => Promise<T>
+): Promise<T> {
+  const existing = inFlightTransforms.get(key) as Promise<T> | undefined;
+  if (existing) {
+    return existing;
+  }
+
+  const promise = factory().finally(() => {
+    inFlightTransforms.delete(key);
+  });
+
+  inFlightTransforms.set(key, promise);
+  return promise;
 }
 
 /** Canonical cache key from the storage path + normalized transform params. */
@@ -71,6 +135,9 @@ export class TransformCache {
   }
 
   set(key: string, value: CachedTransform): void {
+    if (!value.etag) {
+      value.etag = computeEtag(value.buffer);
+    }
     if (this.map.has(key)) {
       const old = this.map.get(key)!;
       this.bytes -= old.buffer.length;

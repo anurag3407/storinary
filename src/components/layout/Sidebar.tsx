@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
 
@@ -23,6 +24,7 @@ export function Sidebar() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [activeOrgId, setActiveOrgId] = useState<string>('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Toggle from Header hamburger (mobile)
   useEffect(() => {
@@ -60,7 +62,7 @@ export function Sidebar() {
   const handleSelectWorkspace = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     if (val === '__new__') {
-      router.push('/onboarding');
+      setIsCreateModalOpen(true);
       return;
     }
     if (val && val !== activeOrgId) {
@@ -119,9 +121,19 @@ export function Sidebar() {
           </div>
         </Link>
 
-        {organizations.length > 0 && (
-          <div className={styles.workspaceSelector}>
+        <div className={styles.workspaceSelector}>
+          <div className={styles.workspaceHeader}>
             <span className={styles.workspaceLabel}>Workspace</span>
+            <button
+              type="button"
+              className={styles.workspaceNewBtn}
+              onClick={() => setIsCreateModalOpen(true)}
+              title="Create new workspace"
+            >
+              + New
+            </button>
+          </div>
+          {organizations.length > 0 ? (
             <select
               aria-label="Select workspace"
               className={styles.workspaceSelect}
@@ -135,8 +147,26 @@ export function Sidebar() {
               ))}
               <option value="__new__">+ Create Workspace</option>
             </select>
-          </div>
-        )}
+          ) : (
+            <button
+              type="button"
+              className={styles.createWorkspacePrompt}
+              onClick={() => setIsCreateModalOpen(true)}
+            >
+              <span>✨</span> Create Workspace
+            </button>
+          )}
+        </div>
+
+        <CreateWorkspaceModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreated={(org) => {
+            setOrganizations((prev) => [...prev, org]);
+            setActiveOrgId(org.id);
+            window.location.reload();
+          }}
+        />
 
         <nav className={styles.nav} aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {

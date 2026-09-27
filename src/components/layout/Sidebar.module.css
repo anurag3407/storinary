@@ -71,12 +71,57 @@
   gap: 4px;
 }
 
+.workspaceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .workspaceLabel {
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #666;
+}
+
+.workspaceNewBtn {
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--nb-yellow);
+  border: 1.5px solid var(--nb-black);
+  border-radius: 4px;
+  padding: 1px 6px;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 var(--nb-black);
+  transition: all 0.1s ease;
+  color: var(--nb-black);
+}
+
+.workspaceNewBtn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 var(--nb-black);
+}
+
+.createWorkspacePrompt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--nb-yellow);
+  border: 2px solid var(--nb-black);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--nb-black);
+  color: var(--nb-black);
+}
+
+.createWorkspacePrompt:hover {
+  background: #ffd633;
 }
 
 .workspaceSelect {

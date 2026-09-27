@@ -1,0 +1,236 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--nb-bg, #f0ede6);
+  padding: 32px 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 540px;
+  background: var(--nb-white, #ffffff);
+  border: var(--nb-border, 3px solid #000000);
+  border-radius: 12px;
+  box-shadow: var(--nb-shadow, 6px 6px 0 #000000);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.logoMark {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  border: 2px solid var(--nb-black);
+  box-shadow: 2px 2px 0 var(--nb-black);
+}
+
+.title {
+  font-family: var(--nb-font-heading);
+  font-size: 24px;
+  letter-spacing: 0.5px;
+  color: var(--nb-black);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.infoBox {
+  background-color: #fff9db;
+  border: 2px dashed #eab308;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #713f12;
+  line-height: 1.4;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+}
+
+.orgList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orgItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #fafaf8;
+  border: 2px solid var(--nb-black);
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 var(--nb-black);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.orgItem:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--nb-black);
+  background: #fff;
+}
+
+.orgName {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--nb-black);
+}
+
+.orgSlug {
+  font-family: var(--nb-font-mono, monospace);
+  font-size: 11px;
+  background: #e5e5e0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.enterBtn {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--nb-black);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 2px solid #e0ddd5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--nb-black);
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid var(--nb-black);
+  border-radius: 6px;
+  background: var(--nb-white);
+  box-shadow: 2px 2px 0 var(--nb-black);
+  outline: none;
+  font-family: inherit;
+}
+
+.input:focus {
+  background: #fffdf0;
+  box-shadow: 3px 3px 0 var(--nb-black);
+}
+
+.previewBox {
+  background: #f0fdf4;
+  border: 2px solid #22c55e;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #15803d;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.previewLabel {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.previewCode {
+  font-family: var(--nb-font-mono, monospace);
+  font-weight: 700;
+  background: #dcfce7;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.errorBanner {
+  background-color: #fee2e2;
+  border: 2px solid #ef4444;
+  color: #b91c1c;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid #e5e5e0;
+  padding-top: 16px;
+}
+
+.signOutBtn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #666;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.signOutBtn:hover {
+  color: var(--nb-black);
+}

@@ -98,8 +98,20 @@ describe('Cloudinary URL delivery route [cloudName]/[resourceType]/upload/[...pa
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('image/jpeg');
     expect(res.headers.get('Cache-Control')).toContain('public');
+    expect(res.headers.get('ETag')).toBeDefined();
+    const etag = res.headers.get('ETag')!;
     const body = await res.arrayBuffer();
     expect(Buffer.from(body).toString()).toBe('fake-image-bytes');
+
+    // Repeat request with If-None-Match returns 304 Not Modified
+    const req304 = new NextRequest('http://localhost:3000/demo/image/upload/sample.jpg', {
+      headers: { 'if-none-match': etag },
+    });
+    const res304 = await GET(req304, {
+      params: Promise.resolve({ cloudName: 'demo', resourceType: 'image', path: ['sample.jpg'] }),
+    });
+    expect(res304.status).toBe(304);
+    expect(res304.headers.get('ETag')).toBe(etag);
   });
 
   it('transforms an image on the fly with Cloudinary tokens and version tags', async () => {

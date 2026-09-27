@@ -4,7 +4,14 @@ import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getFromStorage, getVideoFromStorage } from '@/lib/storage';
 import { negotiateFormat, negotiateQuality, transformImage } from '@/lib/image-processing';
 import { parseCloudinaryPath } from '@/lib/cloudinary-syntax';
-import { transformCache, transformCacheKey } from '@/lib/transform-cache';
+import {
+  transformCache,
+  transformCacheKey,
+  computeEtag,
+  isNotModified,
+  createNotModifiedResponse,
+  coalesceTransform,
+} from '@/lib/transform-cache';
 import { diskCache } from '@/lib/disk-cache';
 import { isSignedDeliveryEnabled, verifySignedUrlToken } from '@/lib/signed-delivery';
 import { hasTransformParams, parseTransformParams } from '@/lib/utils';
@@ -131,7 +138,7 @@ export async function GET(
             { originalName: { in: [key, key.split('/').pop() || ''] } },
           ],
         },
-        select: { id: true, storagePath: true, fileSize: true, format: true, mimeType: true },
+        select: { id: true, storagePath: true, fileSize: true, format: true, mimeType: true, originalName: true },
       });
 
       if (!image) {
@@ -145,33 +152,66 @@ export async function GET(
         const origCacheKey = `orig:${storagePath}`;
         const cached = transformCache.get(origCacheKey);
         if (cached) {
+          const etag = cached.etag || computeEtag(cached.buffer);
+          if (isNotModified(request, etag)) {
+            return createNotModifiedResponse(etag, {
+              ...cacheHeaders(),
+              'X-Storinary-Cache': 'HIT (Memory L1)',
+              'X-Cache': 'HIT',
+            });
+          }
           void recordImageDelivery({
             imageId: image.id,
             kind: 'original',
+            cacheStatus: 'hit:memory',
             bytes: cached.buffer.length,
             referer: request.headers.get('referer'),
             userAgent: request.headers.get('user-agent'),
           }).catch(() => {});
           return new Response(new Uint8Array(cached.buffer), {
-            headers: { 'Content-Type': cached.contentType, ...cacheHeaders() },
+            headers: {
+              'Content-Type': cached.contentType,
+              ETag: etag,
+              ...cacheHeaders(),
+              'X-Storinary-Cache': 'HIT (Memory L1)',
+              'X-Cache': 'HIT',
+            },
           });
         }
 
         const diskCached = await diskCache.get(origCacheKey);
         if (diskCached) {
+          const etag = diskCached.etag || computeEtag(diskCached.buffer);
           transformCache.set(origCacheKey, {
             buffer: diskCached.buffer,
             contentType: diskCached.contentType,
+            etag,
+            imageId: image.id,
+            originalName: image.originalName,
           });
+          if (isNotModified(request, etag)) {
+            return createNotModifiedResponse(etag, {
+              ...cacheHeaders(),
+              'X-Storinary-Cache': 'HIT (Disk L2)',
+              'X-Cache': 'HIT',
+            });
+          }
           void recordImageDelivery({
             imageId: image.id,
             kind: 'original',
+            cacheStatus: 'hit:disk',
             bytes: diskCached.buffer.length,
             referer: request.headers.get('referer'),
             userAgent: request.headers.get('user-agent'),
           }).catch(() => {});
           return new Response(new Uint8Array(diskCached.buffer), {
-            headers: { 'Content-Type': diskCached.contentType, ...cacheHeaders() },
+            headers: {
+              'Content-Type': diskCached.contentType,
+              ETag: etag,
+              ...cacheHeaders(),
+              'X-Storinary-Cache': 'HIT (Disk L2)',
+              'X-Cache': 'HIT',
+            },
           });
         }
 
@@ -182,20 +222,42 @@ export async function GET(
           return new Response('Not found', { status: 404 });
         }
 
-        const entry = { buffer: fetched.buffer, contentType: fetched.contentType };
+        const etag = computeEtag(fetched.buffer);
+        const entry = {
+          buffer: fetched.buffer,
+          contentType: fetched.contentType,
+          etag,
+          imageId: image.id,
+          originalName: image.originalName,
+        };
         transformCache.set(origCacheKey, entry);
         diskCache.set(origCacheKey, entry).catch(() => {});
+
+        if (isNotModified(request, etag)) {
+          return createNotModifiedResponse(etag, {
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'MISS (Storage Origin)',
+            'X-Cache': 'MISS',
+          });
+        }
 
         void recordImageDelivery({
           imageId: image.id,
           kind: 'original',
+          cacheStatus: 'miss',
           bytes: fetched.buffer.length,
           referer: request.headers.get('referer'),
           userAgent: request.headers.get('user-agent'),
         }).catch(() => {});
 
         return new Response(new Uint8Array(fetched.buffer), {
-          headers: { 'Content-Type': fetched.contentType, ...cacheHeaders() },
+          headers: {
+            'Content-Type': fetched.contentType,
+            ETag: etag,
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'MISS (Storage Origin)',
+            'X-Cache': 'MISS',
+          },
         });
       }
 
@@ -225,72 +287,135 @@ export async function GET(
       const cacheKey = transformCacheKey(storagePath, params);
       const cached = transformCache.get(cacheKey);
       if (cached) {
+        const etag = cached.etag || computeEtag(cached.buffer);
+        if (isNotModified(request, etag)) {
+          return createNotModifiedResponse(etag, {
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'HIT (Transform L1)',
+            'X-Cache': 'HIT',
+          });
+        }
         void recordImageDelivery({
           imageId: image.id,
           kind: 'transform',
+          cacheStatus: 'hit:memory',
           bytes: cached.buffer.length,
           referer: request.headers.get('referer'),
           userAgent: request.headers.get('user-agent'),
         }).catch(() => {});
         return new Response(new Uint8Array(cached.buffer), {
-          headers: { 'Content-Type': cached.contentType, ...cacheHeaders() },
+          headers: {
+            'Content-Type': cached.contentType,
+            ETag: etag,
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'HIT (Transform L1)',
+            'X-Cache': 'HIT',
+          },
         });
       }
 
       const diskCached = await diskCache.get(cacheKey);
       if (diskCached) {
+        const etag = diskCached.etag || computeEtag(diskCached.buffer);
         transformCache.set(cacheKey, {
           buffer: diskCached.buffer,
           contentType: diskCached.contentType,
+          etag,
+          imageId: image.id,
+          originalName: image.originalName,
         });
+        if (isNotModified(request, etag)) {
+          return createNotModifiedResponse(etag, {
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'HIT (Transform L2)',
+            'X-Cache': 'HIT',
+          });
+        }
         void recordImageDelivery({
           imageId: image.id,
           kind: 'transform',
+          cacheStatus: 'hit:disk',
           bytes: diskCached.buffer.length,
           referer: request.headers.get('referer'),
           userAgent: request.headers.get('user-agent'),
         }).catch(() => {});
         return new Response(new Uint8Array(diskCached.buffer), {
-          headers: { 'Content-Type': diskCached.contentType, ...cacheHeaders() },
+          headers: {
+            'Content-Type': diskCached.contentType,
+            ETag: etag,
+            ...cacheHeaders(),
+            'X-Storinary-Cache': 'HIT (Transform L2)',
+            'X-Cache': 'HIT',
+          },
         });
       }
 
-      let fetched;
+      // Single-flight coalescing to eliminate CPU spikes / stampedes under high concurrency
+      const acceptHeader = request.headers.get('accept');
+      let resultEntry: { buffer: Buffer; contentType: string; etag: string; isAutoFormat?: boolean };
       try {
-        fetched = await getFromStorage(storagePath);
+        resultEntry = await coalesceTransform(cacheKey, async () => {
+          let fetched;
+          try {
+            fetched = await getFromStorage(storagePath);
+          } catch {
+            throw new Error('Not found');
+          }
+
+          const transformed = await transformImage(
+            fetched.buffer,
+            params,
+            overlayBuffer || undefined,
+            acceptHeader
+          );
+
+          const etag = computeEtag(transformed.buffer);
+          const entry = {
+            buffer: transformed.buffer,
+            contentType: transformed.contentType,
+            etag,
+            imageId: image.id,
+            originalName: image.originalName,
+            isAutoFormat: transformed.isAutoFormat,
+          };
+          transformCache.set(cacheKey, entry);
+          diskCache.set(cacheKey, entry).catch(() => {});
+          return entry;
+        });
       } catch {
         return new Response('Not found', { status: 404 });
       }
 
-      const acceptHeader = request.headers.get('accept');
-      const transformed = await transformImage(
-        fetched.buffer,
-        params,
-        overlayBuffer || undefined,
-        acceptHeader
-      );
+      const varyHeader: Record<string, string> = resultEntry.isAutoFormat
+        ? { Vary: 'Accept' }
+        : {};
 
-      const entry = { buffer: transformed.buffer, contentType: transformed.contentType };
-      transformCache.set(cacheKey, entry);
-      diskCache.set(cacheKey, entry).catch(() => {});
+      if (isNotModified(request, resultEntry.etag)) {
+        return createNotModifiedResponse(resultEntry.etag, {
+          ...cacheHeaders(),
+          ...varyHeader,
+          'X-Storinary-Cache': 'MISS (Sharp Fresh)',
+          'X-Cache': 'MISS',
+        });
+      }
 
       void recordImageDelivery({
         imageId: image.id,
         kind: 'transform',
-        bytes: transformed.buffer.length,
+        cacheStatus: 'miss',
+        bytes: resultEntry.buffer.length,
         referer: request.headers.get('referer'),
         userAgent: request.headers.get('user-agent'),
       }).catch(() => {});
 
-      const varyHeader: Record<string, string> = transformed.isAutoFormat
-        ? { Vary: 'Accept' }
-        : {};
-
-      return new Response(new Uint8Array(transformed.buffer), {
+      return new Response(new Uint8Array(resultEntry.buffer), {
         headers: {
-          'Content-Type': transformed.contentType,
+          'Content-Type': resultEntry.contentType,
+          ETag: resultEntry.etag,
           ...cacheHeaders(),
           ...varyHeader,
+          'X-Storinary-Cache': 'MISS (Sharp Fresh)',
+          'X-Cache': 'MISS',
         },
       });
     }
@@ -342,6 +467,11 @@ export async function GET(
         const hasTransforms = hasTransformParams(params);
 
         if (!hasTransforms) {
+          const posterEtag = computeEtag(poster.buffer);
+          if (isNotModified(request, posterEtag)) {
+            return createNotModifiedResponse(posterEtag, cacheHeaders());
+          }
+
           void recordVideoDelivery({
             videoId: video.id,
             label: 'poster',
@@ -351,7 +481,7 @@ export async function GET(
           }).catch(() => {});
 
           return new Response(new Uint8Array(poster.buffer), {
-            headers: { 'Content-Type': poster.contentType, ...cacheHeaders() },
+            headers: { 'Content-Type': poster.contentType, ETag: posterEtag, ...cacheHeaders() },
           });
         }
 
@@ -362,6 +492,11 @@ export async function GET(
           request.headers.get('accept')
         );
 
+        const transformedEtag = computeEtag(transformedPoster.buffer);
+        if (isNotModified(request, transformedEtag)) {
+          return createNotModifiedResponse(transformedEtag, cacheHeaders());
+        }
+
         void recordVideoDelivery({
           videoId: video.id,
           label: 'poster-transform',
@@ -371,7 +506,7 @@ export async function GET(
         }).catch(() => {});
 
         return new Response(new Uint8Array(transformedPoster.buffer), {
-          headers: { 'Content-Type': transformedPoster.contentType, ...cacheHeaders() },
+          headers: { 'Content-Type': transformedPoster.contentType, ETag: transformedEtag, ...cacheHeaders() },
         });
       }
 
