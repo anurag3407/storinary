@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
@@ -19,7 +19,6 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);

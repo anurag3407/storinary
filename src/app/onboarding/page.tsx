@@ -99,7 +99,7 @@ export default function OnboardingPage() {
     try {
       await authClient.organization.setActive({ organizationId: orgId });
       router.replace('/');
-    } catch (err) {
+    } catch {
       setError('Failed to switch workspace');
       setLoading(false);
     }

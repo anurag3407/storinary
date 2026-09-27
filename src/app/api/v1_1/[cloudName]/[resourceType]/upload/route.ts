@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { prisma, rawPrisma } from '@/lib/prisma';
 import { runWithTenantScope } from '@/lib/prisma-scope';
-import { uploadToStorage, generateStorageKey, getPublicUrl } from '@/lib/storage';
+import { uploadToStorage, getPublicUrl } from '@/lib/storage';
 import { getImageMetadata } from '@/lib/image-processing';
 import { fetchRemoteAsset, contentTypeToExtension } from '@/lib/remote-import';
 import { isSafeSvg } from '@/lib/svg-security';

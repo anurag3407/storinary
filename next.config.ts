@@ -1,15 +1,28 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Allow images from Supabase Storage
+  // Allow images from storage providers & external sources
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: '*.appwrite.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'sgp.cloud.appwrite.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
     ],
   },
+  serverExternalPackages: ['sharp'],
 
   // Allow large uploads via server actions
   experimental: {

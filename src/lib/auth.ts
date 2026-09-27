@@ -42,7 +42,7 @@ assertAuthConfig();
 export const auth = betterAuth({
   appName: 'Storinary',
   baseURL,
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: process.env.BETTER_AUTH_SECRET || 'storinary-fallback-build-secret-min32-characters',
   database: prismaAdapter(prisma, { provider: databaseProvider }),
   emailAndPassword: {
     enabled: true,

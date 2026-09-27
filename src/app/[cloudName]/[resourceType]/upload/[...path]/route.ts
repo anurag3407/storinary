@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma, rawPrisma } from '@/lib/prisma';
 import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getFromStorage, getVideoFromStorage } from '@/lib/storage';
-import { negotiateFormat, negotiateQuality, transformImage } from '@/lib/image-processing';
+import { transformImage } from '@/lib/image-processing';
 import { parseCloudinaryPath } from '@/lib/cloudinary-syntax';
 import {
   transformCache,
