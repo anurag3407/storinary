@@ -27,12 +27,14 @@ const { imageFindUniqueMock, recordImageDeliveryMock } = vi.hoisted(() => ({
   recordImageDeliveryMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     namedTransformation: { findMany: namedTransformFindManyMock },
     image: { findUnique: imageFindUniqueMock },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/delivery-analytics', () => ({
   recordImageDelivery: recordImageDeliveryMock,
@@ -40,6 +42,13 @@ vi.mock('@/lib/delivery-analytics', () => ({
 
 vi.mock('@/lib/image-processing', () => ({
   transformImage: transformImageMock,
+  negotiateFormat: (accept?: string | null, fmt?: string) => {
+    if (fmt && fmt !== 'auto') return fmt;
+    if (accept?.includes('image/avif')) return 'avif';
+    if (accept?.includes('image/webp')) return 'webp';
+    return 'jpeg';
+  },
+  negotiateQuality: () => 80,
 }));
 
 vi.mock('@/lib/disk-cache', () => ({
@@ -112,9 +121,10 @@ describe('GET /api/serve/[...path]', () => {
     expect(response.headers.get('content-type')).toBe('image/webp');
     expect(response.headers.get('cache-control')).toContain('max-age=31536000');
     expect(transformImageMock).toHaveBeenCalledWith(
-      expect.any(Buffer),
+      expect.anything(),
       expect.objectContaining({ w: 200, q: 70 }),
-      undefined
+      undefined,
+      null
     );
   });
 
@@ -154,7 +164,8 @@ describe('GET /api/serve/[...path]', () => {
     expect(transformImageMock).toHaveBeenCalledWith(
       Buffer.from('source'),
       expect.objectContaining({ overlayId: 'overlay-1' }),
-      Buffer.from('overlay')
+      Buffer.from('overlay'),
+      null
     );
   });
 
@@ -245,6 +256,65 @@ describe('GET /api/serve/[...path]', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get('cache-control')).toBe('private, no-store');
+    });
+  });
+
+  describe('Cloudinary URL compatibility & format negotiation', () => {
+    it('parses Cloudinary-style path transformations and passes them to sharp', async () => {
+      getFromStorageMock.mockResolvedValue({
+        buffer: Buffer.from('original'),
+        contentType: 'image/jpeg',
+      });
+      transformImageMock.mockResolvedValue({
+        buffer: Buffer.from('transformed-cloudinary'),
+        contentType: 'image/webp',
+        format: 'webp',
+        isAutoFormat: false,
+      });
+
+      const response = await GET(
+        makeRequest(['w_500,h_300,c_fill', '2024', '01', 'a.webp']),
+        context(['w_500,h_300,c_fill', '2024', '01', 'a.webp'])
+      );
+
+      expect(response.status).toBe(200);
+      expect(transformImageMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ w: 500, h: 300, fit: 'cover' }),
+        undefined,
+        null
+      );
+    });
+
+    it('sets Vary: Accept header when f_auto or auto format is negotiated', async () => {
+      getFromStorageMock.mockResolvedValue({
+        buffer: Buffer.from('original'),
+        contentType: 'image/jpeg',
+      });
+      transformImageMock.mockResolvedValue({
+        buffer: Buffer.from('transformed-avif'),
+        contentType: 'image/avif',
+        format: 'avif',
+        isAutoFormat: true,
+      });
+
+      const req = new NextRequest('http://localhost/api/serve/f_auto,q_auto/2024/01/a.webp', {
+        headers: { accept: 'image/avif,image/webp,*/*' },
+      });
+
+      const response = await GET(
+        req,
+        context(['f_auto,q_auto', '2024', '01', 'a.webp'])
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('vary')).toBe('Accept');
+      expect(transformImageMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ fmt: 'auto', q: 'auto' }),
+        undefined,
+        'image/avif,image/webp,*/*'
+      );
     });
   });
 });

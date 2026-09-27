@@ -2,8 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { authClient } from '@/lib/auth-client';
 import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
 
@@ -17,8 +18,11 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [activeOrgId, setActiveOrgId] = useState<string>('');
 
   // Toggle from Header hamburger (mobile)
   useEffect(() => {
@@ -31,6 +35,44 @@ export function Sidebar() {
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  // Load organizations for workspace selector
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [orgsRes, sessionRes] = await Promise.all([
+          authClient.organization.list(),
+          authClient.getSession(),
+        ]);
+        if (orgsRes.data) {
+          setOrganizations(orgsRes.data as Array<{ id: string; name: string; slug: string }>);
+        }
+        const currentActive = (sessionRes.data?.session as { activeOrganizationId?: string | null })?.activeOrganizationId;
+        if (currentActive) {
+          setActiveOrgId(currentActive);
+        }
+      } catch {
+        /* auth unavailable */
+      }
+    })();
+  }, [pathname]);
+
+  const handleSelectWorkspace = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === '__new__') {
+      router.push('/onboarding');
+      return;
+    }
+    if (val && val !== activeOrgId) {
+      try {
+        await authClient.organization.setActive({ organizationId: val });
+        setActiveOrgId(val);
+        window.location.reload();
+      } catch (err) {
+        console.error('Failed to switch workspace:', err);
+      }
+    }
+  };
 
   // Fetch real storage stats
   useEffect(() => {
@@ -46,8 +88,8 @@ export function Sidebar() {
       });
   }, [pathname]);
 
-  // Hide sidebar on standalone landing / login page
-  if (pathname === '/login') {
+  // Hide sidebar on standalone landing / login / onboarding page
+  if (pathname === '/login' || pathname === '/onboarding') {
     return null;
   }
 
@@ -76,6 +118,25 @@ export function Sidebar() {
             <span className={styles.logoSub}>BY SAYALABS</span>
           </div>
         </Link>
+
+        {organizations.length > 0 && (
+          <div className={styles.workspaceSelector}>
+            <span className={styles.workspaceLabel}>Workspace</span>
+            <select
+              aria-label="Select workspace"
+              className={styles.workspaceSelect}
+              value={activeOrgId}
+              onChange={handleSelectWorkspace}
+            >
+              {organizations.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+              <option value="__new__">+ Create Workspace</option>
+            </select>
+          </div>
+        )}
 
         <nav className={styles.nav} aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {

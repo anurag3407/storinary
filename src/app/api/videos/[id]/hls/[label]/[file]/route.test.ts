@@ -13,9 +13,10 @@ const {
   recordDeliveryMock: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: { videoHlsPackage: { findUnique: findUniqueMock } },
-}));
+vi.mock('@/lib/prisma', () => {
+  const p = { videoHlsPackage: { findUnique: findUniqueMock } };
+  return { prisma: p, rawPrisma: p };
+});
 
 vi.mock('@/lib/storage', () => ({
   getVideoFromStorage: getVideoMock,

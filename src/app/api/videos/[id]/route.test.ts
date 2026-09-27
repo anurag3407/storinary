@@ -32,8 +32,9 @@ const {
   metadataFieldFindFirstMock: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-    prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
       video: {
         findUnique: findUniqueMock,
         delete: videoDeleteMock,
@@ -51,8 +52,9 @@ vi.mock('@/lib/prisma', () => ({
         upsert: structuredMetadataUpsertMock,
         deleteMany: structuredMetadataDeleteManyMock,
       },
-    },
-}));
+    };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/storage', () => ({
   deleteFromStorage: deleteStorageMock,
@@ -62,8 +64,15 @@ const { dispatchWebhooksMock } = vi.hoisted(() => ({ dispatchWebhooksMock: vi.fn
 
 vi.mock('@/lib/webhooks', () => ({ dispatchWebhooks: dispatchWebhooksMock }));
 
+const { canManageMediaMock } = vi.hoisted(() => ({ canManageMediaMock: vi.fn() }));
+
+vi.mock('@/lib/media-auth', () => ({
+  canManageMedia: canManageMediaMock,
+}));
+
 describe('DELETE /api/videos/[id]', () => {
   beforeEach(() => {
+    canManageMediaMock.mockReset().mockResolvedValue(true);
     deleteStorageMock.mockReset().mockResolvedValue(undefined);
     findUniqueMock.mockReset();
     videoDeleteMock.mockReset().mockResolvedValue({});
@@ -130,7 +139,7 @@ describe('DELETE /api/videos/[id]', () => {
 describe('PATCH /api/videos/[id]', () => {
   beforeEach(() => {
     delete process.env.STORINARY_SIGNED_URL_SECRET;
-    process.env.STORINARY_ADMIN_PASSWORD = '';
+    canManageMediaMock.mockReset().mockResolvedValue(true);
     findUniqueMock.mockReset();
     updateMock.mockReset();
     metadataFieldFindFirstMock.mockReset();

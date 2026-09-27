@@ -8,7 +8,9 @@ datasource db {
 }
 
 model Image {
-  id String @id @default(cuid())
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
 
   // ── File Info ──────────────────────────────────
   originalName String // Original filename from user (e.g., "photo.jpg")
@@ -43,44 +45,53 @@ model Image {
   aiInsights     AiInsight[]
   metadata       StructuredMetadata[]
 
+  @@unique([organizationId, storagePath])
   // ── Indexes ────────────────────────────────────
   @@index([folder])
   @@index([createdAt])
   @@index([originalName])
+  @@index([organizationId])
 }
 
 model ImageVersion {
-  id           String   @id @default(cuid())
-  imageId      String
-  version      Int
-  label        String   @default("original")
-  originalName String
-  storagePath  String   @unique
-  publicUrl    String
-  width        Int
-  height       Int
-  fileSize     Int
-  format       String
-  mimeType     String
-  createdAt    DateTime @default(now())
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  imageId        String
+  version        Int
+  label          String       @default("original")
+  originalName   String
+  storagePath    String
+  publicUrl      String
+  width          Int
+  height         Int
+  fileSize       Int
+  format         String
+  mimeType       String
+  createdAt      DateTime     @default(now())
 
   image Image @relation(fields: [imageId], references: [id], onDelete: Cascade)
 
   @@unique([imageId, version])
+  @@unique([organizationId, storagePath])
+  @@unique([organizationId, imageId, version])
   @@index([imageId, createdAt])
+  @@index([organizationId])
 }
 
 model AiInsight {
-  id              String   @id @default(cuid())
+  organizationId  String       @default("legacy")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id              String       @id @default(cuid())
   kind            String
-  provider        String   @default("openai-compatible")
+  provider        String       @default("openai-compatible")
   model           String
-  tags            String   @default("")
+  tags            String       @default("")
   altText         String?
   moderationScore Float?
   isSafe          Boolean?
   rawMetadata     String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime     @default(now())
 
   imageId String?
   image   Image?  @relation(fields: [imageId], references: [id], onDelete: Cascade)
@@ -90,48 +101,58 @@ model AiInsight {
 
   @@index([imageId, createdAt])
   @@index([kind, createdAt])
+  @@index([organizationId])
 }
 
 model ApiKey {
-  id         String    @id @default(cuid())
-  name       String
-  hashedKey  String    @unique
-  keyPrefix  String
-  lastFour   String
-  scopes     String    @default("upload,read")
-  unsigned   Boolean   @default(false)
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  name           String
+  hashedKey      String       @unique
+  keyPrefix      String
+  lastFour       String
+  scopes         String       @default("upload,read")
+  unsigned       Boolean      @default(false)
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   usageEvents ApiKeyUsageEvent[]
 
   @@index([keyPrefix])
+  @@index([organizationId])
 }
 
 model ApiKeyUsageEvent {
-  id          String   @id @default(cuid())
-  apiKeyId    String
-  periodStart DateTime
-  action      String
-  requests    Int      @default(0)
-  assets      Int      @default(0)
-  errors      Int      @default(0)
-  bytes       BigInt   @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  apiKeyId       String
+  periodStart    DateTime
+  action         String
+  requests       Int          @default(0)
+  assets         Int          @default(0)
+  errors         Int          @default(0)
+  bytes          BigInt       @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
 
   @@unique([apiKeyId, periodStart, action])
+  @@unique([organizationId, apiKeyId, periodStart, action])
   @@index([periodStart])
+  @@index([organizationId])
 }
 
 model Video {
+  organizationId    String             @default("legacy")
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   id                String             @id @default(cuid())
   originalName      String
-  storagePath       String             @unique
+  storagePath       String
   publicUrl         String
   mimeType          String
   posterPath        String?
@@ -159,208 +180,258 @@ model Video {
   aiInsights     AiInsight[]
   metadata       StructuredMetadata[]
 
+  @@unique([organizationId, storagePath])
   @@index([folder])
   @@index([createdAt])
   @@index([originalName])
+  @@index([organizationId])
 }
 
 model VideoClip {
-  id            String   @id @default(cuid())
-  videoId       String
-  name          String
-  storagePath   String   @unique
-  publicUrl     String
-  mimeType      String   @default("video/mp4")
-  startSeconds  Float
-  endSeconds    Float
-  muted         Boolean  @default(false)
-  sourceLabel   String?
-  fileSize      Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoId        String
+  name           String
+  storagePath    String
+  publicUrl      String
+  mimeType       String       @default("video/mp4")
+  startSeconds   Float
+  endSeconds     Float
+  muted          Boolean      @default(false)
+  sourceLabel    String?
+  fileSize       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([videoId, name])
+  @@unique([organizationId, storagePath])
+  @@unique([organizationId, videoId, name])
   @@index([videoId, createdAt])
+  @@index([organizationId])
 }
 
 model VideoVersion {
-  id           String   @id @default(cuid())
-  videoId      String
-  version      Int
-  label        String   @default("original")
-  originalName String
-  storagePath  String   @unique
-  publicUrl    String
-  mimeType     String
-  posterPath   String?
-  format       String
-  width        Int
-  height       Int
-  duration     Float
-  fileSize     Int
-  createdAt    DateTime @default(now())
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoId        String
+  version        Int
+  label          String       @default("original")
+  originalName   String
+  storagePath    String
+  publicUrl      String
+  mimeType       String
+  posterPath     String?
+  format         String
+  width          Int
+  height         Int
+  duration       Float
+  fileSize       Int
+  createdAt      DateTime     @default(now())
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([videoId, version])
+  @@unique([organizationId, storagePath])
+  @@unique([organizationId, videoId, version])
   @@index([videoId, createdAt])
+  @@index([organizationId])
 }
 
 model VideoHlsPackage {
-  id            String   @id @default(cuid())
-  videoId       String
-  label         String
-  masterPath    String   @unique
-  publicUrl     String
-  variants      Json
-  segmentPaths  Json
-  totalFileSize Int
-  status        String   @default("ready")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoId        String
+  label          String
+  masterPath     String
+  publicUrl      String
+  variants       Json
+  segmentPaths   Json
+  totalFileSize  Int
+  status         String       @default("ready")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([videoId, label])
+  @@unique([organizationId, masterPath])
+  @@unique([organizationId, videoId, label])
   @@index([videoId])
+  @@index([organizationId])
 }
 
 model VideoDashPackage {
-  id            String   @id @default(cuid())
-  videoId       String
-  label         String
-  manifestPath  String   @unique
-  publicUrl     String
-  variants      Json
-  filePaths     Json
-  totalFileSize Int
-  status        String   @default("ready")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoId        String
+  label          String
+  manifestPath   String
+  publicUrl      String
+  variants       Json
+  filePaths      Json
+  totalFileSize  Int
+  status         String       @default("ready")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([videoId, label])
+  @@unique([organizationId, manifestPath])
+  @@unique([organizationId, videoId, label])
   @@index([videoId])
+  @@index([organizationId])
 }
 
 model VideoRendition {
-  id          String   @id @default(cuid())
-  videoId     String
-  label       String
-  storagePath String   @unique
-  publicUrl   String
-  width       Int
-  height      Int
-  bitrateKbps Int
-  fileSize    Int
-  status      String   @default("ready")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  videoId        String
+  label          String
+  storagePath    String
+  publicUrl      String
+  width          Int
+  height         Int
+  bitrateKbps    Int
+  fileSize       Int
+  status         String       @default("ready")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([videoId, label])
+  @@unique([organizationId, storagePath])
   @@index([videoId])
+  @@index([organizationId])
 }
 
 model WebhookEndpoint {
-  id        String   @id @default(cuid())
-  name      String
-  url       String
-  secret    String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  name           String
+  url            String
+  secret         String
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   deliveries WebhookDelivery[]
 
   @@index([active])
+  @@index([organizationId])
 }
 
 model WebhookDelivery {
-  id            String    @id @default(cuid())
-  endpointId    String
-  eventType     String
-  payload       String
-  status        String    @default("pending")
-  responseCode  Int?
-  attempts      Int       @default(0)
-  error         String?
-  nextAttemptAt DateTime  @default(now())
-  deliveredAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  endpointId     String
+  eventType      String
+  payload        String
+  status         String       @default("pending")
+  responseCode   Int?
+  attempts       Int          @default(0)
+  error          String?
+  nextAttemptAt  DateTime     @default(now())
+  deliveredAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
   @@index([endpointId, createdAt])
   @@index([status, nextAttemptAt])
+  @@index([organizationId])
 }
 
 model UploadPreset {
-  id           String   @id @default(cuid())
-  name         String   @unique
-  resourceType String   @default("image")
-  folder       String   @default("/")
-  tags         String   @default("")
-  compress     Boolean  @default(true)
-  quality      Int      @default(80)
-  maxWidth     Int      @default(2048)
-  removeBg     Boolean  @default(false)
-  moderate     Boolean  @default(false)
-  renditions   Boolean  @default(false)
-  active       Boolean  @default(true)
-  unsigned     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  name           String
+  resourceType   String       @default("image")
+  folder         String       @default("/")
+  tags           String       @default("")
+  compress       Boolean      @default(true)
+  quality        Int          @default(80)
+  maxWidth       Int          @default(2048)
+  removeBg       Boolean      @default(false)
+  moderate       Boolean      @default(false)
+  renditions     Boolean      @default(false)
+  active         Boolean      @default(true)
+  unsigned       Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model NamedTransformation {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  params    String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  name           String
+  params         String
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model Collection {
-  id          String           @id @default(cuid())
-  name        String
-  description String           @default("")
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  items       CollectionItem[]
+  organizationId String           @default("legacy")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String           @id @default(cuid())
+  name           String
+  description    String           @default("")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  items          CollectionItem[]
 
-  @@unique([name])
+  @@unique([organizationId, name])
+  @@index([organizationId])
 }
 
 model CollectionItem {
-  id           String  @id @default(cuid())
-  collectionId String
-  imageId      String?
-  videoId      String?
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  collectionId   String
+  imageId        String?
+  videoId        String?
 
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   image      Image?     @relation(fields: [imageId], references: [id], onDelete: Cascade)
   video      Video?     @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([collectionId])
+  @@index([organizationId])
 }
 
 model DeliveryEvent {
-  id        String   @id @default(cuid())
-  imageId   String?
-  videoId   String?
-  rendition String?
-  kind      String
-  bytes     Int      @default(0)
-  referer   String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  imageId        String?
+  videoId        String?
+  rendition      String?
+  kind           String
+  bytes          Int          @default(0)
+  referer        String?
+  userAgent      String?
+  createdAt      DateTime     @default(now())
 
   image Image? @relation(fields: [imageId], references: [id], onDelete: SetNull)
   video Video? @relation(fields: [videoId], references: [id], onDelete: SetNull)
@@ -368,28 +439,36 @@ model DeliveryEvent {
   @@index([createdAt])
   @@index([imageId, createdAt])
   @@index([videoId, createdAt])
+  @@index([organizationId])
 }
 
 model MetadataField {
-  id            String   @id @default(cuid())
-  externalId    String   @unique
-  label         String
-  type          String
-  required      Boolean  @default(false)
-  allowedValues String   @default("")
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  externalId     String
+  label          String
+  type           String
+  required       Boolean      @default(false)
+  allowedValues  String       @default("")
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   values StructuredMetadata[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId])
 }
 
 model StructuredMetadata {
-  id      String  @id @default(cuid())
-  fieldId String
-  value   String  @default("")
-  imageId String?
-  videoId String?
+  organizationId String       @default("legacy")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  fieldId        String
+  value          String       @default("")
+  imageId        String?
+  videoId        String?
 
   field MetadataField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
   image Image?        @relation(fields: [imageId], references: [id], onDelete: Cascade)
@@ -397,6 +476,140 @@ model StructuredMetadata {
 
   @@unique([fieldId, imageId])
   @@unique([fieldId, videoId])
+  @@unique([organizationId, fieldId, imageId])
+  @@unique([organizationId, fieldId, videoId])
   @@index([imageId])
   @@index([videoId])
+  @@index([organizationId])
+}
+
+model User {
+  id            String       @id
+  name          String
+  email         String
+  emailVerified Boolean      @default(false)
+  image         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id
+  expiresAt            DateTime
+  token                String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeOrganizationId String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model Organization {
+  id                   String                @id
+  name                 String
+  slug                 String
+  logo                 String?
+  createdAt            DateTime
+  metadata             String?
+  members              Member[]
+  invitations          Invitation[]
+  images               Image[]
+  imageVersions        ImageVersion[]
+  aiInsights           AiInsight[]
+  apiKeys              ApiKey[]
+  apiKeyUsageEvents    ApiKeyUsageEvent[]
+  videos               Video[]
+  videoClips           VideoClip[]
+  videoVersions        VideoVersion[]
+  videoHlsPackages     VideoHlsPackage[]
+  videoDashPackages    VideoDashPackage[]
+  videoRenditions      VideoRendition[]
+  webhookEndpoints     WebhookEndpoint[]
+  webhookDeliveries    WebhookDelivery[]
+  uploadPresets        UploadPreset[]
+  namedTransformations NamedTransformation[]
+  collections          Collection[]
+  collectionItems      CollectionItem[]
+  deliveryEvents       DeliveryEvent[]
+  metadataFields       MetadataField[]
+  structuredMetadata   StructuredMetadata[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  createdAt      DateTime
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String       @default("pending")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
 }

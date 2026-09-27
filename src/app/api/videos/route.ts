@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { enterTenantScope } from '@/lib/prisma-scope';
+import { tenantStoragePath } from '@/lib/tenant';
 import { createVideoPoster } from '@/lib/image-processing';
 import { generateStorageKey, getPublicUrl, uploadToStorage } from '@/lib/storage';
 import {
@@ -112,9 +114,10 @@ export async function POST(request: NextRequest) {
   const requestedPreset = formData.get('upload_preset');
   let preset = null;
   if (typeof requestedPreset === 'string' && requestedPreset.trim()) {
-    preset = await prisma.uploadPreset.findUnique({
-      where: { name: requestedPreset.trim() },
-    });
+    const presetLookup = rawPrisma?.uploadPreset?.findFirst
+      ? rawPrisma.uploadPreset.findFirst
+      : prisma.uploadPreset.findFirst;
+    preset = await presetLookup({ where: { name: requestedPreset.trim() } });
     if (!preset || !preset.active || preset.resourceType !== 'video') {
       return NextResponse.json(
         {
@@ -130,7 +133,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!preset.unsigned) {
+    if (preset.unsigned) {
+      if (preset.organizationId) enterTenantScope(preset.organizationId);
+    } else {
       formData.delete('api_key');
       if (!request.headers.get('x-api-key') && !request.headers.get('authorization')) {
         return NextResponse.json({
@@ -152,6 +157,7 @@ export async function POST(request: NextRequest) {
       { status: auth.status }
     );
   }
+  const tenantId = auth.organizationId;
 
   const files = formData.getAll('file').filter((file): file is File => file instanceof File && file.size > 0);
   if (files.length === 0) {
@@ -180,7 +186,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const metadata = await getVideoMetadata(buffer, mimeType);
     const shortId = generateShortId();
-    const storagePath = generateStorageKey(file.name, shortId, metadata.format);
+    const storagePathRaw = generateStorageKey(file.name, shortId, metadata.format);
+    const storagePath = await tenantStoragePath(tenantId, storagePathRaw);
     await uploadToStorage(buffer, storagePath, mimeType);
 
     const posterFile = formData.get(`poster-${file.name}`);
@@ -200,13 +207,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const posterPath = posterBuffer
+    const posterPathRaw = posterBuffer
       ? generateStorageKey(`${file.name}.webp`, `${shortId}-poster`, 'webp')
       : null;
+    const posterPath = posterPathRaw ? await tenantStoragePath(tenantId, posterPathRaw) : null;
     if (posterBuffer && posterPath) await uploadToStorage(posterBuffer, posterPath, 'image/webp');
 
     const created = await prisma.video.create({
       data: {
+        organizationId: 'legacy',
         originalName: file.name,
         storagePath,
         publicUrl: getPublicUrl(storagePath),
@@ -230,7 +239,7 @@ export async function POST(request: NextRequest) {
     for (const label of Object.keys(RENDITION_PRESETS) as Array<keyof typeof RENDITION_PRESETS>) {
       const preset = RENDITION_PRESETS[label];
       const rendition = await createVideoRendition(buffer, label);
-      const renditionKey = generateStorageKey(`${file.name}-${label}.mp4`, `${shortId}-${label}`, 'mp4');
+      const renditionKey = await tenantStoragePath(tenantId, generateStorageKey(`${file.name}-${label}.mp4`, `${shortId}-${label}`, 'mp4'));
       await uploadToStorage(rendition.buffer, renditionKey, 'video/mp4');
       await prisma.videoRendition.create({
         data: {

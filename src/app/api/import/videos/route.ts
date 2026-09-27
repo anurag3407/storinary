@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { tenantStoragePath } from '@/lib/tenant';
 import { generateStorageKey, getPublicUrl, uploadToStorage } from '@/lib/storage';
 import { getVideoMetadata } from '@/lib/video-metadata';
 import { serializeVideo } from '@/lib/video-helpers';
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
 
   const auth = await authorizeDashboardOrApiKey(request, undefined, 'video-upload');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const tenantId = auth.organizationId;
 
   const payload = validateImportPayload(body, MAX_URLS);
   if (typeof payload === 'string') {
@@ -50,11 +52,12 @@ export async function POST(request: NextRequest) {
     const remote = await fetchRemoteAsset(url, ALLOWED_VIDEO_TYPES, MAX_FILE_SIZE);
     const metadata = await getVideoMetadata(remote.buffer, remote.contentType);
     const shortId = generateShortId();
-    const storagePath = generateStorageKey(
+    const storagePathRaw = generateStorageKey(
       remote.filename,
       shortId,
       metadata.format
     );
+    const storagePath = await tenantStoragePath(tenantId, storagePathRaw);
     await uploadToStorage(remote.buffer, storagePath, remote.contentType);
 
     let posterBuffer: Buffer | null = null;
@@ -65,13 +68,15 @@ export async function POST(request: NextRequest) {
         posterBuffer = null;
       }
     }
-    const posterPath = posterBuffer
+    const posterPathRaw = posterBuffer
       ? generateStorageKey(`${remote.filename}.webp`, `${shortId}-poster`, 'webp')
       : null;
+    const posterPath = posterPathRaw ? await tenantStoragePath(tenantId, posterPathRaw) : null;
     if (posterBuffer && posterPath) await uploadToStorage(posterBuffer, posterPath, 'image/webp');
 
     const created = await prisma.video.create({
       data: {
+        organizationId: 'legacy',
         originalName: remote.filename,
         storagePath,
         publicUrl: getPublicUrl(storagePath),
@@ -93,7 +98,7 @@ export async function POST(request: NextRequest) {
     for (const label of Object.keys(RENDITION_PRESETS) as Array<keyof typeof RENDITION_PRESETS>) {
       const preset = RENDITION_PRESETS[label];
       const rendition = await createVideoRendition(remote.buffer, label);
-      const renditionKey = generateStorageKey(`${remote.filename}-${label}.mp4`, `${shortId}-${label}`, 'mp4');
+      const renditionKey = await tenantStoragePath(tenantId, generateStorageKey(`${remote.filename}-${label}.mp4`, `${shortId}-${label}`, 'mp4'));
       await uploadToStorage(rendition.buffer, renditionKey, 'video/mp4');
       await prisma.videoRendition.create({
         data: {

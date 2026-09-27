@@ -126,6 +126,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     await prisma.aiInsight.create({
       data: {
+        organizationId: 'legacy',
         videoId: id,
         provider: analysis.provider,
         model: analysis.model,

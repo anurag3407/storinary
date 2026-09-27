@@ -305,6 +305,54 @@ describe('/api/v1/media', () => {
     expect(forwardedBody.has('resource_type')).toBe(false);
   });
 
+  it('accepts base64 data URI and JSON body uploads', async () => {
+    const image = {
+      id: 'img-b64',
+      originalName: 'upload.png',
+      publicUrl: 'https://cdn.example/upload.png',
+      width: 50,
+      height: 50,
+      fileSize: 68,
+      format: 'png',
+      mimeType: 'image/png',
+      folder: '/uploads',
+      tags: '',
+      createdAt: new Date('2026-06-01T00:00:00Z'),
+    };
+    mocks.fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      images: [image],
+      errors: [],
+    }), { status: 200 }));
+
+    // Small 1x1 transparent PNG as base64
+    const base64Data = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const jsonReq = request('/api/v1/media', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        file: base64Data,
+        folder: '/uploads',
+        resource_type: 'image',
+      }),
+    });
+
+    const response = await POST(jsonReq);
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.resources[0]).toMatchObject({
+      id: 'img-b64',
+      publicId: 'img-b64',
+      resourceType: 'image',
+    });
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
+    const [, forwardedInit] = mocks.fetchMock.mock.calls[0];
+    const forwardedBody = forwardedInit.body as FormData;
+    expect(forwardedBody.get('file')).toBeInstanceOf(File);
+    expect((forwardedBody.get('file') as File).type).toBe('image/png');
+  });
+
   it('rejects unsupported auto/raw upload resource types', async () => {
     for (const resourceType of ['auto', 'raw']) {
       const formData = new FormData();

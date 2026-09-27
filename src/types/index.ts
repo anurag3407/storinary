@@ -336,6 +336,7 @@ export interface TransformParams {
   dpr?: number;
   text?: string;
   overlayId?: string;
+  r?: string; // corner radius: 'max' or pixels e.g. '20'
 }
 
 export type TransformGravity =
@@ -345,6 +346,10 @@ export type TransformGravity =
   | 'south'
   | 'east'
   | 'west'
+  | 'northeast'
+  | 'northwest'
+  | 'southeast'
+  | 'southwest'
   | 'face'
   | 'faces';
 

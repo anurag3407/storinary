@@ -22,7 +22,7 @@
 
 Built for the exact problem Cloudinary users hit on the free tier: your account gets disabled for overages and **your assets get deleted**. With Storinary, images live in **your** Backblaze, Appwrite, or Supabase bucket (with full support for 10 GB free B2 storage and the **Appwrite Student Offer / GitHub Student Pack**), transforms run on **your** server and in **your** browser, and nothing is metered.
 
-> 📊 Compare Storinary vs. Cloudinary (features, free tiers, pricing): [`docs/cloudinary-vs-storinary-report.md`](docs/cloudinary-vs-storinary-report.md) · quick summary: [`docs/cloudinary-vs-storinary-summary.md`](docs/cloudinary-vs-storinary-summary.md)
+> 📊 Compare Storinary vs. Cloudinary (features, free tiers, pricing): [`docs/cloudinary-vs-storinary-report.md`](docs/cloudinary-vs-storinary-report.md) · quick summary: [`docs/cloudinary-vs-storinary-summary.md`](docs/cloudinary-vs-storinary-summary.md) · ⚡ Global Edge CDN setup ($0): [`docs/cloudflare-cdn-guide.md`](docs/cloudflare-cdn-guide.md)
 
 ---
 

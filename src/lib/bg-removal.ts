@@ -28,7 +28,7 @@ export async function removeBg(
   onProgress?: (progress: BgRemovalProgress) => void
 ): Promise<Blob> {
   // Dynamic import to avoid SSR issues
-  const { removeBackground } = await import('@imgly/background-removal');
+  const { removeBackground } = await import(/* webpackIgnore: true */ '@imgly/background-removal');
 
   const blob = await removeBackground(imageSource, {
     model: 'isnet', // Balance between speed and quality
@@ -46,7 +46,7 @@ export async function createSubjectMask(
   imageSource: File | Blob | string,
   onProgress?: (progress: BgRemovalProgress) => void
 ): Promise<Blob> {
-  const { segmentForeground } = await import('@imgly/background-removal');
+  const { segmentForeground } = await import(/* webpackIgnore: true */ '@imgly/background-removal');
   return segmentForeground(imageSource, {
     model: 'isnet',
     output: { format: 'image/x-alpha8' },

@@ -18,7 +18,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/media-auth', () => ({ authorizeDashboardOrApiKey: mocks.authorization }));
-vi.mock('@/lib/prisma', () => ({ prisma: { image: { create: mocks.create } } }));
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) }, image: { create: mocks.create } };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 vi.mock('@/lib/storage', () => ({
   uploadToStorage: mocks.uploadToStorage,
   getPublicUrl: mocks.getPublicUrl,
@@ -47,7 +51,7 @@ function request(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.authorization.mockResolvedValue({ ok: true, keyId: null });
+  mocks.authorization.mockResolvedValue({ ok: true, keyId: null, organizationId: 'org-1' });
   mocks.serializeImage.mockImplementation((value) => value);
 });
 

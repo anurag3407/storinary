@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
+import { buildCloudinaryTransformString } from '@/lib/cloudinary-syntax';
 import type { GeneratedLinks, TransformParams } from '@/types';
 import styles from './LinkGenerator.module.css';
 
@@ -58,8 +59,19 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
       ? buildTransformUrl(links, transformParams)
       : null;
 
+  const cloudinaryTransformStr =
+    transformParams && Object.keys(transformParams).length > 0
+      ? buildCloudinaryTransformString(transformParams)
+      : '';
+
+  const cleanPath = links.direct.replace(/^https?:\/\/[^/]+\/(?:api\/serve\/)?/, '');
+  const cloudinaryUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/serve/${cloudinaryTransformStr ? cloudinaryTransformStr + '/' : ''}${cleanPath}`
+    : `/api/serve/${cloudinaryTransformStr ? cloudinaryTransformStr + '/' : ''}${cleanPath}`;
+
   const rows: LinkRow[] = [
     { key: 'direct', label: 'Direct URL', text: links.direct },
+    { key: 'cloudinary', label: 'Cloudinary URL', text: cloudinaryUrl },
     { key: 'html', label: 'HTML', text: links.html },
     { key: 'markdown', label: 'Markdown', text: links.markdown },
     { key: 'css', label: 'CSS', text: links.css },

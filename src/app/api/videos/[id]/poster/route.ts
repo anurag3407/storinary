@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getFromStorage } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
@@ -36,16 +37,19 @@ function deliveryMetadata(request: NextRequest) {
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  const video = await prisma.video.findUnique({
+  const videoLookup = rawPrisma?.video?.findUnique ? rawPrisma.video.findUnique : prisma.video.findUnique;
+  const video = await videoLookup({
     where: { id },
-    select: { posterPath: true },
+    select: { posterPath: true, organizationId: true },
   });
   if (!video?.posterPath) return new Response('Not found', { status: 404 });
+  const posterPath = video.posterPath;
 
-  if (
-    isSignedDeliveryEnabled() &&
-    !verifySignedUrlToken(video.posterPath, request.nextUrl.searchParams.get('token'))
-  ) {
+  return runWithTenantScope(video.organizationId || 'legacy', async () => {
+    if (
+      isSignedDeliveryEnabled() &&
+      !verifySignedUrlToken(posterPath, request.nextUrl.searchParams.get('token'))
+    ) {
     return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
 
@@ -70,7 +74,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     void recordVideoDelivery({ videoId: id, ...metadata }).catch(() => {});
   }
 
-  const cacheKey = hasTransforms ? transformCacheKey(video.posterPath, params) : '';
+  const cacheKey = hasTransforms ? transformCacheKey(posterPath, params) : '';
   const cached = hasTransforms ? transformCache.get(cacheKey) : undefined;
   if (cached) {
     void recordVideoDelivery({
@@ -105,7 +109,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   let image;
   try {
-    image = await getFromStorage(video.posterPath);
+    image = await getFromStorage(posterPath);
     if (hasTransforms) {
       const result = await transformImage(image.buffer, params);
       const entry = { buffer: result.buffer, contentType: result.contentType };
@@ -136,4 +140,5 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       status: hasTransforms ? 404 : 502,
     });
   }
+  });
 }

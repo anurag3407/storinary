@@ -180,3 +180,64 @@ describe('optimizeForUpload', () => {
     expect(meta.width).toBe(2048);
   });
 });
+
+describe('negotiateFormat and negotiateQuality', () => {
+  it('negotiates AVIF when supported in Accept header', async () => {
+    const { negotiateFormat } = await import('./image-processing');
+    expect(negotiateFormat('image/avif,image/webp,*/*', 'auto')).toBe('avif');
+    expect(negotiateFormat('image/avif,image/webp,*/*')).toBe('avif');
+  });
+
+  it('negotiates WebP when AVIF is absent but WebP is supported', async () => {
+    const { negotiateFormat } = await import('./image-processing');
+    expect(negotiateFormat('image/webp,image/apng,*/*', 'auto')).toBe('webp');
+  });
+
+  it('falls back to JPEG when modern formats are absent', async () => {
+    const { negotiateFormat } = await import('./image-processing');
+    expect(negotiateFormat('image/png,image/*,*/*', 'auto')).toBe('jpeg');
+    expect(negotiateFormat('', 'auto')).toBe('jpeg');
+  });
+
+  it('respects explicit requested formats', async () => {
+    const { negotiateFormat } = await import('./image-processing');
+    expect(negotiateFormat('image/avif', 'png')).toBe('png');
+    expect(negotiateFormat('image/avif', 'jpeg')).toBe('jpeg');
+  });
+
+  it('calculates perceptual quality profiles for formats', async () => {
+    const { negotiateQuality } = await import('./image-processing');
+    // auto:good
+    expect(negotiateQuality('auto', 'avif')).toBe(65);
+    expect(negotiateQuality('auto', 'webp')).toBe(78);
+    expect(negotiateQuality('auto', 'jpeg')).toBe(82);
+
+    // auto:eco
+    expect(negotiateQuality('auto:eco', 'avif')).toBe(50);
+    expect(negotiateQuality('auto:eco', 'webp')).toBe(65);
+
+    // auto:best
+    expect(negotiateQuality('auto:best', 'avif')).toBe(80);
+    expect(negotiateQuality('auto:best', 'webp')).toBe(88);
+
+    // explicit number
+    expect(negotiateQuality(92, 'webp')).toBe(92);
+  });
+
+  it('applies corner radius r_max to generate rounded circular avatars', async () => {
+    const { transformImage } = await import('./image-processing');
+    const input = await sharp({
+      create: { width: 100, height: 100, channels: 3, background: { r: 255, g: 0, b: 0 } },
+    }).png().toBuffer();
+
+    const result = await transformImage(input, { r: 'max', w: 60, h: 60, fit: 'cover' });
+    expect(result.buffer).toBeInstanceOf(Buffer);
+    expect(result.format).toBe('webp');
+    expect(result.contentType).toBe('image/webp');
+
+    const meta = await sharp(result.buffer).metadata();
+    expect(meta.width).toBe(60);
+    expect(meta.height).toBe(60);
+    expect(meta.hasAlpha).toBe(true);
+  });
+});

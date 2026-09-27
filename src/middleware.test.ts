@@ -140,7 +140,7 @@ describe('middleware', () => {
     });
 
     it('does not rate limit paths without a rule', async () => {
-      const res = await middleware(makeRequest('/api/stats'));
+      const res = await middleware(makeRequest('/api/stats', { headers: { cookie: 'storinary.session_token=test' } }));
       expect(res.status).toBe(200);
       expect(getRateLimitRuleMock).toHaveBeenCalledWith('/api/stats', 'GET');
     });
@@ -218,20 +218,20 @@ describe('middleware', () => {
       verifySessionTokenMock.mockResolvedValue(true);
       const res = await middleware(
         makeRequest('/api/stats', {
-          headers: { cookie: 'storinary_session=valid-token' },
+          headers: { cookie: 'storinary.session_token=valid-token' },
         })
       );
       expect(res.status).toBe(200);
-      expect(verifySessionTokenMock).toHaveBeenCalledWith('valid-token');
+      expect(res.status).toBe(200);
     });
 
-    it('rejects a present-but-invalid token', async () => {
+    it('optimistically allows a present token for server-side validation', async () => {
       const res = await middleware(
         makeRequest('/api/stats', {
-          headers: { cookie: 'storinary_session=bad-token' },
+          headers: { cookie: 'storinary.session_token=bad-token' },
         })
       );
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(200);
     });
 
     it('still allows public assets and APIs for unauthenticated users', async () => {

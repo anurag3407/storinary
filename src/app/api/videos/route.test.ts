@@ -66,8 +66,9 @@ vi.mock('@/lib/video-renditions', () => ({
     '360p': { width: 640, height: 360, bitrateKbps: 800 },
   },
 }));
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     video: {
       create: createMock,
       findMany: findManyMock,
@@ -77,13 +78,14 @@ vi.mock('@/lib/prisma', () => ({
       create: renditionCreateMock,
     },
     uploadPreset: {
-      findUnique: uploadPresetFindUniqueMock,
+      findFirst: uploadPresetFindUniqueMock,
     },
     videoVersion: {
       create: videoVersionCreateMock,
     },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 vi.mock('@/lib/image-processing', () => ({ createVideoPoster: posterMock }));
 vi.mock('@/lib/video-metadata', () => ({ getVideoMetadata: metadataMock }));
 vi.mock(
@@ -103,7 +105,7 @@ const VIDEO = {
 
 describe('POST /api/videos', () => {
   beforeEach(() => {
-    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'key' });
+    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'key', organizationId: 'org-1' });
     uploadPresetFindUniqueMock.mockReset().mockResolvedValue(null);
     dispatchWebhooksMock.mockReset();
     videoVersionCreateMock.mockReset().mockResolvedValue({});
@@ -239,9 +241,9 @@ describe('POST /api/videos', () => {
     await POST(request);
 
     expect(framePosterMock).toHaveBeenCalledWith(Buffer.from('video'));
-    expect(uploadMock).toHaveBeenNthCalledWith(2, Buffer.from('extracted'), '2026/08/clip-key-poster.webp', 'image/webp');
+    expect(uploadMock).toHaveBeenNthCalledWith(2, Buffer.from('extracted'), 'acme/2026/08/clip-key-poster.webp', 'image/webp');
     expect(createMock).toHaveBeenCalledWith({
-      data: expect.objectContaining({ posterPath: '2026/08/clip-key-poster.webp' }),
+      data: expect.objectContaining({ posterPath: 'acme/2026/08/clip-key-poster.webp' }),
     });
   });
 
@@ -283,9 +285,9 @@ describe('POST /api/videos', () => {
     await POST(request);
 
     expect(posterMock).toHaveBeenCalledWith(Buffer.from('capture'));
-    expect(uploadMock).toHaveBeenNthCalledWith(2, Buffer.from('poster'), '2026/08/clip-key-poster.webp', 'image/webp');
+    expect(uploadMock).toHaveBeenNthCalledWith(2, Buffer.from('poster'), 'acme/2026/08/clip-key-poster.webp', 'image/webp');
     expect(createMock).toHaveBeenCalledWith({
-      data: expect.objectContaining({ posterPath: '2026/08/clip-key-poster.webp' }),
+      data: expect.objectContaining({ posterPath: 'acme/2026/08/clip-key-poster.webp' }),
     });
   });
 
@@ -307,7 +309,7 @@ describe('POST /api/videos', () => {
 
 describe('GET /api/videos', () => {
   beforeEach(() => {
-    readAuthMock.mockReset().mockResolvedValue({ ok: true, keyId: 'read-key' });
+    readAuthMock.mockReset().mockResolvedValue({ ok: true, keyId: 'read-key', organizationId: 'org-1' });
     recordUsageMock.mockReset().mockResolvedValue(undefined);
     findManyMock.mockReset().mockResolvedValue([]);
     countMock.mockReset().mockResolvedValue(0);

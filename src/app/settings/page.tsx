@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { authClient } from '@/lib/auth-client';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { CompressionSelector } from '@/components/upload/CompressionSelector';
@@ -118,14 +119,33 @@ const API_KEY_SCOPE_OPTIONS = [
   { value: 'delete', label: 'Delete media' },
 ] as const;
 
+interface OrgMember {
+  id: string;
+  role: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface ActiveOrgData {
+  id: string;
+  name: string;
+  slug: string;
+  members: OrgMember[];
+}
+
 export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { copy } = useClipboard();
 
-  const [authStatus, setAuthStatus] = useState<
-    'checking' | 'on' | 'off'
-  >('checking');
+  const [activeOrg, setActiveOrg] = useState<ActiveOrgData | null>(null);
+  const [loadingOrg, setLoadingOrg] = useState(true);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'member' | 'admin'>('member');
+  const [inviting, setInviting] = useState(false);
   const [connection, setConnection] = useState<
     'checking' | 'connected' | 'disconnected'
   >('checking');
@@ -204,10 +224,7 @@ export default function SettingsPage() {
     loadDeliveries();
     loadPresets();
     loadTransformations();
-    fetch('/api/auth/status')
-      .then((res) => res.json())
-      .then((data) => setAuthStatus(data?.enabled ? 'on' : 'off'))
-      .catch(() => setAuthStatus('off'));
+    loadOrganization();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -519,9 +536,46 @@ export default function SettingsPage() {
     }
   };
 
+  const loadOrganization = async () => {
+    try {
+      setLoadingOrg(true);
+      const res = await authClient.organization.getFullOrganization();
+      if (res?.data) {
+        setActiveOrg(res.data as unknown as ActiveOrgData);
+      }
+    } catch (err) {
+      console.error('Failed to load organization:', err);
+    } finally {
+      setLoadingOrg(false);
+    }
+  };
+
+  const handleInviteMember = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inviteEmail.trim()) return;
+    setInviting(true);
+    try {
+      const res = await authClient.organization.inviteMember({
+        email: inviteEmail.trim(),
+        role: inviteRole,
+      });
+      if (res?.error) {
+        toast.error(res.error.message || 'Failed to send invitation');
+      } else {
+        toast.success(`Invitation sent to ${inviteEmail.trim()}`);
+        setInviteEmail('');
+        await loadOrganization();
+      }
+    } catch {
+      toast.error('Failed to send invitation');
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await authClient.signOut();
     } finally {
       router.push('/login');
       router.refresh();
@@ -604,36 +658,120 @@ export default function SettingsPage() {
       />
 
       <div className={styles.grid}>
-        {/* ── Section 0: Authentication ───────────────────── */}
+        {/* ── Section 0: Workspace & Team ─────────────────── */}
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Authentication</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <h2 className={styles.cardTitle} style={{ margin: 0 }}>Workspace & Team</h2>
+            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </div>
           <p className={styles.cardDescription}>
-            Session-based admin login protects uploads, deletes, and settings.
-            Configure <code>STORINARY_ADMIN_PASSWORD</code> to enable it.
+            Manage your organization workspace, team members, and role permissions.
           </p>
 
-          <div className={styles.statusRow}>
-            <Badge
-              variant={
-                authStatus === 'on'
-                  ? 'success'
-                  : authStatus === 'off'
-                    ? 'warning'
-                    : 'default'
-              }
-            >
-              {authStatus === 'checking'
-                ? 'CHECKING…'
-                : authStatus === 'on'
-                  ? 'ENABLED'
-                  : 'DISABLED (DEV MODE)'}
-            </Badge>
-            {authStatus === 'on' && (
-              <Button variant="secondary" size="sm" onClick={handleSignOut}>
-                Sign Out
+          {loadingOrg ? (
+            <p style={{ color: '#666', fontSize: '14px' }}>Loading workspace details…</p>
+          ) : activeOrg ? (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                  marginBottom: '20px',
+                  padding: '14px 18px',
+                  backgroundColor: 'var(--nb-bg, #f5f5f0)',
+                  border: '2px solid var(--nb-black, #000)',
+                  borderRadius: 'var(--nb-radius, 8px)',
+                  boxShadow: '2px 2px 0 var(--nb-black, #000)',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: 800 }}>{activeOrg.name}</div>
+                  <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                    Namespace slug: <code style={{ background: '#e5e5e0', padding: '2px 6px', borderRadius: '4px' }}>{activeOrg.slug}</code>
+                  </div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => router.push('/onboarding')}>
+                  Switch Workspace
+                </Button>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '13px', fontWeight: 800, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Team Members ({activeOrg.members?.length || 0})
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {activeOrg.members?.map((member) => (
+                    <div
+                      key={member.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 14px',
+                        backgroundColor: 'var(--nb-white, #fff)',
+                        border: '2px solid var(--nb-black, #000)',
+                        borderRadius: 'var(--nb-radius, 6px)',
+                        boxShadow: '2px 2px 0 var(--nb-black, #000)',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, fontSize: '14px' }}>{member.user?.name || member.user?.email || 'Member'}</span>
+                        {member.user?.name && member.user?.email && (
+                          <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>({member.user.email})</span>
+                        )}
+                      </div>
+                      <Badge variant={member.role === 'owner' ? 'success' : member.role === 'admin' ? 'info' : 'default'}>
+                        {member.role?.toUpperCase() || 'MEMBER'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '13px', fontWeight: 800, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Invite New Member
+                </h3>
+                <form onSubmit={handleInviteMember} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <input
+                    type="email"
+                    placeholder="teammate@company.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="nb-input"
+                    style={{ flex: '1 1 240px' }}
+                    required
+                  />
+                  <select
+                    aria-label="Member role"
+                    value={inviteRole}
+                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
+                    className="nb-input"
+                    style={{ width: '130px', fontWeight: 600 }}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <Button type="submit" loading={inviting} icon="✉️">
+                    Invite Member
+                  </Button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={{ color: '#666', fontSize: '14px', marginBottom: '12px' }}>
+                No active workspace selected.
+              </p>
+              <Button size="sm" onClick={() => router.push('/onboarding')}>
+                Select or Create Workspace
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </section>
 
         {/* ── Section 0.5: Programmatic API Access ─────────── */}

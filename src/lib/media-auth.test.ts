@@ -1,77 +1,155 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import {
-  authorizeDashboardOrApiKey,
-  authorizeDashboardOrReadApiKey,
-} from './media-auth';
+import { authorizeDashboardOrApiKey, authorizeDashboardOrReadApiKey } from './media-auth';
 
-const {
-  authenticateApiKeyMock,
-  authenticateReadApiKeyMock,
-  authenticateVideoApiKeyMock,
-  isAuthEnabledMock,
-  verifySessionTokenMock,
-} =
+const { authenticateScopedApiKeyMock, getSessionMock, getTenantIdOrNullMock, enterTenantScopeMock } =
   vi.hoisted(() => ({
-    authenticateApiKeyMock: vi.fn(),
-    authenticateReadApiKeyMock: vi.fn(),
-    authenticateVideoApiKeyMock: vi.fn(),
-    isAuthEnabledMock: vi.fn(),
-    verifySessionTokenMock: vi.fn(),
+    authenticateScopedApiKeyMock: vi.fn(),
+    getSessionMock: vi.fn(),
+    getTenantIdOrNullMock: vi.fn(),
+    enterTenantScopeMock: vi.fn(),
   }));
 
-vi.mock('@/lib/auth', () => ({
-  SESSION_COOKIE: 'storinary_session',
-  isAuthEnabled: isAuthEnabledMock,
-  verifySessionToken: verifySessionTokenMock,
-}));
 vi.mock('@/lib/api-keys', () => ({
-  authenticateApiKey: authenticateApiKeyMock,
-  authenticateReadApiKey: authenticateReadApiKeyMock,
-  authenticateVideoApiKey: authenticateVideoApiKeyMock,
+  authenticateScopedApiKey: authenticateScopedApiKeyMock,
 }));
+
+vi.mock('@/lib/auth', () => ({
+  auth: { api: { getSession: getSessionMock } },
+}));
+
+vi.mock('@/lib/tenant', () => ({
+  getTenantIdOrNull: getTenantIdOrNullMock,
+}));
+
+vi.mock('@/lib/prisma-scope', () => ({
+  enterTenantScope: enterTenantScopeMock,
+}));
+
+const VERIFIED_SESSION = {
+  user: { id: 'user-1', email: 'owner@example.com', emailVerified: true },
+  session: { id: 'session-1', activeOrganizationId: 'org-a' },
+};
 
 describe('authorizeDashboardOrApiKey', () => {
   beforeEach(() => {
-    authenticateApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'image-key' });
-    authenticateVideoApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'video-key' });
-    authenticateReadApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'read-key' });
-    isAuthEnabledMock.mockReset().mockReturnValue(true);
-    verifySessionTokenMock.mockReset().mockResolvedValue(false);
+    authenticateScopedApiKeyMock.mockReset();
+    getSessionMock.mockReset();
+    getTenantIdOrNullMock.mockReset();
+    enterTenantScopeMock.mockReset();
+    getTenantIdOrNullMock.mockResolvedValue('org-from-key');
   });
 
-  it('prefers API key authentication when a credential is present', async () => {
+  it('prefers API key authentication and scopes the request to the key organization', async () => {
+    authenticateScopedApiKeyMock.mockResolvedValue({
+      ok: true,
+      keyId: 'image-key',
+      organizationId: 'org-from-key',
+    });
     const request = new NextRequest('http://localhost/api/upload', {
       headers: { 'x-api-key': 'stor_live_secret' },
     });
 
-    await expect(authorizeDashboardOrApiKey(request)).resolves.toEqual({ ok: true, keyId: 'image-key' });
-    expect(authenticateApiKeyMock).toHaveBeenCalled();
+    await expect(authorizeDashboardOrApiKey(request)).resolves.toEqual({
+      ok: true,
+      keyId: 'image-key',
+      organizationId: 'org-from-key',
+    });
+    expect(authenticateScopedApiKeyMock).toHaveBeenCalled();
+    expect(enterTenantScopeMock).toHaveBeenCalledWith('org-from-key');
   });
 
-  it('allows a dashboard session without an API key and preserves video scopes', async () => {
-    verifySessionTokenMock.mockResolvedValue(true);
-    const request = new NextRequest('http://localhost/api/videos', {
-      headers: { cookie: 'storinary_session=valid' },
+  it('rejects an API key whose organization cannot be resolved', async () => {
+    authenticateScopedApiKeyMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'API key organization not found',
     });
+    const request = new NextRequest('http://localhost/api/upload', {
+      headers: { 'x-api-key': 'stor_live_secret' },
+    });
+
+    await expect(authorizeDashboardOrApiKey(request)).resolves.toEqual({
+      ok: false,
+      status: 403,
+      error: 'API key organization not found',
+    });
+    expect(enterTenantScopeMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves the requested scope for video uploads', async () => {
+    authenticateScopedApiKeyMock.mockResolvedValue({ ok: true, keyId: 'video-key' });
+    const request = new NextRequest('http://localhost/api/videos', {
+      headers: { 'x-api-key': 'stor_live_secret' },
+    });
+
+    await authorizeDashboardOrApiKey(request, undefined, 'video-upload');
+    expect(authenticateScopedApiKeyMock).toHaveBeenCalledWith(
+      request,
+      undefined,
+      undefined,
+      'video-upload'
+    );
+  });
+
+  it('allows a verified dashboard session and binds its active organization', async () => {
+    getSessionMock.mockResolvedValue(VERIFIED_SESSION);
+    const request = new NextRequest('http://localhost/api/videos');
 
     await expect(authorizeDashboardOrApiKey(request, undefined, 'video-upload')).resolves.toEqual({
       ok: true,
       keyId: null,
+      organizationId: 'org-a',
     });
-    expect(authenticateVideoApiKeyMock).not.toHaveBeenCalled();
+    expect(authenticateScopedApiKeyMock).not.toHaveBeenCalled();
+    expect(enterTenantScopeMock).toHaveBeenCalledWith('org-a');
+  });
+
+  it('refuses an unverified account', async () => {
+    getSessionMock.mockResolvedValue({
+      user: { ...VERIFIED_SESSION.user, emailVerified: false },
+      session: { id: 'session-1', activeOrganizationId: 'org-a' },
+    });
+    const request = new NextRequest('http://localhost/api/videos');
+
+    await expect(authorizeDashboardOrApiKey(request)).resolves.toEqual({
+      ok: false,
+      status: 403,
+      error: 'Verify your email first',
+    });
+    expect(enterTenantScopeMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a session with no active organization', async () => {
+    getSessionMock.mockResolvedValue({
+      user: VERIFIED_SESSION.user,
+      session: { id: 'session-1', activeOrganizationId: null },
+    });
+    const request = new NextRequest('http://localhost/api/videos');
+
+    await expect(authorizeDashboardOrApiKey(request)).resolves.toEqual({
+      ok: false,
+      status: 403,
+      error: 'Select or create an organization first',
+    });
   });
 });
 
 describe('authorizeDashboardOrReadApiKey', () => {
   beforeEach(() => {
-    authenticateReadApiKeyMock.mockReset().mockResolvedValue({ ok: true, keyId: 'read-key' });
-    isAuthEnabledMock.mockReturnValue(true);
-    verifySessionTokenMock.mockReset().mockResolvedValue(false);
+    authenticateScopedApiKeyMock.mockReset();
+    getSessionMock.mockReset();
+    getTenantIdOrNullMock.mockReset().mockResolvedValue('org-from-key');
+    enterTenantScopeMock.mockReset();
   });
 
-  it('requires read scope for API credentials', async () => {
+  it('requires the read scope for API credentials', async () => {
+    authenticateScopedApiKeyMock.mockResolvedValue({
+      ok: true,
+      keyId: 'read-key',
+      organizationId: 'org-from-key',
+    });
     const request = new NextRequest('http://localhost/api/images', {
       headers: { authorization: 'Bearer stor_live_secret' },
     });
@@ -79,25 +157,32 @@ describe('authorizeDashboardOrReadApiKey', () => {
     await expect(authorizeDashboardOrReadApiKey(request)).resolves.toEqual({
       ok: true,
       keyId: 'read-key',
+      organizationId: 'org-from-key',
     });
-    expect(authenticateReadApiKeyMock).toHaveBeenCalledWith(request);
+    expect(authenticateScopedApiKeyMock).toHaveBeenCalledWith(
+      request,
+      undefined,
+      undefined,
+      'read'
+    );
   });
 
   it('allows a dashboard session without recording key usage', async () => {
-    verifySessionTokenMock.mockResolvedValue(true);
-    const request = new NextRequest('http://localhost/api/videos', {
-      headers: { cookie: 'storinary_session=valid' },
-    });
+    getSessionMock.mockResolvedValue(VERIFIED_SESSION);
+    const request = new NextRequest('http://localhost/api/videos');
 
     await expect(authorizeDashboardOrReadApiKey(request)).resolves.toEqual({
       ok: true,
       keyId: null,
+      organizationId: 'org-a',
     });
-    expect(authenticateReadApiKeyMock).not.toHaveBeenCalled();
+    expect(authenticateScopedApiKeyMock).not.toHaveBeenCalled();
   });
 
   it('rejects unauthenticated requests without an API key', async () => {
-    await expect(authorizeDashboardOrReadApiKey(new NextRequest('http://localhost/api/images')))
-      .resolves.toEqual({ ok: false, status: 401, error: 'Unauthorized' });
+    getSessionMock.mockResolvedValue(null);
+    await expect(
+      authorizeDashboardOrReadApiKey(new NextRequest('http://localhost/api/images'))
+    ).resolves.toEqual({ ok: false, status: 401, error: 'Unauthorized' });
   });
 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { tenantStoragePath } from '@/lib/tenant';
 import { getVideoFromStorage, getPublicUrl, uploadToStorage } from '@/lib/storage';
 import { authorizeDashboardOrWriteApiKey, recordManagementApiKeyUsage } from '@/lib/media-management-auth';
 import {
@@ -31,6 +32,7 @@ export async function POST(
   if (!authorization.ok) {
     return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
+  const tenantId = authorization.organizationId;
 
   let labels: RenditionLabel[];
   try {
@@ -67,7 +69,7 @@ export async function POST(
     try {
       const generated = await createVideoRendition(source.buffer, label);
       const shortId = `${id}-${label}`.replace(/[^a-z0-9-]/gi, '');
-      const storagePath = `videos/renditions/${shortId}.mp4`;
+      const storagePath = await tenantStoragePath(tenantId, `videos/renditions/${shortId}.mp4`);
       await uploadToStorage(generated.buffer, storagePath, 'video/mp4');
       const rendition = await prisma.videoRendition.upsert({
         where: { videoId_label: { videoId: video.id, label } },

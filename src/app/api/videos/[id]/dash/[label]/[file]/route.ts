@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getVideoFromStorage } from '@/lib/storage';
 import { isSignedDeliveryEnabled, verifySignedUrlToken } from '@/lib/signed-delivery';
 import { recordVideoDelivery } from '@/lib/delivery-analytics';
@@ -21,10 +22,15 @@ export async function GET(
     return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const dashPackage = await prisma.videoDashPackage.findUnique({
+  const dashLookup = rawPrisma?.videoDashPackage?.findUnique
+    ? rawPrisma.videoDashPackage.findUnique
+    : prisma.videoDashPackage.findUnique;
+  const dashPackage = await dashLookup({
     where: { videoId_label: { videoId: id, label } },
   });
   if (!dashPackage) return new Response('Not found', { status: 404 });
+
+  return runWithTenantScope(dashPackage.organizationId || 'legacy', async () => {
 
   let key = '';
   let contentType = 'application/octet-stream';
@@ -78,4 +84,5 @@ export async function GET(
   } catch {
     return new Response('DASH asset unavailable', { status: 502 });
   }
+  });
 }

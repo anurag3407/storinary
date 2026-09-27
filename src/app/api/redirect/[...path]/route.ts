@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getFromStorage } from '@/lib/storage';
 import { getVideoFromStorage } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
@@ -68,6 +69,10 @@ export async function GET(
   }
 
   const isVideo = segments[0] === 'video';
+
+  // Old unprefixed Cloudinary compatibility URLs remain in the reserved legacy tenant.
+  const tenantId = 'legacy';
+  return runWithTenantScope(tenantId, async () => {
 
   // Only these are real Cloudinary transform prefixes. Whitelisting (instead
   // of matching any word_word segment) keeps ordinary public_ids like
@@ -294,6 +299,7 @@ export async function GET(
   } catch {
     return new Response('Transform failed', { status: 500 });
   }
+  });
 }
 
 async function serveCloudinaryVideo(

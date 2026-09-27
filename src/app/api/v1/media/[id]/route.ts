@@ -171,9 +171,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (!image) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       const version = image.versions.find((candidate) => candidate.id === body.restoreVersionId);
       if (!version) return NextResponse.json({ error: 'Version not found' }, { status: 404 });
-      const restored = await restoreImageFromVersion(image, serializeImageVersion(version));
+      const restored = await restoreImageFromVersion({ ...image, organizationId: 'legacy' }, serializeImageVersion(version));
       const restoredResource = {
         ...restored.updated,
+        organizationId: restored.updated.organizationId,
         altText: image.altText,
         bgRemoved: image.bgRemoved,
         aiModerated: image.aiModerated,

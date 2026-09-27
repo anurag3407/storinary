@@ -21,7 +21,7 @@ type BaseImageInput = {
   createdAt: Date;
 };
 
-type V1VideoInput = Video & { renditions: VideoRendition[]; versions?: unknown };
+type V1VideoInput = Omit<Video, 'organizationId'> & { renditions: VideoRendition[]; versions?: unknown };
 
 type V1CollectionValue = {
   collection: {

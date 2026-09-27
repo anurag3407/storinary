@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { enterTenantScope } from '@/lib/prisma-scope';
+import { tenantStoragePath } from '@/lib/tenant';
 import { getPublicUrl, generateStorageKey, uploadToStorage } from '@/lib/storage';
 import { getImageMetadata } from '@/lib/image-processing';
 import { isSafeSvg } from '@/lib/svg-security';
@@ -53,7 +55,10 @@ export async function POST(request: NextRequest) {
   const requestedPreset = formData.get('upload_preset');
   let preset = null;
   if (typeof requestedPreset === 'string' && requestedPreset.trim()) {
-    preset = await prisma.uploadPreset.findUnique({
+    const presetLookup = rawPrisma?.uploadPreset?.findFirst
+      ? rawPrisma.uploadPreset.findFirst
+      : prisma.uploadPreset.findFirst;
+    preset = await presetLookup({
       where: { name: requestedPreset.trim() },
     });
     if (!preset || !preset.active) {
@@ -62,7 +67,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!preset.unsigned) {
+    if (preset.unsigned) {
+      if (preset.organizationId) enterTenantScope(preset.organizationId);
+    } else {
       formData.delete('api_key');
       if (!request.headers.get('x-api-key') && !request.headers.get('authorization')) {
         return NextResponse.json(
@@ -80,6 +87,7 @@ export async function POST(request: NextRequest) {
       { status: authorization.status }
     );
   }
+  const tenantId = authorization.organizationId;
 
   const files = formData
     .getAll('file')
@@ -144,7 +152,7 @@ export async function POST(request: NextRequest) {
 
       // 5. Generate storage key
       const shortId = generateShortId();
-      const storageKey = generateStorageKey(file.name, shortId, format);
+      const storageKey = await tenantStoragePath(tenantId, generateStorageKey(file.name, shortId, format));
 
       // 6. Upload to Supabase Storage
       await uploadToStorage(buffer, storageKey, mimeType);

@@ -5,7 +5,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLandingOrLogin = pathname === '/login';
+  const isLandingOrLogin = pathname === '/login' || pathname === '/onboarding';
 
   if (isLandingOrLogin) {
     return <div className="standalone-layout">{children}</div>;

@@ -34,12 +34,14 @@ vi.mock('@/lib/webhooks', () => ({
 
 const dispatchWebhookMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     video: { findUnique: findUniqueMock },
     videoClip: { findUnique: clipFindUniqueMock, create: clipCreateMock },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/storage', () => ({
   getVideoFromStorage: getVideoMock,
@@ -80,7 +82,7 @@ function makeRequest(body: unknown) {
 
 describe('POST /api/videos/:id/clip', () => {
   beforeEach(() => {
-    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'write-key' });
+    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'write-key', organizationId: 'org-1' });
     recordUsageMock.mockReset().mockResolvedValue(undefined);
     findUniqueMock.mockReset().mockResolvedValue(VIDEO);
     getVideoMock.mockReset().mockResolvedValue({ buffer: Buffer.from('source') });

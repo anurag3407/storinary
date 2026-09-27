@@ -1,3 +1,4 @@
+PRAGMA foreign_keys=OFF;
 -- CreateTable
 CREATE TABLE "VideoClip" (
   "id" TEXT NOT NULL PRIMARY KEY,
@@ -19,6 +20,3 @@ CREATE TABLE "VideoClip" (
 CREATE UNIQUE INDEX "VideoClip_storagePath_key" ON "VideoClip"("storagePath");
 CREATE UNIQUE INDEX "VideoClip_videoId_name_key" ON "VideoClip"("videoId", "name");
 CREATE INDEX "VideoClip_videoId_createdAt_idx" ON "VideoClip"("videoId", "createdAt");
-
--- AddForeignKey
-ALTER TABLE "VideoClip" ADD CONSTRAINT "VideoClip_videoId_fkey" FOREIGN KEY ("videoId") REFERENCES "Video"("id") ON DELETE CASCADE ON UPDATE CASCADE;

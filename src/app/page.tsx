@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -9,6 +10,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { getStats } from '@/lib/stats';
+import { getTenantId, TenantContextError } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
 import styles from './page.module.css';
 
@@ -21,6 +23,15 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
+  try {
+    await getTenantId();
+  } catch (error) {
+    if (error instanceof TenantContextError) {
+      redirect('/onboarding');
+    }
+    throw error;
+  }
+
   let stats: StatsResponse | null = null;
 
   try {

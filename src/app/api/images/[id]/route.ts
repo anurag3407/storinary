@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { tenantStoragePath } from '@/lib/tenant';
 import {
   deleteFromStorage,
   generateStorageKey,
@@ -139,7 +140,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     await archiveCurrentAsImageVersion(image);
-    const storagePath = generateStorageKey(uploadedFile.name, generateShortId(), metadata.format);
+    const storagePath = await tenantStoragePath(image.organizationId, generateStorageKey(uploadedFile.name, generateShortId(), metadata.format));
     const updated = await prisma.image.update({
       where: { id },
       data: {

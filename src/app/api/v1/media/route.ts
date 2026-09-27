@@ -13,6 +13,7 @@ import {
   serializeV1Video,
   serializeV1UploadResource,
 } from '@/lib/v1-media';
+import { fetchRemoteAsset, contentTypeToExtension } from '@/lib/remote-import';
 
 export const runtime = 'nodejs';
 
@@ -152,16 +153,29 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const formData = await request.formData().catch(() => null);
+  let formData: FormData | null = null;
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const jsonBody = await request.json().catch(() => null);
+    if (jsonBody && typeof jsonBody === 'object') {
+      formData = new FormData();
+      for (const [key, value] of Object.entries(jsonBody)) {
+        if (Array.isArray(value)) {
+          for (const item of value) formData.append(key, String(item));
+        } else if (value !== null && value !== undefined) {
+          formData.set(key, String(value));
+        }
+      }
+    }
+  } else {
+    formData = await request.formData().catch(() => null);
+  }
   if (!formData) return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
 
   const authorization = await authorizeDashboardOrApiKey(request, formData, 'upload');
   if (!authorization.ok) {
     return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
-
-  const files = formData.getAll('file').filter((item): item is File => item instanceof File && item.size > 0);
-  if (files.length === 0) return NextResponse.json({ error: 'No files provided' }, { status: 400 });
 
   const rawResourceType = formData.get('resource_type')?.toString() || 'image';
   if (rawResourceType === 'auto' || rawResourceType === 'raw') {
@@ -172,6 +186,40 @@ export async function POST(request: NextRequest) {
   }
 
   const resourceType = rawResourceType as 'image' | 'video';
+  const allowedMimes = resourceType === 'video'
+    ? ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/mpeg']
+    : ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'];
+  const maxSize = resourceType === 'video' ? 150 * 1024 * 1024 : 25 * 1024 * 1024;
+
+  const rawFiles = formData.getAll('file');
+  const files: File[] = [];
+  for (const item of rawFiles) {
+    if (item instanceof File && item.size > 0) {
+      files.push(item);
+    } else if (typeof item === 'string' && item.trim()) {
+      const str = item.trim();
+      if (str.startsWith('data:')) {
+        const match = /^data:([^;]+);base64,(.+)$/.exec(str);
+        if (match) {
+          const mime = match[1].toLowerCase();
+          const buffer = Buffer.from(match[2], 'base64');
+          const ext = contentTypeToExtension(mime) || 'bin';
+          files.push(new File([new Uint8Array(buffer)], `upload.${ext}`, { type: mime }));
+        }
+      } else if (str.startsWith('https://')) {
+        try {
+          const fetched = await fetchRemoteAsset(str, allowedMimes, maxSize);
+          files.push(new File([new Uint8Array(fetched.buffer)], fetched.filename, { type: fetched.contentType }));
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to fetch remote asset';
+          return NextResponse.json({ error: msg }, { status: 400 });
+        }
+      }
+    }
+  }
+
+  if (files.length === 0) return NextResponse.json({ error: 'No files provided' }, { status: 400 });
+
   const uploadPath = `/api/${resourceType}s`;
   const responseKey = resourceType === 'video' ? 'videos' : 'images';
   const results = await Promise.allSettled(files.map(async (file) => {

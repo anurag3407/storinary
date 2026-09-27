@@ -17,12 +17,16 @@ const { findUniqueMock, getFromStorageMock, transformImageMock, diskCacheGetMock
     namedTransformFindManyMock: vi.fn(),
   }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const p = {
     image: { findUnique: findUniqueMock },
     namedTransformation: { findMany: namedTransformFindManyMock },
-  },
-}));
+  };
+  return {
+    prisma: p,
+    rawPrisma: p,
+  };
+});
 
 vi.mock('@/lib/storage', () => ({
   getFromStorage: getFromStorageMock,

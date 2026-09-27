@@ -74,4 +74,10 @@ describe('deleteOrphanedStorage', () => {
       'Maximum 200 objects per delete request'
     );
   });
+
+  it('rejects keys that do not start with the tenant prefix', async () => {
+    await expect(
+      deleteOrphanedStorage(['other-tenant/secret.png'], 'my-tenant')
+    ).rejects.toThrow('Cannot delete storage object outside active organization');
+  });
 });

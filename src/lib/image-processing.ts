@@ -29,8 +29,9 @@ export async function getImageMetadata(buffer: Buffer): Promise<{
 export async function transformImage(
   buffer: Buffer,
   params: TransformParams,
-  overlay?: Buffer
-): Promise<{ buffer: Buffer; contentType: string; format: string }> {
+  overlay?: Buffer,
+  acceptHeader?: string | null
+): Promise<{ buffer: Buffer; contentType: string; format: string; isAutoFormat: boolean }> {
   let width = params.w;
   let height = params.h;
   if (params.dpr && (width || height)) {
@@ -108,9 +109,37 @@ export async function transformImage(
     pipeline = pipeline.composite([{ input: overlay, gravity: overlayGravity(params.g ?? 'center') }]);
   }
 
+  // ── Corner radius / rounded avatar masking ───────────
+  if (params.r) {
+    const intermediateBuffer = await pipeline.toBuffer();
+    const meta = await sharp(intermediateBuffer).metadata();
+    const maskW = meta.width || width || 800;
+    const maskH = meta.height || height || 800;
+    const maxRadius = Math.round(Math.min(maskW, maskH) / 2);
+    const radius =
+      params.r === 'max'
+        ? maxRadius
+        : Math.min(Math.max(parseInt(params.r, 10) || 0, 1), maxRadius);
+
+    if (radius > 0) {
+      const maskSvg = Buffer.from(
+        `<svg width="${maskW}" height="${maskH}"><rect x="0" y="0" width="${maskW}" height="${maskH}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`
+      );
+      pipeline = sharp(intermediateBuffer).composite([{ input: maskSvg, blend: 'dest-in' }]);
+    } else {
+      pipeline = sharp(intermediateBuffer);
+    }
+  }
+
   // ── Format Conversion + Quality ──────────────────────
-  const quality = params.q === 'auto' ? 80 : params.q || 80;
-  const outputFormat = params.fmt === 'auto' ? 'webp' : params.fmt || 'webp';
+  const isAutoFormat = params.fmt === 'auto';
+  let outputFormat = isAutoFormat
+    ? negotiateFormat(acceptHeader, params.fmt)
+    : (params.fmt || 'webp');
+  if (params.r && outputFormat === 'jpeg' && !params.fmt) {
+    outputFormat = 'webp';
+  }
+  const quality = negotiateQuality(params.q, outputFormat);
 
   switch (outputFormat) {
     case 'jpeg':
@@ -142,7 +171,68 @@ export async function transformImage(
     buffer: resultBuffer,
     contentType: contentTypeMap[outputFormat] || 'image/webp',
     format: outputFormat,
+    isAutoFormat,
   };
+}
+
+/**
+ * Negotiates the best image format based on client Accept header and requested format.
+ */
+export function negotiateFormat(
+  acceptHeader?: string | null,
+  requestedFmt?: string
+): 'avif' | 'webp' | 'jpeg' | 'png' {
+  if (requestedFmt && requestedFmt !== 'auto') {
+    if (['avif', 'webp', 'jpeg', 'png'].includes(requestedFmt)) {
+      return requestedFmt as 'avif' | 'webp' | 'jpeg' | 'png';
+    }
+  }
+
+  const accept = (acceptHeader || '').toLowerCase();
+  if (accept.includes('image/avif')) return 'avif';
+  if (accept.includes('image/webp')) return 'webp';
+  return 'jpeg';
+}
+
+/**
+ * Maps perceptual quality based on target format and requested quality.
+ * Emulates Cloudinary q_auto heuristics.
+ */
+export function negotiateQuality(
+  qParam?: number | string,
+  outputFormat: string = 'webp'
+): number {
+  if (typeof qParam === 'number' && !isNaN(qParam)) {
+    return Math.min(Math.max(qParam, 1), 100);
+  }
+
+  const qStr = typeof qParam === 'string' ? qParam.toLowerCase() : 'auto';
+
+  if (qStr === 'auto:eco' || qStr === 'auto:low') {
+    switch (outputFormat) {
+      case 'avif': return 50;
+      case 'webp': return 65;
+      case 'png': return 70;
+      case 'jpeg': default: return 70;
+    }
+  }
+
+  if (qStr === 'auto:best') {
+    switch (outputFormat) {
+      case 'avif': return 80;
+      case 'webp': return 88;
+      case 'png': return 95;
+      case 'jpeg': default: return 90;
+    }
+  }
+
+  // Default 'auto' or 'auto:good'
+  switch (outputFormat) {
+    case 'avif': return 65;
+    case 'webp': return 78;
+    case 'png': return 80;
+    case 'jpeg': default: return 82;
+  }
 }
 
 function escapePangoText(value: string): string {

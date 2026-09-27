@@ -166,6 +166,11 @@ export function parseTransformParams(
     params.overlayId = overlayId;
   }
 
+  const radius = searchParams.get('r');
+  if (radius && (radius === 'max' || /^\d+$/.test(radius))) {
+    params.r = radius;
+  }
+
   return params as TransformParams;
 }
 
@@ -186,7 +191,8 @@ export function hasTransformParams(params: TransformParams): boolean {
       params.gamma !== undefined ||
       params.dpr ||
       params.text ||
-      params.overlayId
+      params.overlayId ||
+      params.r
   );
 }
 

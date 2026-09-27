@@ -29,6 +29,7 @@ describe('LinkGenerator', () => {
   it('renders the core link rows', () => {
     render(<LinkGenerator links={links} />, { wrapper });
     expect(screen.getByText('Direct URL')).toBeInTheDocument();
+    expect(screen.getByText('Cloudinary URL')).toBeInTheDocument();
     expect(screen.getByText('HTML')).toBeInTheDocument();
     expect(screen.getByText('Markdown')).toBeInTheDocument();
     expect(screen.getByText('CSS')).toBeInTheDocument();

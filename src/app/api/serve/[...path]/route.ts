@@ -1,10 +1,13 @@
 import { NextRequest } from 'next/server';
 import { getFromStorage } from '@/lib/storage';
-import { transformImage } from '@/lib/image-processing';
+import { negotiateFormat, negotiateQuality, transformImage } from '@/lib/image-processing';
+import { parseCloudinaryPath } from '@/lib/cloudinary-syntax';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
 import { diskCache } from '@/lib/disk-cache';
 import { isSignedDeliveryEnabled, verifySignedUrlToken } from '@/lib/signed-delivery';
 import { prisma } from '@/lib/prisma';
+import { resolveTenantFromPath } from '@/lib/tenant';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { hasTransformParams, parseTransformParams } from '@/lib/utils';
 import { recordImageDelivery } from '@/lib/delivery-analytics';
 import type { TransformParams } from '@/types';
@@ -31,29 +34,28 @@ function cacheHeaders() {
 
 /**
  * GET /api/serve/[...path]?w=&h=&q=&fmt=&fit=
- * Direct CDN delivery & on-the-fly transformations via URL path.
+ * Direct CDN delivery & on-the-fly transformations via URL path or query params.
  * 
- * Directly serves the binary image from cache/storage under your custom domain.
- * - With transform params: process with sharp and return optimized binary.
- * - Without transform params: stream original binary directly with immutable caching.
+ * Supports both:
+ * 1. Query parameters: /api/serve/folder/image.jpg?w=500&fit=cover
+ * 2. Cloudinary path syntax: /api/serve/w_500,h_300,c_fill,f_auto,q_auto/folder/image.jpg
  */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> }
 ) {
-  const activeNamedTransforms = await prisma.namedTransformation.findMany({
-    where: { active: true },
-    select: { name: true, params: true },
-  });
-  const namedTransforms = Object.fromEntries(activeNamedTransforms.map((row) => [row.name, row.params]));
-
   const { path } = await context.params;
-  const rawKey = (path as string[] || []).join('/');
-  let key = rawKey;
+  const rawSegments = (path as string[]) || [];
+
+  // Parse Cloudinary-style transformation path segments if present
+  const { transformParams: pathTransforms, storagePath: parsedStoragePath } =
+    parseCloudinaryPath(rawSegments);
+
+  let key = parsedStoragePath || rawSegments.join('/');
   try {
-    key = decodeURIComponent(rawKey);
+    key = decodeURIComponent(key);
   } catch {
-    // leave as rawKey
+    // leave as key
   }
   key = key.replace(/^\//, '');
 
@@ -61,14 +63,31 @@ export async function GET(
     return new Response('Not found', { status: 404 });
   }
 
+  try {
+    const tenantId = await resolveTenantFromPath(key);
+    return await runWithTenantScope(tenantId, async () => {
   if (isSignedDeliveryEnabled() && !verifySignedUrlToken(key, request.nextUrl.searchParams.get('token'))) {
     return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const params = parseTransformParams(
+  const activeNamedTransforms = await prisma.namedTransformation.findMany({
+    where: { active: true },
+    select: { name: true, params: true },
+  });
+  const namedTransforms = Object.fromEntries(activeNamedTransforms.map((row) => [row.name, row.params]));
+  const queryParams = parseTransformParams(
     request.nextUrl.searchParams,
     namedTransforms
   ) as TransformParams;
+
+  // Merge path-based Cloudinary transforms with query parameters (query params take priority)
+  const params: TransformParams = {
+    ...pathTransforms,
+    ...queryParams,
+    ...(pathTransforms.e || queryParams.e
+      ? { e: [...(pathTransforms.e || []), ...(queryParams.e || [])] }
+      : {}),
+  };
   const hasTransforms = hasTransformParams(params);
 
   // ─── 1. SERVE ORIGINAL DIRECTLY (No Redirects) ───────────────
@@ -172,8 +191,15 @@ export async function GET(
     }
   }
 
-  // Reuse a previously processed transform if we have one
-  const cacheKey = transformCacheKey(key, params);
+  const acceptHeader = request.headers.get('accept');
+  const isAutoFormat = !params.fmt || params.fmt === 'auto';
+  const effectiveFormat = isAutoFormat ? negotiateFormat(acceptHeader, params.fmt) : params.fmt;
+  const effectiveQuality = negotiateQuality(params.q, effectiveFormat);
+
+  // Cache key includes effective format & quality so AVIF / WebP / JPEG variants are cached distinctly
+  const cacheParams: TransformParams = { ...params, fmt: effectiveFormat, q: effectiveQuality };
+  const cacheKey = transformCacheKey(key, cacheParams);
+  const varyHeader: Record<string, string> = isAutoFormat ? { Vary: 'Accept' } : {};
 
   // L1: in-memory LRU cache
   const cached = transformCache.get(cacheKey);
@@ -186,7 +212,7 @@ export async function GET(
       userAgent: request.headers.get('user-agent'),
     }).catch(() => {});
     return new Response(new Uint8Array(cached.buffer), {
-      headers: { 'Content-Type': cached.contentType, ...cacheHeaders() },
+      headers: { 'Content-Type': cached.contentType, ...cacheHeaders(), ...varyHeader },
     });
   }
 
@@ -206,13 +232,13 @@ export async function GET(
       contentType: diskCached.contentType,
     });
     return new Response(new Uint8Array(diskCached.buffer), {
-      headers: { 'Content-Type': diskCached.contentType, ...cacheHeaders() },
+      headers: { 'Content-Type': diskCached.contentType, ...cacheHeaders(), ...varyHeader },
     });
   }
 
   let result;
   try {
-    result = await transformImage(fetched.buffer, params, overlayBuffer || undefined);
+    result = await transformImage(fetched.buffer, params, overlayBuffer || undefined, acceptHeader);
   } catch {
     return new Response('Transform failed', { status: 500 });
   }
@@ -237,6 +263,11 @@ export async function GET(
     headers: {
       'Content-Type': result.contentType,
       ...cacheHeaders(),
+      ...varyHeader,
     },
   });
+    });
+  } catch (error) {
+    return new Response('Not found', { status: error instanceof Error && 'status' in error ? Number((error as { status: number }).status) : 404 });
+  }
 }

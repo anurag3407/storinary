@@ -30,12 +30,14 @@ vi.mock('@/lib/media-management-auth', () => ({
   recordManagementApiKeyUsage: recordUsageMock,
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     video: { findUnique: findUniqueMock },
     videoRendition: { upsert: upsertMock },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/storage', () => ({
   getVideoFromStorage: getVideoMock,
@@ -63,7 +65,7 @@ function makeRequest(query = '') {
 
 describe('POST /api/videos/:id/renditions', () => {
   beforeEach(() => {
-    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'write-key' });
+    authMock.mockReset().mockResolvedValue({ ok: true, keyId: 'write-key', organizationId: 'org-1' });
     recordUsageMock.mockReset().mockResolvedValue(undefined);
     findUniqueMock.mockReset().mockResolvedValue(VIDEO);
     upsertMock.mockReset();
@@ -136,7 +138,7 @@ describe('POST /api/videos/:id/renditions', () => {
     authMock.mockResolvedValue({ ok: false, status: 403, error: 'API key lacks write scope' });
     expect((await POST(makeRequest(), { params: Promise.resolve({ id: 'video-1' }) })).status).toBe(403);
 
-    authMock.mockResolvedValue({ ok: true, keyId: null });
+    authMock.mockResolvedValue({ ok: true, keyId: null, organizationId: 'org-1' });
     ffmpegAvailableMock.mockResolvedValue(false);
     expect((await POST(makeRequest(), { params: Promise.resolve({ id: 'video-1' }) })).status).toBe(503);
     expect(getVideoMock).not.toHaveBeenCalled();

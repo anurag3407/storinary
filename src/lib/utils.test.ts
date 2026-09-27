@@ -25,6 +25,7 @@ describe('serializeImage', () => {
     const updated = new Date('2024-01-02T00:00:00Z');
 
     const result = serializeImage({
+      organizationId: 'test-org',
       id: 'img-1',
       originalName: 'photo.jpg',
       storagePath: '2024/01/photo-abc12345.jpg',

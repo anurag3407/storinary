@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import type { ApiKeyRecord } from '@/types';
 
 const KEY_PREFIX = 'stor_live_';
@@ -120,7 +121,7 @@ export async function authenticateScopedApiKey(
   preset?: { unsigned: boolean } | null,
   requiredScope: ApiKeyScope = 'upload'
 ): Promise<
-  | { ok: true; keyId: string }
+  | { ok: true; keyId: string; organizationId: string }
   | { ok: false; status: number; error: string }
 > {
   const header =
@@ -133,7 +134,7 @@ export async function authenticateScopedApiKey(
   }
 
   const expectedHash = hashSecret(secret);
-  const key = await prisma.apiKey.findUnique({ where: { hashedKey: expectedHash } });
+  const key = await rawPrisma.apiKey.findUnique({ where: { hashedKey: expectedHash } });
   if (!key || key.revokedAt || !constantTimeEquals(key.hashedKey, expectedHash)) {
     return { ok: false, status: 401, error: 'Invalid or revoked API key' };
   }
@@ -152,11 +153,13 @@ export async function authenticateScopedApiKey(
     if (!valid) return { ok: false, status: 401, error: 'Invalid upload signature' };
   }
 
-  await prisma.apiKey.update({
-    where: { id: key.id },
-    data: { lastUsedAt: new Date() },
-  });
-  return { ok: true, keyId: key.id };
+  await runWithTenantScope(key.organizationId, () =>
+    prisma.apiKey.update({
+      where: { id: key.id },
+      data: { lastUsedAt: new Date() },
+    })
+  );
+  return { ok: true, keyId: key.id, organizationId: key.organizationId };
 }
 
 export async function authenticateApiKey(
@@ -176,7 +179,7 @@ export async function authenticateVideoApiKey(
   formData?: FormData,
   preset?: { unsigned: boolean } | null
 ): Promise<
-  | { ok: true; keyId: string }
+  | { ok: true; keyId: string; organizationId: string }
   | { ok: false; status: number; error: string }
 > {
   return authenticateScopedApiKey(request, formData, preset, 'video-upload');

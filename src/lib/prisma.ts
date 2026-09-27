@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { createTenantScopedClient } from '@/lib/prisma-scope';
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
@@ -34,11 +35,13 @@ function getDatasourceUrl(): string | undefined {
 
 const datasourceUrl = getDatasourceUrl();
 
-export const prisma =
+export const rawPrisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     datasourceUrl,
     log: process.env.NODE_ENV !== 'production' ? ['error', 'warn'] : ['error'],
   });
 
-globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = rawPrisma;
+
+export const prisma: PrismaClient = createTenantScopedClient(rawPrisma);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { tenantStoragePath } from '@/lib/tenant';
 import { generateStorageKey, getPublicUrl, uploadToStorage } from '@/lib/storage';
 import { getImageMetadata } from '@/lib/image-processing';
 import { isSafeSvg } from '@/lib/svg-security';
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
   if (!authorization.ok) {
     return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
+  const tenantId = authorization.organizationId;
 
   const payload = validateImportPayload(body, MAX_URLS);
   if (typeof payload === 'string') {
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
 
       const shortId = generateShortId();
-      const storageKey = generateStorageKey(remote.filename, shortId, format);
+      const storageKey = await tenantStoragePath(tenantId, generateStorageKey(remote.filename, shortId, format));
       await uploadToStorage(remote.buffer, storageKey, mimeType);
 
       const created = await prisma.image.create({

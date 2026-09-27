@@ -25,15 +25,17 @@ const {
 
 const { dispatchWebhooksMock } = vi.hoisted(() => ({ dispatchWebhooksMock: vi.fn() }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     image: imageMock,
     imageVersion: {
       create: imageVersionCreateMock,
       findFirst: imageVersionFindFirstMock,
     },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/storage', async () => ({
   ...await vi.importActual<typeof import('@/lib/storage')>('@/lib/storage'),

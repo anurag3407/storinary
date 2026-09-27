@@ -9,6 +9,7 @@ import { dispatchWebhooks } from '@/lib/webhooks';
 import type { BulkDeleteResponse, ImagesListResponse } from '@/types';
 
 export const runtime = 'nodejs';
+export { POST } from '@/app/api/upload/route';
 
 const SORT_FIELDS = ['createdAt', 'fileSize', 'originalName'] as const;
 type SortField = (typeof SORT_FIELDS)[number];

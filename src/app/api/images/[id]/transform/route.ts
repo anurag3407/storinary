@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getFromStorage } from '@/lib/storage';
 import { transformImage } from '@/lib/image-processing';
 import { transformCache, transformCacheKey } from '@/lib/transform-cache';
@@ -28,10 +29,13 @@ export async function GET(
 ) {
   const { id } = await context.params;
 
-  const image = await prisma.image.findUnique({ where: { id } });
+  const imageLookup = rawPrisma?.image?.findUnique ? rawPrisma.image.findUnique : prisma.image.findUnique;
+  const image = await imageLookup({ where: { id } });
   if (!image) {
     return new Response('Not found', { status: 404 });
   }
+
+  return runWithTenantScope(image.organizationId || 'legacy', async () => {
 
   let overlayBuffer: Buffer | undefined;
   if (request.nextUrl.searchParams.has('overlay')) {
@@ -123,10 +127,11 @@ export async function GET(
   transformCache.set(cacheKey, entry);
   diskCache.set(cacheKey, entry).catch(() => {}); // fire-and-forget; best-effort
 
-  return new Response(new Uint8Array(result.buffer), {
-    headers: {
-      'Content-Type': result.contentType,
-      ...CACHE_HEADERS,
-    },
+    return new Response(new Uint8Array(result.buffer), {
+      headers: {
+        'Content-Type': result.contentType,
+        ...CACHE_HEADERS,
+      },
+    });
   });
 }

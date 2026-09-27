@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { tenantStoragePath } from '@/lib/tenant';
 import {
   deleteFromStorage,
   generateStorageKey,
@@ -52,6 +53,7 @@ export async function POST(
   if (!authorization.ok) {
     return NextResponse.json({ error: authorization.error }, { status: authorization.status });
   }
+  const tenantId = authorization.organizationId;
 
   let input: Record<string, unknown>;
   try {
@@ -144,11 +146,12 @@ export async function POST(
     const buffer = await createVideoClip(source.buffer, start, end, { format, muted });
     let clip = null;
     if (persist) {
-      const storagePath = generateStorageKey(
+      const storagePathRaw = generateStorageKey(
         `${safeFileName(video.originalName)}-${name}.${format}`,
         `${video.id}-clip`,
         format
       );
+      const storagePath = await tenantStoragePath(tenantId, storagePathRaw);
       await uploadToStorage(buffer, storagePath, clipContentType(format));
       clip = await prisma.videoClip.create({
         data: {

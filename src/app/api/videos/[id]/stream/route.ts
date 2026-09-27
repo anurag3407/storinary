@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, rawPrisma } from '@/lib/prisma';
+import { runWithTenantScope } from '@/lib/prisma-scope';
 import { getVideoFromStorage } from '@/lib/storage';
 import { isSignedDeliveryEnabled, verifySignedUrlToken } from '@/lib/signed-delivery';
 import { recordVideoDelivery } from '@/lib/delivery-analytics';
@@ -14,18 +15,21 @@ export async function GET(
   if (isSignedDeliveryEnabled() && !verifySignedUrlToken(`/api/videos/${id}`, request.nextUrl.searchParams.get('token'))) {
     return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
-  const requestedRendition = request.nextUrl.searchParams.get('rendition');
-  const rendition = requestedRendition
-    ? await prisma.videoRendition.findUnique({
-        where: { videoId_label: { videoId: id, label: requestedRendition } },
-      })
-    : null;
 
-  const video = await prisma.video.findUnique({ where: { id } });
+  const videoLookup = rawPrisma?.video?.findUnique ? rawPrisma.video.findUnique : prisma.video.findUnique;
+  const video = await videoLookup({ where: { id } });
   if (!video) return new Response('Not found', { status: 404 });
-  if (requestedRendition && !rendition) {
-    return new Response('Rendition not found', { status: 404 });
-  }
+
+  return runWithTenantScope(video.organizationId || 'legacy', async () => {
+    const requestedRendition = request.nextUrl.searchParams.get('rendition');
+    const rendition = requestedRendition
+      ? await prisma.videoRendition.findUnique({
+          where: { videoId_label: { videoId: id, label: requestedRendition } },
+        })
+      : null;
+    if (requestedRendition && !rendition) {
+      return new Response('Rendition not found', { status: 404 });
+    }
 
   const deliveryMetadata = {
     videoId: id,
@@ -87,4 +91,5 @@ export async function GET(
   } catch {
     return new Response('Video unavailable', { status: 502 });
   }
+  });
 }

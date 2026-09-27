@@ -1,3 +1,4 @@
+PRAGMA foreign_keys=OFF;
 -- CreateTable
 CREATE TABLE "AiInsight" (
   "id" TEXT NOT NULL PRIMARY KEY,

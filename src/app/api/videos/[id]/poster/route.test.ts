@@ -22,12 +22,16 @@ const {
   recordVideoDeliveryMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const p = {
     video: { findUnique: findUniqueMock },
     namedTransformation: { findMany: namedTransformFindManyMock },
-  },
-}));
+  };
+  return {
+    prisma: p,
+    rawPrisma: p,
+  };
+});
 
 vi.mock('@/lib/storage', () => ({
   getFromStorage: getFromStorageMock,

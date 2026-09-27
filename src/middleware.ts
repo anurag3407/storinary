@@ -1,60 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthEnabled, SESSION_COOKIE, verifySessionToken } from '@/lib/auth';
+import { getSessionCookie } from 'better-auth/cookies';
 import { checkRateLimit, getRateLimitRule } from '@/lib/rate-limit';
 
-/**
- * Edge middleware that provides:
- *  1. Rate limiting for expensive/abusive endpoints (serve, transform,
- *     upload, delete, reset, login).
- *  2. Session auth when STORINARY_ADMIN_PASSWORD is configured: every API
- *     route except the public CDN surface (/api/serve and the transform
- *     endpoint) and the auth endpoints requires a valid session; app pages
- *     redirect to /login.
- */
-
-const PROTECTED_PAGES = ['/', '/upload', '/gallery', '/settings'];
+const PROTECTED_PAGES = ['/', '/upload', '/gallery', '/videos', '/settings', '/onboarding'];
+const PUBLIC_API = [
+  /^\/api\/auth\//,
+  /^\/api\/serve\//,
+  /^\/api\/redirect\//,
+  /^\/api\/v1\//,
+  /^\/api\/v1_1\//,
+  /^\/api\/videos(?:\/|$)/,
+  /^\/api\/upload(?:\/|$)/,
+  /\/transform(?:\/|$)/,
+  /^\/[^/]+\/(?:image|video)\/(?:upload|fetch)\//,
+];
 
 function isProtectedPage(pathname: string): boolean {
-  if (pathname.startsWith('/images')) return true;
-  return PROTECTED_PAGES.some(
-    (page) => pathname === page || (page !== '/' && pathname.startsWith(page))
-  );
-}
-
-/**
- * APIs that must stay open at middleware level. Versioned compatibility routes
- * perform their own dashboard/API-key authorization, while auth endpoints and
- * the public CDN surface remain intentionally open.
- */
-function isPublicApi(pathname: string): boolean {
   return (
-    pathname.startsWith('/api/auth') ||
-    pathname.startsWith('/api/serve') ||
-    pathname.startsWith('/api/redirect') ||
-    pathname.startsWith('/api/v1/') ||
-    pathname === '/api/videos' ||
-    pathname.startsWith('/api/videos/') ||
-    pathname === '/api/upload' ||
-    pathname.endsWith('/transform') ||
-    pathname.endsWith('/transform')
+    PROTECTED_PAGES.some(
+      (page) => pathname === page || (page !== '/' && pathname.startsWith(`${page}/`))
+    ) || pathname.startsWith('/images/')
   );
-}
-
-/** Any non-public API requires a session when auth is enabled. */
-function isProtectedApi(pathname: string): boolean {
-  return pathname.startsWith('/api/') && !isPublicApi(pathname);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const method = request.method;
-
-  // ── Rate limiting ────────────────────────────────────────────
-  const rule = getRateLimitRule(pathname, method);
+  const rule = getRateLimitRule(pathname, request.method);
   if (rule) {
-    // Prefer the value set by a trusted reverse proxy; otherwise take the
-    // rightmost XFF hop (appended by the proxy) rather than the
-    // client-spoofable leftmost value.
     const ip =
       request.headers.get('x-real-ip') ||
       request.headers.get('x-forwarded-for')?.split(',').pop()?.trim() ||
@@ -63,29 +35,23 @@ export async function middleware(request: NextRequest) {
     if (!allowed) {
       return NextResponse.json(
         { error: 'Too many requests' },
-        {
-          status: 429,
-          headers: { 'Retry-After': String(retryAfterSeconds) },
-        }
+        { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } }
       );
     }
   }
 
-  // ── Authentication ───────────────────────────────────────────
-  if (isAuthEnabled()) {
-    const token = request.cookies.get(SESSION_COOKIE)?.value;
-    const authenticated = token ? await verifySessionToken(token) : false;
-
-    if (!authenticated) {
-      // Any protected API (list, detail, stats, upload, delete, reset) → 401
-      if (isProtectedApi(pathname)) {
+  if (!PUBLIC_API.some((pattern) => pattern.test(pathname))) {
+    // Optimistic redirect only. Every API route still validates the Better
+    // Auth session, email verification, membership, and active organization.
+    const sessionCookie = getSessionCookie(request, { cookiePrefix: 'storinary' });
+    if (!sessionCookie) {
+      if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      // App pages → redirect to the login page
       if (isProtectedPage(pathname)) {
-        const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('next', pathname);
-        return NextResponse.redirect(loginUrl);
+        const url = new URL('/login', request.url);
+        url.searchParams.set('next', pathname);
+        return NextResponse.redirect(url);
       }
     }
   }
@@ -93,6 +59,4 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: ['/((?!_next|favicon\\.ico).*)'],
-};
+export const config = { matcher: ['/((?!_next|favicon\\.ico).*)'] };

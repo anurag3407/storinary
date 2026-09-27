@@ -1,104 +1,94 @@
 /**
- * Session-based admin authentication.
- *
- * When `STORINARY_ADMIN_PASSWORD` is set, the app requires a signed,
- * expiring session cookie to mutate data (upload / delete / reset) and to
- * view the app pages. When it is unset, the app runs in open "dev mode" —
- * exactly the behavior it had before auth existed.
- *
- * Tokens are HMAC-SHA256 signed with the admin password using the Web Crypto
- * API, so this module works both in Edge middleware and Node route handlers.
+ * Better Auth is the single authentication and tenant boundary for Storinary.
+ * Better Auth organizations are the tenant/workspace primitive. Every asset,
+ * setting, collection, and API key is scoped to the active organization id.
  */
+import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { nextCookies } from 'better-auth/next-js';
+import { organization } from 'better-auth/plugins';
+import { prisma } from '@/lib/prisma';
+import { sendAuthEmail } from '@/lib/email';
 
-export const SESSION_COOKIE = 'storinary_session';
-export const SESSION_COOKIE_OPTS = {
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
-  path: '/',
-};
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-/** True when the admin password is configured (auth enforced). */
-export function isAuthEnabled(): boolean {
-  return Boolean(process.env.STORINARY_ADMIN_PASSWORD);
-}
-
-async function getHmacKey(): Promise<CryptoKey> {
-  const secret = process.env.STORINARY_ADMIN_PASSWORD || '';
-  return crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign', 'verify']
-  );
-}
-
-function toBase64Url(buf: ArrayBuffer | Uint8Array): string {
-  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function fromBase64Url(s: string): ArrayBuffer {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, '=');
-  const bin = atob(padded);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
-  return bytes.buffer;
-}
-
-/** Create a signed session token valid for 7 days. */
-export async function createSessionToken(now = Date.now()): Promise<string> {
-  const payload = toBase64Url(
-    new TextEncoder().encode(JSON.stringify({ exp: now + SESSION_TTL_MS }))
-  );
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    await getHmacKey(),
-    new TextEncoder().encode(payload)
-  );
-  return `${payload}.${toBase64Url(signature)}`;
-}
-
-/** Verify a session token: valid signature and not expired. */
-export async function verifySessionToken(
-  token: string | undefined | null,
-  now = Date.now()
-): Promise<boolean> {
-  if (!token || !token.includes('.')) return false;
-  const [payload, signature] = token.split('.');
-  if (!payload || !signature) return false;
-  try {
-    const valid = await crypto.subtle.verify(
-      'HMAC',
-      await getHmacKey(),
-      fromBase64Url(signature),
-      new TextEncoder().encode(payload)
-    );
-    if (!valid) return false;
-    const { exp } = JSON.parse(
-      new TextDecoder().decode(fromBase64Url(payload))
-    ) as { exp?: unknown };
-    return typeof exp === 'number' && exp > now;
-  } catch {
-    return false;
-  }
-}
+const baseURL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 /**
- * Length-aware, otherwise constant-time comparison for the login password
- * check. The early return on length mismatch reveals only the length, which
- * is acceptable for an admin password behind a rate limiter.
+ * Fail closed on auth email and password reset, and warn loudly when the
+ * deployment secret is missing. This is a warning rather than a throw so that
+ * `next build` can run in CI before secrets are provisioned; Better Auth
+ * itself refuses to issue sessions without a valid secret.
  */
-export function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+function assertAuthConfig(): void {
+  if (process.env.NODE_ENV === 'production' && !process.env.BETTER_AUTH_SECRET) {
+    console.warn(
+      '[auth] BETTER_AUTH_SECRET is not set. Sign-in and email verification will not work until it is configured.'
+    );
   }
-  return diff === 0;
+  if (process.env.NODE_ENV === 'production' && !process.env.SMTP_HOST) {
+    console.warn(
+      '[auth] SMTP_HOST is not set. Verification, password reset, and invitation emails will fail to send.'
+    );
+  }
 }
+
+const dbUrl = (process.env.DATABASE_URL || '').trim();
+const databaseProvider =
+  dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')
+    ? 'postgresql'
+    : 'sqlite';
+
+assertAuthConfig();
+
+export const auth = betterAuth({
+  appName: 'Storinary',
+  baseURL,
+  secret: process.env.BETTER_AUTH_SECRET,
+  database: prismaAdapter(prisma, { provider: databaseProvider }),
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    requireEmailVerification: true,
+    sendResetPassword: async ({ user, url }) => {
+      await sendAuthEmail({
+        to: user.email,
+        subject: 'Reset your Storinary password',
+        text: `Reset your password: ${url}\n\nThis link expires shortly. If you did not request it, you can ignore this email.`,
+      });
+    },
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60,
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendAuthEmail({
+        to: user.email,
+        subject: 'Verify your Storinary email',
+        text: `Welcome to Storinary. Verify your email address: ${url}\n\nThis link expires in one hour.`,
+      });
+    },
+  },
+  advanced: {
+    database: { joins: true },
+    cookiePrefix: 'storinary',
+    useSecureCookies: process.env.NODE_ENV === 'production',
+  },
+  trustedOrigins: [baseURL],
+  plugins: [
+    organization({
+      requireEmailVerificationOnInvitation: true,
+      invitationExpiresIn: 60 * 60 * 48,
+      async sendInvitationEmail(data) {
+        await sendAuthEmail({
+          to: data.email,
+          subject: `Join ${data.organization.name} on Storinary`,
+          text: `${data.inviter.user.name || data.inviter.user.email} invited you to join ${data.organization.name} on Storinary.\n\nAccept the invitation: ${baseURL}/accept-invitation/${data.id}\n\nThis invitation expires in 48 hours.`,
+        });
+      },
+    }),
+    nextCookies(),
+  ],
+});
+
+export type AuthSession = typeof auth.$Infer.Session;

@@ -1,75 +1,76 @@
-import { isAuthEnabled, verifySessionToken } from '@/lib/auth';
-import {
-  authenticateApiKey,
-  authenticateReadApiKey,
-  authenticateVideoApiKey,
-} from '@/lib/api-keys';
-import { SESSION_COOKIE } from '@/lib/auth';
+import { auth } from '@/lib/auth';
+import { authenticateScopedApiKey, type ApiKeyScope } from '@/lib/api-keys';
+import { enterTenantScope } from '@/lib/prisma-scope';
 
-export async function hasDashboardSession(request: Request): Promise<boolean> {
-  const token = request.headers
-    .get('cookie')
-    ?.split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${SESSION_COOKIE}=`))
-    ?.split('=')
-    .slice(1)
-    .join('=');
-  return Boolean(token && (await verifySessionToken(token)));
+export type Authorization =
+  | { ok: true; keyId: string | null; organizationId: string }
+  | { ok: false; status: number; error: string };
+
+function hasApiKey(request: Request): boolean {
+  return Boolean(
+    request.headers.get('x-api-key') ||
+    request.headers.get('authorization')?.match(/^Bearer\s+\S/i)
+  );
 }
 
-export async function canManageMedia(request: Request): Promise<boolean> {
-  return !isAuthEnabled() || (await hasDashboardSession(request));
+/**
+ * Authorize a dashboard session for the active organization.
+ *
+ * Requires a live session, a verified email, and an active organization. On
+ * success the organization is bound to the async scope so every subsequent
+ * Prisma call in this request is tenant-filtered.
+ */
+async function authorizeDashboard(request: Request): Promise<Authorization> {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session) return { ok: false, status: 401, error: 'Unauthorized' };
+  if (!session.user.emailVerified) {
+    return { ok: false, status: 403, error: 'Verify your email first' };
+  }
+  const organizationId = session.session.activeOrganizationId;
+  if (!organizationId) {
+    return { ok: false, status: 403, error: 'Select or create an organization first' };
+  }
+  enterTenantScope(organizationId);
+  return { ok: true, keyId: null, organizationId };
 }
 
-export async function authorizeDashboardOrApiKey(
+/**
+ * Authorize a request using either a scoped API key or a dashboard session.
+ * API-key requests resolve their organization from the key record itself.
+ */
+export async function authorizeDashboardOrScopedApiKey(
   request: Request,
   formData?: FormData,
-  requiredScope = 'upload',
+  requiredScope: ApiKeyScope = 'upload',
   preset?: { unsigned: boolean } | null
-): Promise<{ ok: true; keyId: string | null } | { ok: false; status: number; error: string }> {
-  const header =
-    request.headers.get('x-api-key') ||
-    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-    '';
-  const formKey = formData?.get('api_key');
-  if (Boolean(header) || typeof formKey === 'string') {
-    return requiredScope === 'video-upload'
-      ? authenticateVideoApiKey(request, formData, preset)
-      : authenticateApiKey(request, formData, preset);
+): Promise<Authorization> {
+  if (hasApiKey(request) || typeof formData?.get('api_key') === 'string') {
+    const result = await authenticateScopedApiKey(request, formData, preset, requiredScope);
+    if (!result.ok) return result;
+    enterTenantScope(result.organizationId);
+    return { ok: true, keyId: result.keyId, organizationId: result.organizationId };
   }
-
-  if (await canManageMedia(request)) return { ok: true, keyId: null };
-  return { ok: false, status: 401, error: 'Unauthorized' };
+  return authorizeDashboard(request);
 }
 
-export async function authorizeDashboardOrReadApiKey(
-  request: Request
-): Promise<{ ok: true; keyId: string | null } | { ok: false; status: number; error: string }> {
-  const hasApiKey =
-    Boolean(request.headers.get('x-api-key')) ||
-    Boolean(request.headers.get('authorization')?.match(/^Bearer\s+\S/i));
-  if (hasApiKey) return authenticateReadApiKey(request);
-  if (await canManageMedia(request)) return { ok: true, keyId: null };
-  return { ok: false, status: 401, error: 'Unauthorized' };
-}
+export const authorizeDashboardOrApiKey = (
+  request: Request,
+  formData?: FormData,
+  requiredScope: ApiKeyScope = 'upload',
+  preset?: { unsigned: boolean } | null
+) => authorizeDashboardOrScopedApiKey(request, formData, requiredScope, preset);
 
-export async function authorizeDashboardOrScopedUploadApiKey(
+export const authorizeDashboardOrReadApiKey = (request: Request) =>
+  authorizeDashboardOrScopedApiKey(request, undefined, 'read');
+
+export const authorizeDashboardOrScopedUploadApiKey = (
   request: Request,
   formData?: FormData,
   requiredScope: 'upload' | 'video-upload' = 'upload',
   preset?: { unsigned: boolean } | null
-): Promise<{ ok: true; keyId: string | null } | { ok: false; status: number; error: string }> {
-  const header =
-    request.headers.get('x-api-key') ||
-    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
-    '';
-  if (Boolean(header) || typeof formData?.get('api_key') === 'string') {
-    return requiredScope === 'video-upload'
-      ? authenticateVideoApiKey(request, formData, preset)
-      : authenticateApiKey(request, formData, preset);
-  }
+) => authorizeDashboardOrScopedApiKey(request, formData, requiredScope, preset);
 
-  if (await canManageMedia(request)) return { ok: true, keyId: null };
-  return { ok: false, status: 401, error: 'Unauthorized' };
+/** True when the caller may manage media in their active organization. */
+export async function canManageMedia(request: Request): Promise<boolean> {
+  return (await authorizeDashboard(request)).ok;
 }

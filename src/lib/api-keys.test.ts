@@ -16,8 +16,8 @@ const { createMock, findUniqueMock, updateMock, upsertMock } = vi.hoisted(() => 
   upsertMock: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
     apiKey: {
       create: createMock,
       findUnique: findUniqueMock,
@@ -26,8 +26,9 @@ vi.mock('@/lib/prisma', () => ({
     apiKeyUsageEvent: {
       upsert: upsertMock,
     },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 function makeRequest(secret?: string) {
   return new Request('https://example.com/api/v1/upload', {

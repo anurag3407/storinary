@@ -26,12 +26,14 @@ const { authorizationMock, generateEagerTransformsMock } = vi.hoisted(() => ({
   generateEagerTransformsMock: vi.fn(),
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const scoped = {
+    organization: { findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'acme' }) },
     image: { create: createMock },
     imageVersion: { create: imageVersionCreateMock },
-  },
-}));
+  };
+  return { prisma: scoped, rawPrisma: scoped };
+})
 
 vi.mock('@/lib/storage', () => ({
   uploadToStorage: uploadToStorageMock,
@@ -111,7 +113,7 @@ function setupVersionCapture() {
 
 describe('POST /api/upload', () => {
   beforeEach(() => {
-    authorizationMock.mockReset().mockResolvedValue({ ok: true, keyId: null });
+    authorizationMock.mockReset().mockResolvedValue({ ok: true, keyId: null, organizationId: 'org-1' });
     generateEagerTransformsMock.mockReset().mockResolvedValue([]);
     dispatchWebhooksMock.mockReset();
     createMock.mockReset();
@@ -139,7 +141,7 @@ describe('POST /api/upload', () => {
     const file = new File(['png-bytes'], 'photo.png', { type: 'image/png' });
     const formData = new FormData();
     formData.append('file', file);
-    authorizationMock.mockResolvedValue({ ok: true, keyId: null });
+    authorizationMock.mockResolvedValue({ ok: true, keyId: null, organizationId: 'org-1' });
     getImageMetadataMock.mockResolvedValue({ width: 1, height: 1, format: 'png', size: 4 });
     generateStorageKeyMock.mockReturnValue('key.png');
     createMock.mockResolvedValue(ROW);

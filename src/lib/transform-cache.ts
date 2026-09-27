@@ -39,6 +39,7 @@ export function transformCacheKey(
   if (params.t) qs.set('t', params.t);
   if (params.text) qs.set('text', params.text);
   if (params.overlayId) qs.set('overlay', params.overlayId);
+  if (params.r) qs.set('r', params.r);
   const query = qs.toString();
   return query ? `${storageKey}?${query}` : storageKey;
 }
