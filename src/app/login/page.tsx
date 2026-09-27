@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
 import styles from './login.module.css';
@@ -85,7 +85,7 @@ function LoginForm() {
           {message && <div className={styles.warning} role="status">{message}</div>}
           <Button type="submit" fullWidth loading={loading}>{loading ? 'Please wait…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}</Button>
           <button type="button" className={styles.warning} onClick={() => { setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in'); setError(null); setMessage(null); }}>{mode === 'sign-in' ? 'Need an account? Sign up' : 'Already registered? Sign in'}</button>
-          <a className={styles.warning} href="/forgot-password">Forgot password?</a>
+          <Link className={styles.warning} href="/forgot-password">Forgot password?</Link>
           <div className={styles.cardFooter}><span>Protected by Better Auth + SMTP verification</span></div>
         </form>
       </div>
