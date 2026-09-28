@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { formatBytes, formatRelativeTime } from '@/lib/upload-helpers';
 import type { ImageRecord, ImageVersionRecord } from '@/types';
 import styles from './ImageMeta.module.css';
+import { PencilIcon } from '@/components/ui/icons';
 
 interface ImageMetaProps {
   image: ImageRecord;
@@ -184,7 +185,7 @@ export function ImageMeta({ image, versions = [] }: ImageMetaProps) {
           onClick={() => startEdit(field, current)}
           aria-label={`Edit ${FIELD_LABELS[field]}`}
         >
-          ✏️
+          <PencilIcon size={14} />
         </button>
       </span>
     );

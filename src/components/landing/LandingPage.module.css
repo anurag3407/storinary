@@ -292,9 +292,17 @@
   display: flex;
   align-items: center;
   gap: var(--ui-space-2);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-weight-medium);
   color: var(--ui-text-muted);
+}
+
+.trustIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-subtle);
+  flex-shrink: 0;
 }
 
 /* ── Interactive Sandbox Section ── */
@@ -543,15 +551,16 @@
 }
 
 .pillarIcon {
-  font-size: 32px;
-  width: 56px;
-  height: 56px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--ui-shadow-sm);
+  width: 52px;
+  height: 52px;
+  color: var(--ui-accent-text);
+  background: var(--ui-accent-soft);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-md);
+  margin-bottom: var(--ui-space-4);
 }
 
 .pillarTitle {
@@ -652,7 +661,10 @@
 }
 
 .featureBoxIcon {
-  font-size: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-accent-text);
 }
 
 .featureBoxTitle {

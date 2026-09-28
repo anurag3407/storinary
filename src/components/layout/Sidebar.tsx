@@ -8,15 +8,20 @@ import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { UserButton } from '@clerk/nextjs';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
+import { type IconProps, DashboardIcon, ImageIcon, SettingsIcon, SparklesIcon, UploadIcon, VideoIcon } from '@/components/ui/icons';
 import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
 
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/upload', label: 'Upload', icon: '⬆️' },
-  { href: '/gallery', label: 'Gallery', icon: '🖼️' },
-  { href: '/videos', label: 'Videos', icon: '🎬' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+const NAV_ITEMS: Array<{
+  href: string;
+  label: string;
+  icon: (props: IconProps) => React.JSX.Element;
+}> = [
+  { href: '/', label: 'Dashboard', icon: DashboardIcon },
+  { href: '/upload', label: 'Upload', icon: UploadIcon },
+  { href: '/gallery', label: 'Gallery', icon: ImageIcon },
+  { href: '/videos', label: 'Videos', icon: VideoIcon },
+  { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 export function Sidebar() {
@@ -182,7 +187,10 @@ export function Sidebar() {
               className={styles.createWorkspacePrompt}
               onClick={() => setIsCreateModalOpen(true)}
             >
-              <span>✨</span> Create Workspace
+              <span className={styles.createWorkspaceIcon}>
+                <SparklesIcon size={16} />
+              </span>{' '}
+              Create Workspace
             </button>
           )}
         </div>
@@ -209,7 +217,7 @@ export function Sidebar() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className={styles.navIcon} aria-hidden="true">
-                  {item.icon}
+                  <item.icon size={19} />
                 </span>
                 {item.label}
               </Link>
@@ -218,7 +226,7 @@ export function Sidebar() {
         </nav>
 
         {isClerk && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem 1rem', borderTop: '1px solid var(--border-color, #e5e7eb)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem 1rem', borderTop: '1px solid var(--ui-border)' }}>
             <UserButton showName />
           </div>
         )}

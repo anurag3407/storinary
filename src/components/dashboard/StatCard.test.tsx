@@ -13,14 +13,14 @@ describe('StatCard', () => {
   it('applies the default color to the card', () => {
     const { container } = render(<StatCard label="X" value={1} icon="📷" />);
     const card = container.firstElementChild as HTMLElement;
-    expect(card).toHaveStyle({ backgroundColor: 'var(--nb-yellow)' });
+    expect(card).toHaveStyle({ backgroundColor: 'var(--ui-chart-1)' });
   });
 
   it('applies a custom color to the card', () => {
     const { container } = render(
-      <StatCard label="X" value={1} icon="💾" color="var(--nb-blue)" />
+      <StatCard label="X" value={1} icon="💾" color="var(--ui-chart-3)" />
     );
     const card = container.firstElementChild as HTMLElement;
-    expect(card).toHaveStyle({ backgroundColor: 'var(--nb-blue)' });
+    expect(card).toHaveStyle({ backgroundColor: 'var(--ui-chart-3)' });
   });
 });

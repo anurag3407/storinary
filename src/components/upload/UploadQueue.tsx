@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import type { UploadItem as UploadItemType } from '@/types';
 import { UploadItem as UploadItemRow } from './UploadItem';
 import styles from './UploadQueue.module.css';
+import { RocketIcon } from '@/components/ui/icons';
 
 interface UploadQueueProps {
   items: UploadItemType[];
@@ -37,7 +38,7 @@ export function UploadQueue({
           <Button
             variant="primary"
             size="sm"
-            icon="🚀"
+            icon={<RocketIcon size={26} />}
             onClick={onUploadAll}
             loading={isUploading}
             disabled={isUploading}

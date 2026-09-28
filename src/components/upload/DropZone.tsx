@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { validateFile } from '@/lib/upload-helpers';
 import styles from './DropZone.module.css';
+import { FolderIcon } from '@/components/ui/icons';
 
 interface DropZoneProps {
   onFilesAdded: (files: File[]) => void;
@@ -66,7 +67,7 @@ export function DropZone({ onFilesAdded, disabled }: DropZoneProps) {
       }}
     >
       <div className={styles.icon} aria-hidden="true">
-        📁
+        <FolderIcon size={26} />
       </div>
       <div className={styles.title}>Drag &amp; drop images here</div>
       <div className={styles.subtitle}>or click to browse</div>

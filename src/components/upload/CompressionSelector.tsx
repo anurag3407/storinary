@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import styles from './CompressionSelector.module.css';
+import { BulbIcon, GemIcon, SettingsIcon, StarIcon, ZapIcon } from '@/components/ui/icons';
 
 export interface CompressionSelectorProps {
   quality: number;
@@ -19,7 +20,7 @@ interface PresetConfig {
   quality: number;
   reductionLabel: string;
   description: string;
-  icon: string;
+  icon: React.ReactNode;
 }
 
 const PRESETS: PresetConfig[] = [
@@ -30,7 +31,7 @@ const PRESETS: PresetConfig[] = [
     quality: 50,
     reductionLabel: '~60-80% smaller',
     description: 'Maximum compression, lower image fidelity',
-    icon: '⚡',
+    icon: <ZapIcon size={17} />,
   },
   {
     id: 'recommended',
@@ -39,7 +40,7 @@ const PRESETS: PresetConfig[] = [
     quality: 80,
     reductionLabel: '~40-60% smaller',
     description: 'Best balance of image quality and compression',
-    icon: '⭐',
+    icon: <StarIcon size={17} />,
   },
   {
     id: 'low',
@@ -48,7 +49,7 @@ const PRESETS: PresetConfig[] = [
     quality: 92,
     reductionLabel: '~15-30% smaller',
     description: 'Light compression, preserves crisp details',
-    icon: '💎',
+    icon: <GemIcon size={17} />,
   },
   {
     id: 'custom',
@@ -57,7 +58,7 @@ const PRESETS: PresetConfig[] = [
     quality: 0,
     reductionLabel: 'Variable size',
     description: 'Select your exact compression percentage',
-    icon: '⚙️',
+    icon: <SettingsIcon size={17} />,
   },
 ];
 
@@ -219,7 +220,7 @@ export function CompressionSelector({
         </div>
 
         <div className={styles.hintBox}>
-          <span className={styles.hintIcon}>💡</span>
+          <span className={styles.hintIcon}><BulbIcon size={15} /></span>
           <span className={styles.hintText}>{feedback.desc}</span>
         </div>
       </div>

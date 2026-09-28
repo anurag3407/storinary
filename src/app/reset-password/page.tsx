@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import styles from '@/app/login/login.module.css';
+import { LockIcon, AlertIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icons';
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -45,7 +46,7 @@ function ResetPasswordForm() {
 
         <div className={styles.authCard}>
           <div className={styles.cardTop}>
-            <div className={styles.cardIcon}>🔐</div>
+            <div className={styles.cardIcon}><LockIcon size={22} /></div>
             <h2 className={styles.cardTitle}>Set new password</h2>
             <p className={styles.cardSubtitle}>
               Choose a strong password with at least 8 characters.
@@ -54,7 +55,7 @@ function ResetPasswordForm() {
 
           {error && (
             <div className={styles.alertError} role="alert">
-              <span>⚠️</span>
+              <span className={styles.alertIcon}><AlertIcon size={15} /></span>
               <span>{error}</span>
             </div>
           )}
@@ -83,7 +84,7 @@ function ResetPasswordForm() {
                   title={showPassword ? 'Hide password' : 'Show password'}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
                 </button>
               </div>
             </div>
@@ -111,7 +112,7 @@ function ResetPasswordForm() {
           </form>
 
           <div className={styles.cardFooter}>
-            <span>🔒 Session protected by Better Auth</span>
+            <span><LockIcon size={13} /> Session protected by Better Auth</span>
           </div>
         </div>
       </div>

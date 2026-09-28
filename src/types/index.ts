@@ -496,7 +496,7 @@ export interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ReactNode;
-  color?: string; // CSS variable name, e.g., "var(--nb-yellow)"
+  color?: string; // CSS variable name, e.g., "var(--ui-accent-soft)"
   sub?: string;
 }
 

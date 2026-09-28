@@ -149,11 +149,15 @@
 }
 
 .listCard h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
   font-size: var(--ui-text-sm);
-  margin-bottom: 12px;
-  font-family: var(--ui-font-heading);
+  font-weight: var(--ui-weight-semibold);
+  color: var(--ui-text);
+  margin-bottom: var(--ui-space-3);
   border-bottom: 1px solid var(--ui-border);
-  padding-bottom: var(--ui-space-2);
+  padding-bottom: var(--ui-space-3);
 }
 
 .listItem {
@@ -221,14 +225,16 @@
 }
 
 .cacheBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: var(--ui-success);
   color: var(--ui-text-inverse);
-  font-family: var(--ui-font-heading);
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  padding: var(--ui-space-1) var(--ui-space-2);
-  border-radius: 4px;
-  border: 1px solid var(--ui-border-strong);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.04em;
+  padding: 3px var(--ui-space-2);
+  border-radius: var(--ui-radius-full);
 }
 
 .cacheRatio {
@@ -314,12 +320,15 @@
 }
 
 .itemCachedBadge {
-  font-size: 10px;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
   background: var(--ui-success-soft);
   color: var(--ui-success-text);
   border: 1px solid var(--ui-success-border);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-full);
   padding: 1px var(--ui-space-2);
   flex-shrink: 0;
 }

@@ -13,6 +13,7 @@ import type { VideoClipRecord, VideoListResponse, VideoRecord } from '@/types';
 import type { CollectionRecord } from '@/lib/collections';
 import { Badge } from '@/components/ui/Badge';
 import { StructuredMetadataControls } from '@/components/media/StructuredMetadataControls';
+import { VideoIcon, AlertIcon } from '@/components/ui/icons';
 import styles from './videos.module.css';
 
 function formatDuration(seconds: number): string {
@@ -528,9 +529,9 @@ export default function VideosPage() {
           ))}
         </div>
       ) : error ? (
-        <EmptyState icon="⚠️" title="Something went wrong" description={error} action={<Button variant="secondary" onClick={() => void loadVideos()}>Try Again</Button>} />
+        <EmptyState icon={<AlertIcon size={26} />} title="Something went wrong" description={error} action={<Button variant="secondary" onClick={() => void loadVideos()}>Try Again</Button>} />
       ) : videos.length === 0 ? (
-          <EmptyState icon="🎬" title="No videos found" description={filters.search || filters.folder ? 'Try a different search or folder.' : 'Upload your first video to get started.'} />
+          <EmptyState icon={<VideoIcon size={30} />} title="No videos found" description={filters.search || filters.folder ? 'Try a different search or folder.' : 'Upload your first video to get started.'} />
       ) : (
         <div className={styles.grid}>
           {videos.map((video) => (

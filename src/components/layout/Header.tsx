@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { MenuIcon } from '@/components/ui/icons';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -24,7 +25,7 @@ export function Header({ title, description, actions }: HeaderProps) {
           onClick={toggleSidebar}
           aria-label="Toggle navigation sidebar"
         >
-          ☰
+          <MenuIcon size={20} />
         </button>
         <Link href="/" className={styles.mobileLogo} aria-label="Storinary Home">
           <Image

@@ -32,6 +32,7 @@ import type { UploadPresetRecord } from '@/lib/upload-presets';
 import type { NamedTransformationRecord } from '@/lib/named-transformations';
 import type { OrphanedObject, StorageAuditResult } from '@/lib/storage-audit';
 import { MetadataFieldManager } from '@/components/settings/MetadataFieldManager';
+import { SparklesIcon, MailIcon, ZapIcon } from '@/components/ui/icons';
 import styles from './settings.module.css';
 
 const BACKBLAZE_SETUP_STEPS = [
@@ -679,7 +680,7 @@ export default function SettingsPage() {
           </p>
 
           {loadingOrg ? (
-            <p style={{ color: '#666', fontSize: '14px' }}>Loading workspace details…</p>
+            <p style={{ color: 'var(--ui-text-muted)', fontSize: '14px' }}>Loading workspace details…</p>
           ) : activeOrg ? (
             <div>
               <div
@@ -690,20 +691,20 @@ export default function SettingsPage() {
                   gap: '16px',
                   marginBottom: '20px',
                   padding: '14px 18px',
-                  backgroundColor: 'var(--nb-bg, #f5f5f0)',
-                  border: '2px solid var(--nb-black, #000)',
-                  borderRadius: 'var(--nb-radius, 8px)',
-                  boxShadow: '2px 2px 0 var(--nb-black, #000)',
+                  backgroundColor: 'var(--ui-surface)',
+                  border: '1px solid var(--ui-border-strong)',
+                  borderRadius: 'var(--ui-radius-md)',
+                  boxShadow: 'var(--ui-shadow-sm)',
                 }}
               >
                 <div>
                   <div style={{ fontSize: '18px', fontWeight: 800 }}>{activeOrg.name}</div>
-                  <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                    Namespace slug: <code style={{ background: '#e5e5e0', padding: '2px 6px', borderRadius: '4px' }}>{activeOrg.slug}</code>
+                  <div style={{ fontSize: '12px', color: 'var(--ui-text-muted)', marginTop: '2px' }}>
+                    Namespace slug: <code style={{ background: 'var(--ui-surface-inset)', padding: '2px 6px', borderRadius: 'var(--ui-radius-xs)' }}>{activeOrg.slug}</code>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <Button variant="secondary" size="sm" icon="✨" onClick={() => setIsCreateModalOpen(true)}>
+                  <Button variant="secondary" size="sm" icon={<SparklesIcon size={16} />} onClick={() => setIsCreateModalOpen(true)}>
                     + New Organization
                   </Button>
                   <Button variant="secondary" size="sm" onClick={() => router.push('/onboarding')}>
@@ -725,16 +726,16 @@ export default function SettingsPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '10px 14px',
-                        backgroundColor: 'var(--nb-white, #fff)',
-                        border: '2px solid var(--nb-black, #000)',
-                        borderRadius: 'var(--nb-radius, 6px)',
-                        boxShadow: '2px 2px 0 var(--nb-black, #000)',
+                        backgroundColor: 'var(--ui-surface)',
+                        border: '1px solid var(--ui-border-strong)',
+                        borderRadius: 'var(--ui-radius)',
+                        boxShadow: 'var(--ui-shadow-sm)',
                       }}
                     >
                       <div>
                         <span style={{ fontWeight: 700, fontSize: '14px' }}>{member.user?.name || member.user?.email || 'Member'}</span>
                         {member.user?.name && member.user?.email && (
-                          <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>({member.user.email})</span>
+                          <span style={{ fontSize: '12px', color: 'var(--ui-text-muted)', marginLeft: '8px' }}>({member.user.email})</span>
                         )}
                       </div>
                       <Badge variant={member.role === 'owner' ? 'success' : member.role === 'admin' ? 'info' : 'default'}>
@@ -769,7 +770,7 @@ export default function SettingsPage() {
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
                   </select>
-                  <Button type="submit" loading={inviting} icon="✉️">
+                  <Button type="submit" loading={inviting} icon={<MailIcon size={16} />}>
                     Invite Member
                   </Button>
                 </form>
@@ -777,7 +778,7 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div>
-              <p style={{ color: '#666', fontSize: '14px', marginBottom: '12px' }}>
+              <p style={{ color: 'var(--ui-text-muted)', fontSize: '14px', marginBottom: '12px' }}>
                 No active workspace selected.
               </p>
               <Button size="sm" onClick={() => router.push('/onboarding')}>
@@ -1304,21 +1305,21 @@ export default function SettingsPage() {
                   className={`${styles.guideTab} ${activeGuideTab === 'backblaze' ? styles.guideTabActive : ''}`}
                   onClick={() => setActiveGuideTab('backblaze')}
                 >
-                  ⚡ Backblaze B2 (10 GB Free)
+                  <ZapIcon size={14} /> Backblaze B2 (10 GB Free)
                 </button>
                 <button
                   type="button"
                   className={`${styles.guideTab} ${activeGuideTab === 'appwrite' ? styles.guideTabActive : ''}`}
                   onClick={() => setActiveGuideTab('appwrite')}
                 >
-                  ⚡ Appwrite (Student Offer / Pro)
+                  <ZapIcon size={14} /> Appwrite (Student Offer / Pro)
                 </button>
                 <button
                   type="button"
                   className={`${styles.guideTab} ${activeGuideTab === 'supabase' ? styles.guideTabActive : ''}`}
                   onClick={() => setActiveGuideTab('supabase')}
                 >
-                  ⚡ Supabase Storage
+                  <ZapIcon size={14} /> Supabase Storage
                 </button>
               </div>
 

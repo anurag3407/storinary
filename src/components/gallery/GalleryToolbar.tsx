@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import type { MetadataFieldRecord } from '@/lib/structured-metadata';
 import type { ImagesListParams } from '@/types';
 import styles from './GalleryToolbar.module.css';
+import { ClipboardIcon, TrashIcon, PackageIcon } from '@/components/ui/icons';
 
 interface GalleryToolbarProps {
   filters: ImagesListParams;
@@ -126,10 +127,10 @@ export function GalleryToolbar({
         {selectedCount > 0 && (
           <>
             <span className={styles.selectedInfo}>{selectedCount} selected</span>
-            <Button variant="secondary" size="sm" icon="📋" onClick={onBulkCopy}>
+            <Button variant="secondary" size="sm" icon={<ClipboardIcon size={16} />} onClick={onBulkCopy}>
               Copy URLs
             </Button>
-            <Button variant="secondary" size="sm" icon="📦" loading={isArchiving} onClick={onBulkDownload}>
+            <Button variant="secondary" size="sm" icon={<PackageIcon size={16} />} loading={isArchiving} onClick={onBulkDownload}>
               Download ZIP
             </Button>
             {collections.length > 0 && (
@@ -149,7 +150,7 @@ export function GalleryToolbar({
                 ))}
               </select>
             )}
-            <Button variant="danger" size="sm" icon="🗑️" onClick={onBulkDelete}>
+            <Button variant="danger" size="sm" icon={<TrashIcon size={16} />} onClick={onBulkDelete}>
               Delete Selected
             </Button>
           </>

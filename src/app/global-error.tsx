@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { AlertIcon } from '@/components/ui/icons';
 
 export default function GlobalError({
   error,
@@ -28,7 +29,7 @@ export default function GlobalError({
           }}
         >
           <EmptyState
-            icon="💥"
+            icon={<AlertIcon size={26} />}
             title="Something went wrong"
             description="A critical error occurred. Try reloading the page."
             action={

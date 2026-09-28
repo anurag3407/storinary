@@ -118,7 +118,9 @@
 }
 
 .presetIcon {
-  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-text-muted);
 }
 
 .presetTitle {
@@ -234,7 +236,10 @@
 }
 
 .hintIcon {
-  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ui-accent-text);
+  flex-shrink: 0;
 }
 
 .hintText {

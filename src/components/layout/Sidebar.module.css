@@ -187,10 +187,24 @@
 }
 
 .navIcon {
-  font-size: var(--ui-text-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  text-align: center;
   flex-shrink: 0;
+  color: var(--ui-text-subtle);
+  transition: color var(--ui-transition);
+}
+
+.navLink:hover .navIcon,
+.active .navIcon {
+  color: currentColor;
+}
+
+.createWorkspaceIcon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -3px;
 }
 
 .storageBox {

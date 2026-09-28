@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useImages } from '@/hooks/useImages';
 import { useToast } from '@/hooks/useToast';
+import { ImageIcon, UploadIcon, AlertIcon } from '@/components/ui/icons';
 import styles from './gallery.module.css';
 import type { CollectionRecord } from '@/lib/collections';
 import type { FolderRecord } from '@/lib/folders';
@@ -286,7 +287,7 @@ export default function GalleryPage() {
 
       {!isLoading && error && (
         <EmptyState
-          icon="⚠️"
+          icon={<AlertIcon size={26} />}
           title="Something went wrong"
           description={error}
           action={
@@ -299,12 +300,12 @@ export default function GalleryPage() {
 
       {!isLoading && !error && images.length === 0 && (
         <EmptyState
-          icon="🖼️"
+          icon={<ImageIcon size={30} />}
           title="No images yet"
           description="Upload some images to get started — they'll appear here with copy-ready CDN links."
           action={
             <Link href="/upload">
-              <Button icon="⬆️">Upload Images</Button>
+              <Button icon={<UploadIcon size={16} />}>Upload Images</Button>
             </Link>
           }
         />

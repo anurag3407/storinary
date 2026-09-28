@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { ModalProps } from '@/types';
 import styles from './Modal.module.css';
+import { CloseIcon } from '@/components/ui/icons';
 
 export function Modal({ isOpen, onClose, title, children, actions }: ModalProps) {
   useEffect(() => {
@@ -32,7 +33,7 @@ export function Modal({ isOpen, onClose, title, children, actions }: ModalProps)
           onClick={onClose}
           aria-label="Close dialog"
         >
-          ✕
+          <CloseIcon size={16} />
         </button>
         <h2 className={styles.title}>{title}</h2>
         <div className={styles.body}>{children}</div>

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/useToast';
 import { formatBytes } from '@/lib/upload-helpers';
 import type { UploadItem as UploadItemType } from '@/types';
 import styles from './UploadItem.module.css';
+import { ClipboardIcon, CloseIcon } from '@/components/ui/icons';
 
 interface UploadItemProps {
   item: UploadItemType;
@@ -90,7 +91,7 @@ export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
         {item.status === 'done' && (
           <>
             <Badge variant="success">Done</Badge>
-            <Button variant="outline" size="sm" icon="📋" onClick={copyUrl}>
+            <Button variant="outline" size="sm" icon={<ClipboardIcon size={16} />} onClick={copyUrl}>
               Copy URL
             </Button>
           </>
@@ -119,7 +120,7 @@ export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
           onClick={() => onRemove(item.id)}
           aria-label={`Remove ${item.file.name}`}
         >
-          ✕
+          <CloseIcon size={14} />
         </button>
       )}
     </div>

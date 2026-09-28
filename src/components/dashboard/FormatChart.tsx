@@ -1,12 +1,12 @@
 import styles from './FormatChart.module.css';
 
 const FORMAT_COLORS: Record<string, string> = {
-  webp: 'var(--nb-blue)',
-  jpeg: 'var(--nb-yellow)',
-  png: 'var(--nb-green)',
-  avif: 'var(--nb-purple)',
-  gif: 'var(--nb-orange)',
-  svg: 'var(--nb-mint)',
+  webp: 'var(--ui-chart-1)',
+  jpeg: 'var(--ui-chart-2)',
+  png: 'var(--ui-chart-3)',
+  avif: 'var(--ui-chart-4)',
+  gif: 'var(--ui-chart-5)',
+  svg: 'var(--ui-chart-6)',
 };
 
 interface FormatChartProps {
@@ -32,7 +32,7 @@ export function FormatChart({ data, total }: FormatChartProps) {
                 className={styles.bar}
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: FORMAT_COLORS[format] || 'var(--nb-black)',
+                  backgroundColor: FORMAT_COLORS[format] || 'var(--ui-border-strong)',
                 }}
               />
             </div>

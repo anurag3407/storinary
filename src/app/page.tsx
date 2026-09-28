@@ -12,6 +12,7 @@ import { LandingPage } from '@/components/landing/LandingPage';
 import { getStats } from '@/lib/stats';
 import { getTenantIdOrNull } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
+import { UploadIcon, VideoIcon, AlertIcon, FolderIcon, CameraIcon, DatabaseIcon, CalendarIcon } from '@/components/ui/icons';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
@@ -43,12 +44,12 @@ export default async function IndexPage() {
       <>
         <Header title="Dashboard" description="Overview of your image CDN." />
         <EmptyState
-          icon="⚠️"
+          icon={<AlertIcon size={26} />}
           title="Could not load dashboard"
           description="The stats API is unavailable. Check that your database and environment variables are configured correctly, then try again."
           action={
             <Link href="/upload">
-              <Button icon="⬆️">Upload Images</Button>
+              <Button icon={<UploadIcon size={16} />}>Upload Images</Button>
             </Link>
           }
         />
@@ -69,10 +70,10 @@ export default async function IndexPage() {
         actions={
           <div style={{ display: 'flex', gap: '8px' }}>
             <Link href="/upload">
-              <Button icon="⬆️">Upload Image</Button>
+              <Button icon={<UploadIcon size={16} />}>Upload Image</Button>
             </Link>
             <Link href="/videos">
-              <Button variant="secondary" icon="🎬">
+              <Button variant="secondary" icon={<VideoIcon size={16} />}>
                 Video Library
               </Button>
             </Link>
@@ -84,29 +85,29 @@ export default async function IndexPage() {
         <StatCard
           label="Total Media Assets"
           value={totalMedia.toLocaleString()}
-          icon="📷"
-          color="var(--nb-yellow)"
+          icon={<CameraIcon size={26} />}
+          color="var(--ui-chart-1)"
           sub={`${stats.totalImages} img • ${stats.totalVideos || 0} vid`}
         />
         <StatCard
           label="Real Storage Used"
           value={stats.totalStorageFormatted}
-          icon="💾"
-          color="var(--nb-blue)"
+          icon={<DatabaseIcon size={26} />}
+          color="var(--ui-chart-2)"
           sub={`${stats.storagePercentage || 0}% of ${limitLabel}`}
         />
         <StatCard
           label="Uploaded This Month"
           value={stats.uploadsThisMonth.toLocaleString()}
-          icon="📅"
-          color="var(--nb-mint)"
+          icon={<CalendarIcon size={26} />}
+          color="var(--ui-chart-3)"
           sub="Current billing cycle"
         />
         <StatCard
           label="Virtual Folders"
           value={folderCount.toLocaleString()}
-          icon="📁"
-          color="var(--nb-lavender)"
+          icon={<FolderIcon size={26} />}
+          color="var(--ui-chart-4)"
           sub="Organized library"
         />
       </div>

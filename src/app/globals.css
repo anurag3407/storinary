@@ -72,6 +72,15 @@
   --ui-white: #FFFFFF;
   --ui-black: #000000;
 
+  /* ── Categorical chart series ──────────── */
+  /* All >= 3:1 on white (WCAG 1.4.11 non-text contrast). */
+  --ui-chart-1: #0047FF;
+  --ui-chart-2: #B45309;
+  --ui-chart-3: #047857;
+  --ui-chart-4: #7C3AED;
+  --ui-chart-5: #BE123C;
+  --ui-chart-6: #0E7490;
+
   /* ── Typography ───────────────────────── */
   --ui-font-heading: var(--ui-font-body);
   --ui-font-body: var(--font-inter, "Inter"), "Inter", -apple-system,

@@ -182,8 +182,9 @@
 
 .featureIcon {
   font-size: 20px;
+  color: var(--ui-accent-light);
   background: var(--ui-accent-light-soft);
-  border: 1px solid var(--ui-accent-light);
+  border: 1px solid rgba(138, 176, 255, 0.25);
   width: 36px;
   height: 36px;
   border-radius: 6px;
@@ -337,8 +338,9 @@
 
 .cardIcon {
   font-size: 32px;
-  width: 54px;
-  height: 54px;
+  color: var(--ui-text-inverse);
+  width: 52px;
+  height: 52px;
   background: var(--ui-accent);
   border: var(--ui-hairline);
   border-radius: 10px;
@@ -490,6 +492,13 @@
   box-shadow: var(--ui-shadow-sm);
 }
 
+.alertIcon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .alertSuccess {
   background: var(--ui-success-soft);
   border: 1px solid var(--ui-success-border);
@@ -550,8 +559,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--ui-space-2);
-  padding-top: var(--ui-space-3);
-  border-top: 1px dashed var(--ui-border);
+  padding-top: var(--ui-space-4);
+  border-top: 1px solid var(--ui-border);
 }
 
 /* ── Responsive ── */

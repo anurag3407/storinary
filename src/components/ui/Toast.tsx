@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { ToastData } from '@/types';
 import styles from './Toast.module.css';
+import { CloseIcon } from '@/components/ui/icons';
 
 interface ToastProps {
   toast: ToastData;
@@ -38,7 +39,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
         onClick={() => setLeaving(true)}
         aria-label="Dismiss notification"
       >
-        ✕
+        <CloseIcon size={15} />
       </button>
     </div>
   );

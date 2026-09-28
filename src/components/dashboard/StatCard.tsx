@@ -5,7 +5,7 @@ export function StatCard({
   label,
   value,
   icon,
-  color = 'var(--nb-yellow)',
+  color = 'var(--ui-chart-1)',
   sub,
 }: StatCardProps) {
   return (

@@ -8,6 +8,7 @@ import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { SignIn, SignUp } from '@clerk/nextjs';
 import styles from './login.module.css';
+import { AlertIcon, EyeOffIcon, ZapIcon, GlobeIcon, FolderIcon, EyeIcon, LockIcon } from '@/components/ui/icons';
 
 type Mode = 'sign-in' | 'sign-up';
 
@@ -125,21 +126,21 @@ function LoginForm() {
 
             <div className={styles.featureList}>
               <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>⚡</div>
+                <div className={styles.featureIcon}><ZapIcon size={18} /></div>
                 <div className={styles.featureText}>
                   <span className={styles.featureTitle}>Drop-in Cloudinary Syntax</span>
                   <span className={styles.featureSub}>Use existing URL transforms without rewriting client code.</span>
                 </div>
               </div>
               <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>🌐</div>
+                <div className={styles.featureIcon}><GlobeIcon size={18} /></div>
                 <div className={styles.featureText}>
                   <span className={styles.featureTitle}>Global Edge Delivery</span>
                   <span className={styles.featureSub}>330+ Anycast caching nodes with sub-20ms delivery.</span>
                 </div>
               </div>
               <div className={styles.featureItem}>
-                <div className={styles.featureIcon}>🏢</div>
+                <div className={styles.featureIcon}><FolderIcon size={18} /></div>
                 <div className={styles.featureText}>
                   <span className={styles.featureTitle}>Isolated Workspaces</span>
                   <span className={styles.featureSub}>Dedicated organizations, scoped API keys, and custom domains.</span>
@@ -219,7 +220,7 @@ function LoginForm() {
             {/* Alert Notifications */}
             {error && (
               <div className={styles.alertError} role="alert">
-                <span>⚠️</span>
+                <span className={styles.alertIcon}><AlertIcon size={15} /></span>
                 <span>{error}</span>
               </div>
             )}
@@ -311,7 +312,7 @@ function LoginForm() {
                       title={showPassword ? 'Hide password' : 'Show password'}
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? '🙈' : '👁️'}
+                      {showPassword ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
                     </button>
                   </div>
                 </div>
@@ -330,9 +331,10 @@ function LoginForm() {
 
             <div className={styles.cardFooter}>
               <span>
+                <LockIcon size={13} />{' '}
                 {isClerk
-                  ? '🔒 Protected by Clerk • Enterprise Identity & Session Security'
-                  : '🔒 Protected by Better Auth • TLS 1.3 Session Security'}
+                  ? 'Protected by Clerk • Enterprise Identity & Session Security'
+                  : 'Protected by Better Auth • TLS 1.3 Session Security'}
               </span>
             </div>
           </div>

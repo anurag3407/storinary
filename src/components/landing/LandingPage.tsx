@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAppAuth } from '@/components/auth/AuthProvider';
+import { ChartIcon, VideoIcon, ClipboardIcon, RocketIcon, ZapIcon, StarIcon, WrenchIcon, LockIcon, MoneyIcon, CarIcon, BotIcon, ShieldIcon, BellIcon, CheckIcon, FolderIcon } from '@/components/ui/icons';
 import styles from './LandingPage.module.css';
 
 interface TransformationPreset {
@@ -32,7 +33,7 @@ const PRESETS: TransformationPreset[] = [
   },
   {
     id: 'webp_auto',
-    label: '⚡ Next-Gen WebP (q_80)',
+    label: 'Next-Gen WebP (q_80)',
     params: 'f_webp,q_80',
     description: 'Lossy WebP compression with perceptually tuned quality.',
     width: 800,
@@ -228,10 +229,10 @@ export function LandingPage() {
 
         <div className={styles.heroActions}>
           <Link href="/login?mode=sign-up" className={styles.heroPrimaryBtn}>
-            🚀 Create Free Workspace
+            <RocketIcon size={17} /> Create Free Workspace
           </Link>
           <a href="#sandbox" className={styles.heroSecondaryBtn}>
-            ⚡ Try Live Sandbox
+            <ZapIcon size={17} /> Try Live Sandbox
           </a>
           <a
             href="https://github.com/anurag3407/storinary-cloud"
@@ -239,26 +240,26 @@ export function LandingPage() {
             rel="noreferrer"
             className={styles.installPill}
           >
-            <span>⭐️ GitHub</span>
+            <span><StarIcon size={14} /> GitHub</span>
             <code>v1.0.0</code>
           </a>
         </div>
 
         <div className={styles.trustBanner}>
           <div className={styles.trustItem}>
-            <span>⚡</span>
+            <span className={styles.trustIcon}><ZapIcon size={17} /></span>
             <span>Sub-20ms Global Edge Cache</span>
           </div>
           <div className={styles.trustItem}>
-            <span>🛠️</span>
+            <span className={styles.trustIcon}><WrenchIcon size={17} /></span>
             <span>Drop-in Cloudinary API Syntax</span>
           </div>
           <div className={styles.trustItem}>
-            <span>🔒</span>
+            <span className={styles.trustIcon}><LockIcon size={17} /></span>
             <span>Isolated Multi-Tenant Workspaces</span>
           </div>
           <div className={styles.trustItem}>
-            <span>💰</span>
+            <span className={styles.trustIcon}><MoneyIcon size={17} /></span>
             <span>$0.00 Egress & Storage Cost</span>
           </div>
         </div>
@@ -278,7 +279,7 @@ export function LandingPage() {
         <div className={styles.sandboxCard}>
           <div className={styles.sandboxUrlBar}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: 'var(--nb-green)', fontWeight: 800 }}>GET</span>
+              <span style={{ color: 'var(--ui-success)', fontWeight: 600 }}>GET</span>
               <span className={styles.urlText}>
                 https://storinary.sayalabs.in/sayalabs/image/upload/
                 {activePreset.params && (
@@ -288,7 +289,15 @@ export function LandingPage() {
               </span>
             </div>
             <button type="button" className={styles.copyUrlBtn} onClick={handleCopyUrl}>
-              {copiedUrl ? '✓ Copied URL!' : '📋 Copy URL'}
+              {copiedUrl ? (
+                <>
+                  <CheckIcon size={14} /> Copied URL!
+                </>
+              ) : (
+                <>
+                  <ClipboardIcon size={14} /> Copy URL
+                </>
+              )}
             </button>
           </div>
 
@@ -313,7 +322,7 @@ export function LandingPage() {
                 </div>
               </div>
 
-              <div style={{ fontSize: '13px', color: '#555', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '13px', color: 'var(--ui-text-muted)', lineHeight: 1.5 }}>
                 <strong>Description:</strong> {activePreset.description}
               </div>
 
@@ -330,13 +339,13 @@ export function LandingPage() {
                 </div>
                 <div className={styles.statRow}>
                   <span>Delivery Latency:</span>
-                  <span className={styles.statValue} style={{ color: '#10b981' }}>
-                    ⚡ {activePreset.latencyMs}ms (Edge Hit)
+                  <span className={styles.statValue} style={{ color: 'var(--ui-success)' }}>
+                    <ZapIcon size={12} /> {activePreset.latencyMs}ms (Edge Hit)
                   </span>
                 </div>
                 <div className={styles.statRow}>
                   <span>Bandwidth Saved:</span>
-                  <span className={styles.statValue} style={{ color: '#2563eb' }}>
+                  <span className={styles.statValue} style={{ color: 'var(--ui-accent-text)' }}>
                     {activePreset.bandwidthSaved}
                   </span>
                 </div>
@@ -393,8 +402,8 @@ export function LandingPage() {
 
         <div className={styles.pillarsGrid}>
           <div className={styles.pillarCard}>
-            <div className={styles.pillarIcon} style={{ background: 'var(--nb-yellow)' }}>
-              ⚡
+            <div className={styles.pillarIcon}>
+              <ZapIcon size={24} />
             </div>
             <h3 className={styles.pillarTitle}>Drop-in Cloudinary Syntax</h3>
             <p className={styles.pillarDesc}>
@@ -404,8 +413,8 @@ export function LandingPage() {
           </div>
 
           <div className={styles.pillarCard}>
-            <div className={styles.pillarIcon} style={{ background: 'var(--nb-blue)' }}>
-              💰
+            <div className={styles.pillarIcon}>
+              <MoneyIcon size={24} />
             </div>
             <h3 className={styles.pillarTitle}>100% Free Infrastructure</h3>
             <p className={styles.pillarDesc}>
@@ -415,8 +424,8 @@ export function LandingPage() {
           </div>
 
           <div className={styles.pillarCard}>
-            <div className={styles.pillarIcon} style={{ background: 'var(--nb-mint)' }}>
-              🏢
+            <div className={styles.pillarIcon}>
+              <FolderIcon size={24} />
             </div>
             <h3 className={styles.pillarTitle}>Multi-Tenant Workspaces</h3>
             <p className={styles.pillarDesc}>
@@ -473,7 +482,15 @@ export function LandingPage() {
               style={{ marginLeft: 'auto', margin: '8px 12px' }}
               onClick={handleCopyCode}
             >
-              {copiedCode ? '✓ Copied!' : '📋 Copy Code'}
+              {copiedCode ? (
+                <>
+                  <CheckIcon size={14} /> Copied!
+                </>
+              ) : (
+                <>
+                  <ClipboardIcon size={14} /> Copy Code
+                </>
+              )}
             </button>
           </div>
 
@@ -494,7 +511,7 @@ export function LandingPage() {
 
         <div className={styles.featuresGrid}>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>🏎️</span>
+            <span className={styles.featureBoxIcon}><CarIcon size={20} /></span>
             <h4 className={styles.featureBoxTitle}>libvips Sharp Engine</h4>
             <p className={styles.featureBoxDesc}>
               Blazing fast C++ image transformation pipeline. Resizes, converts, and strips metadata
@@ -502,7 +519,7 @@ export function LandingPage() {
             </p>
           </div>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>🎬</span>
+            <span className={styles.featureBoxIcon}><VideoIcon size={18} /></span>
             <h4 className={styles.featureBoxTitle}>Video HLS & DASH</h4>
             <p className={styles.featureBoxDesc}>
               Automatic adaptive bitrate streaming packages, frame clip extraction, and high-res
@@ -510,7 +527,7 @@ export function LandingPage() {
             </p>
           </div>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>🤖</span>
+            <span className={styles.featureBoxIcon}><BotIcon size={20} /></span>
             <h4 className={styles.featureBoxTitle}>AI Vision & Moderation</h4>
             <p className={styles.featureBoxDesc}>
               Integrated OpenAI-compatible image tagging, accessibility alt-text generation, and
@@ -518,7 +535,7 @@ export function LandingPage() {
             </p>
           </div>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>🛡️</span>
+            <span className={styles.featureBoxIcon}><ShieldIcon size={20} /></span>
             <h4 className={styles.featureBoxTitle}>HMAC Signed URLs</h4>
             <p className={styles.featureBoxDesc}>
               Prevent bandwidth leeching and unauthorized parameter manipulation with cryptographic
@@ -526,7 +543,7 @@ export function LandingPage() {
             </p>
           </div>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>📊</span>
+            <span className={styles.featureBoxIcon}><ChartIcon size={18} /></span>
             <h4 className={styles.featureBoxTitle}>Edge Analytics</h4>
             <p className={styles.featureBoxDesc}>
               Real-time dashboards tracking cache hit ratios, top requested renditions, and origin
@@ -534,7 +551,7 @@ export function LandingPage() {
             </p>
           </div>
           <div className={styles.featureBox}>
-            <span className={styles.featureBoxIcon}>🔔</span>
+            <span className={styles.featureBoxIcon}><BellIcon size={20} /></span>
             <h4 className={styles.featureBoxTitle}>Outbound Webhooks</h4>
             <p className={styles.featureBoxDesc}>
               Deliver real-time webhook events on asset upload, transformation completion, and
@@ -559,7 +576,7 @@ export function LandingPage() {
             <thead>
               <tr>
                 <th>Feature</th>
-                <th className={styles.storinaryCol}>⚡ Storinary</th>
+                <th className={styles.storinaryCol}><ZapIcon size={13} /> Storinary</th>
                 <th>Cloudinary</th>
                 <th>Cloudflare Images</th>
               </tr>

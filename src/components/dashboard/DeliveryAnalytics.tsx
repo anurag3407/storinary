@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import styles from './DeliveryAnalytics.module.css';
 import type { DeliveryAnalytics as DeliveryAnalyticsData } from '@/lib/delivery-analytics';
+import { AlertIcon, VideoIcon, ZapIcon, FireIcon, GlobeIcon } from '@/components/ui/icons';
 
 const RANGES = [7, 30, 90] as const;
 
@@ -71,7 +72,7 @@ export function DeliveryAnalyticsPanel() {
 
       {error && (
         <div className={styles.errorBox}>
-          <p>⚠️ {error}</p>
+          <p><AlertIcon size={14} /> {error}</p>
           <button type="button" onClick={() => fetchAnalytics(days)} className={styles.retryBtn}>
             Retry
           </button>
@@ -109,7 +110,7 @@ export function DeliveryAnalyticsPanel() {
           <div className={styles.cacheCard}>
             <div className={styles.cacheHeader}>
               <div className={styles.cacheTitleGroup}>
-                <span className={styles.cacheBadge}>⚡ HIGH-SPEED CACHE</span>
+                <span className={styles.cacheBadge}><ZapIcon size={12} /> HIGH-SPEED CACHE</span>
                 <span className={styles.cacheRatio}>{data.cache?.hitRatio ?? 99.4}% Hit Ratio</span>
               </div>
               <span className={styles.cacheSubtitle}>
@@ -161,7 +162,7 @@ export function DeliveryAnalyticsPanel() {
                       className={styles.bar}
                       style={{
                         height: `${Math.max(point.events > 0 ? 8 : 2, heightPct)}%`,
-                        backgroundColor: point.events > 0 ? 'var(--nb-blue)' : '#e0ddd5',
+                        backgroundColor: point.events > 0 ? 'var(--ui-chart-1)' : 'var(--ui-border-strong)',
                       }}
                     />
                   </div>
@@ -172,7 +173,7 @@ export function DeliveryAnalyticsPanel() {
 
           <div className={styles.lists}>
             <div className={styles.listCard}>
-              <h3>🔥 Top Images</h3>
+              <h3><FireIcon size={15} /> Top Images</h3>
               {data.topImages.length ? (
                 data.topImages.slice(0, 5).map((item) => (
                   <div key={item.id} className={styles.listItem}>
@@ -180,7 +181,7 @@ export function DeliveryAnalyticsPanel() {
                       <span className={styles.itemName} title={item.originalName}>
                         {item.originalName}
                       </span>
-                      <span className={styles.itemCachedBadge}>⚡ Cached</span>
+                      <span className={styles.itemCachedBadge}><ZapIcon size={11} /> Cached</span>
                     </div>
                     <div className={styles.itemStats}>
                       <span className={styles.itemBytes}>{formatBytes(item.bytes)}</span>
@@ -194,7 +195,7 @@ export function DeliveryAnalyticsPanel() {
             </div>
 
             <div className={styles.listCard}>
-              <h3>🎬 Top Videos</h3>
+              <h3><VideoIcon size={16} /> Top Videos</h3>
               {data.topVideos.length ? (
                 data.topVideos.slice(0, 5).map((item) => (
                   <div key={item.id} className={styles.listItem}>
@@ -208,7 +209,7 @@ export function DeliveryAnalyticsPanel() {
             </div>
 
             <div className={styles.listCard}>
-              <h3>🌐 Top Referrers</h3>
+              <h3><GlobeIcon size={15} /> Top Referrers</h3>
               {data.referrers.length ? (
                 data.referrers.slice(0, 5).map((item) => (
                   <div key={item.origin} className={styles.listItem}>

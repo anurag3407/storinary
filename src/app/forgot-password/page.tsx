@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 import styles from '@/app/login/login.module.css';
+import { KeyIcon, AlertIcon } from '@/components/ui/icons';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -37,7 +38,7 @@ export default function ForgotPasswordPage() {
 
         <div className={styles.authCard}>
           <div className={styles.cardTop}>
-            <div className={styles.cardIcon}>🔑</div>
+            <div className={styles.cardIcon}><KeyIcon size={22} /></div>
             <h2 className={styles.cardTitle}>Reset your password</h2>
             <p className={styles.cardSubtitle}>
               Enter your work email address and we&apos;ll send you a secure link to reset your password.
@@ -46,7 +47,7 @@ export default function ForgotPasswordPage() {
 
           {error && (
             <div className={styles.alertError} role="alert">
-              <span>⚠️</span>
+              <span className={styles.alertIcon}><AlertIcon size={15} /></span>
               <span>{error}</span>
             </div>
           )}
@@ -86,7 +87,7 @@ export default function ForgotPasswordPage() {
           )}
 
           <div className={styles.cardFooter}>
-            <Link href="/login" style={{ color: 'var(--nb-black)', fontWeight: 700 }}>
+            <Link href="/login" style={{ color: 'var(--ui-text)', fontWeight: 600 }}>
               Remember your password? Sign in
             </Link>
           </div>

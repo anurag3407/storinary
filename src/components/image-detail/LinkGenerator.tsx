@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/useToast';
 import { buildCloudinaryTransformString } from '@/lib/cloudinary-syntax';
 import type { GeneratedLinks, TransformParams } from '@/types';
 import styles from './LinkGenerator.module.css';
+import { ClipboardIcon, CheckIcon, ZapIcon } from '@/components/ui/icons';
 
 interface LinkGeneratorProps {
   links: GeneratedLinks;
@@ -113,17 +114,17 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '4px',
-            background: '#dcfce7',
-            color: '#15803d',
-            border: '1.5px solid #22c55e',
+            background: 'var(--ui-success-soft)',
+            color: 'var(--ui-success-text)',
+            border: '1px solid var(--ui-success-border)',
             borderRadius: '4px',
             fontSize: '11px',
-            fontWeight: 800,
-            padding: '2px 8px',
+            fontWeight: 500,
+            padding: '2px 10px',
           }}
           title="Assets are served with immutable 1-year cache headers and edge CDN caching."
         >
-          ⚡ Edge Cached & Ready
+          <ZapIcon size={13} /> Edge Cached & Ready
         </span>
       </div>
       <div className={styles.rows}>
@@ -135,7 +136,7 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
               <Button
                 variant="outline"
                 size="sm"
-                icon={copiedKey === row.key ? '✓' : '📋'}
+                icon={copiedKey === row.key ? <CheckIcon size={14} /> : <ClipboardIcon size={14} />}
                 onClick={() => handleCopy(row.key, row.text)}
               >
                 {copiedKey === row.key ? 'Copied' : 'Copy'}
@@ -144,7 +145,7 @@ export function LinkGenerator({ links, transformParams }: LinkGeneratorProps) {
           </div>
         ))}
       </div>
-      <Button variant="primary" icon="📋" onClick={copyAll} fullWidth>
+      <Button variant="primary" icon={<ClipboardIcon size={16} />} onClick={copyAll} fullWidth>
         Copy All Links
       </Button>
     </div>

@@ -10,6 +10,7 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { useUpload } from '@/hooks/useUpload';
 import type { UploadPresetRecord } from '@/lib/upload-presets';
+import { UploadIcon, GlobeIcon, ClipboardIcon, TrashIcon, LinkGlyphIcon, TagIcon } from '@/components/ui/icons';
 import styles from './upload.module.css';
 
 export default function UploadPage() {
@@ -177,7 +178,7 @@ export default function UploadPage() {
             <Button
               variant="ghost"
               size="md"
-              icon="🗑️"
+              icon={<TrashIcon size={26} />}
               onClick={handleClearAll}
               disabled={isUploading || items.length === 0}
             >
@@ -186,7 +187,7 @@ export default function UploadPage() {
             <Button
               variant="primary"
               size="md"
-              icon="⬆️"
+              icon={<UploadIcon size={16} />}
               onClick={handleUploadAll}
               disabled={isUploading || pendingCount === 0}
               loading={isUploading}
@@ -246,16 +247,16 @@ export default function UploadPage() {
             </span>
           </div>
           <div className={styles.completedActions}>
-            <Button variant="secondary" size="sm" icon="🔗" onClick={() => copyLinks('direct')}>
+            <Button variant="secondary" size="sm" icon={<LinkGlyphIcon size={15} />} onClick={() => copyLinks('direct')}>
               Copy URLs
             </Button>
-            <Button variant="secondary" size="sm" icon="🌐" onClick={() => copyLinks('html')}>
+            <Button variant="secondary" size="sm" icon={<GlobeIcon size={16} />} onClick={() => copyLinks('html')}>
               Copy HTML
             </Button>
-            <Button variant="secondary" size="sm" icon="📝" onClick={() => copyLinks('markdown')}>
+            <Button variant="secondary" size="sm" icon={<TagIcon size={15} />} onClick={() => copyLinks('markdown')}>
               Copy Markdown
             </Button>
-            <Button variant="primary" size="sm" icon="📋" onClick={() => copyLinks('all')}>
+            <Button variant="primary" size="sm" icon={<ClipboardIcon size={16} />} onClick={() => copyLinks('all')}>
               Copy All Formats
             </Button>
           </div>

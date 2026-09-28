@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
+import { SparklesIcon, AlertIcon } from '@/components/ui/icons';
 import styles from './CreateWorkspaceModal.module.css';
 
 interface CreateWorkspaceModalProps {
@@ -115,7 +116,7 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreated }: CreateWorks
           </Button>
           <Button
             type="button"
-            icon="✨"
+            icon={<SparklesIcon size={16} />}
             loading={loading}
             onClick={() => {
               void handleSubmit();
@@ -172,7 +173,7 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreated }: CreateWorks
           </div>
         )}
 
-        {error && <div className={styles.errorBanner}>⚠️ {error}</div>}
+        {error && <div className={styles.errorBanner}><AlertIcon size={15} /> {error}</div>}
       </form>
     </Modal>
   );

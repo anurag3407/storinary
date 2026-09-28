@@ -8,6 +8,7 @@ import { formatBytes, formatRelativeTime } from '@/lib/upload-helpers';
 import { generateServeUrl } from '@/lib/utils';
 import type { ImageRecord } from '@/types';
 import styles from './ImageCard.module.css';
+import { ClipboardIcon, LinkGlyphIcon, TrashIcon } from '@/components/ui/icons';
 
 interface ImageCardProps {
   image: ImageRecord;
@@ -104,14 +105,14 @@ export function ImageCard({
             onCopyUrl();
           }}
         >
-          📋 Copy
+          <ClipboardIcon size={14} /> Copy
         </button>
         <Link
           href={`/images/${image.id}`}
           className={styles.actionBtn}
           onClick={(e) => e.stopPropagation()}
         >
-          🔗 View
+          <LinkGlyphIcon size={14} /> View
         </Link>
         <button
           type="button"
@@ -121,7 +122,7 @@ export function ImageCard({
             handleDelete();
           }}
         >
-          🗑️ Delete
+          <TrashIcon size={14} /> Delete
         </button>
       </div>
     </div>

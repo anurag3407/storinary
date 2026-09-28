@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { Button } from '@/components/ui/Button';
+import { SparklesIcon, AlertIcon, BulbIcon } from '@/components/ui/icons';
 import styles from './onboarding.module.css';
 
 export default function OnboardingPage() {
@@ -175,7 +176,7 @@ export default function OnboardingPage() {
         </div>
 
         <div className={styles.infoBox}>
-          💡 <strong>What is a Workspace?</strong> Workspaces isolate your uploaded assets, folders,
+          <BulbIcon size={15} /> <strong>What is a Workspace?</strong> Workspaces isolate your uploaded assets, folders,
           team members, and CDN URL namespace.
         </div>
 
@@ -239,9 +240,9 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {error && <div className={styles.errorBanner}>⚠️ {error}</div>}
+          {error && <div className={styles.errorBanner}><AlertIcon size={15} /> {error}</div>}
 
-          <Button type="submit" fullWidth loading={creating} icon="✨">
+          <Button type="submit" fullWidth loading={creating} icon={<SparklesIcon size={16} />}>
             Create Workspace
           </Button>
         </form>

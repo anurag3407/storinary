@@ -1,54 +1,56 @@
 .card {
-  border: var(--ui-hairline);
-  border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-lg);
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-sm);
   padding: var(--ui-space-5);
   text-align: left;
-  transition: var(--ui-transition);
+  transition: box-shadow var(--ui-transition);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
 .card:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--ui-shadow-xl);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .topRow {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  margin-bottom: var(--ui-space-4);
 }
 
 .icon {
-  font-size: 28px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  color: currentColor;
+  opacity: 0.9;
 }
 
 .subBadge {
-  font-size: 11px;
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid var(--ui-border-strong);
+  font-size: var(--ui-text-xs);
+  font-weight: var(--ui-weight-medium);
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   padding: 2px var(--ui-space-2);
-  border-radius: 20px;
-  color: var(--ui-text);
+  border-radius: var(--ui-radius-full);
+  color: var(--ui-white);
 }
 
 .value {
-  font-family: var(--ui-font-heading);
   font-size: var(--ui-text-3xl);
-  line-height: 1.1;
-  margin-bottom: 4px;
+  font-weight: var(--ui-weight-semibold);
+  line-height: var(--ui-leading-tight);
+  letter-spacing: -0.03em;
+  margin-bottom: var(--ui-space-1);
   word-break: break-word;
-  color: var(--ui-text);
+  color: var(--ui-white);
 }
 
 .label {
   font-size: var(--ui-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--ui-text);
+  font-weight: var(--ui-weight-medium);
+  letter-spacing: 0.01em;
+  color: var(--ui-white);
 }

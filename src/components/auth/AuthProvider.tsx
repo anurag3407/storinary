@@ -156,19 +156,19 @@ function ClerkWrapper({ children }: { children: React.ReactNode }) {
           margin: '2rem auto',
           maxWidth: '640px',
           fontFamily: 'system-ui, sans-serif',
-          background: '#fff',
+          background: 'var(--ui-surface)',
           borderRadius: '12px',
-          border: '2px solid #ef4444',
+          border: '1px solid var(--ui-danger-border)',
           boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
         }}
       >
-        <h2 style={{ color: '#dc2626', marginTop: 0 }}>Clerk Configuration Required</h2>
-        <p style={{ color: '#374151', lineHeight: 1.6 }}>
+        <h2 style={{ color: 'var(--ui-danger)', margin: 0 }}>Clerk Configuration Required</h2>
+        <p style={{ color: 'var(--ui-text-muted)', lineHeight: 1.6 }}>
           You have enabled Clerk authentication (<code>isclerk=true</code>), but{' '}
           <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> is not defined in your <code>.env</code>{' '}
           file.
         </p>
-        <p style={{ color: '#374151', lineHeight: 1.6 }}>
+        <p style={{ color: 'var(--ui-text-muted)', lineHeight: 1.6 }}>
           Please add your Clerk keys to <code>.env</code> or set <code>isclerk=false</code> to use
           Better Auth.
         </p>

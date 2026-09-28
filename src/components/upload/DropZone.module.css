@@ -30,8 +30,11 @@
 }
 
 .icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ui-text-subtle);
+  margin-bottom: var(--ui-space-4);
 }
 
 .title {
