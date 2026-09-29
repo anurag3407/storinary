@@ -55,7 +55,7 @@
 .completedCount {
   font-size: var(--ui-text-sm);
   color: var(--ui-text-muted);
-  font-weight: 600;
+  font-weight: var(--ui-weight-semibold);
 }
 
 .completedActions {

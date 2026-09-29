@@ -11,8 +11,8 @@
   justify-content: space-between;
   gap: var(--ui-space-3);
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--ui-border);
-  padding-bottom: var(--ui-space-2);
+  border-bottom: 1px solid var(--ui-border-subtle);
+  padding-bottom: var(--ui-space-3);
 }
 
 .headerTitleGroup {
@@ -25,14 +25,19 @@
 .title {
   font-family: var(--ui-font-heading);
   font-size: var(--ui-text-xl);
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: -0.011em;
+  color: var(--ui-text);
   margin: 0;
 }
 
 .count {
-  font-size: var(--ui-text-xs);
-  font-weight: 700;
-  color: var(--ui-text-muted);
-  letter-spacing: 0.5px;
+  font-size: 10px;
+  font-weight: var(--ui-weight-semibold);
+  color: var(--ui-text-subtle);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
 .list {

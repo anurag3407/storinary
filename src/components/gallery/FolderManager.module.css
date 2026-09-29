@@ -34,7 +34,7 @@
 .path {
   border: none;
   background: transparent;
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   cursor: pointer;
   text-align: left;
   overflow-wrap: anywhere;

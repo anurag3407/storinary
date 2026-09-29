@@ -274,7 +274,7 @@
 
 .cacheSubtitle {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-success-text);
 }
 
@@ -337,12 +337,12 @@
 }
 
 .cacheStatLabel {
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-text);
 }
 
 .cacheStatVal {
-  font-weight: 800;
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-text);
 }
 
@@ -377,7 +377,7 @@
 .itemBytes {
   font-size: 11px;
   color: var(--ui-text-muted);
-  font-weight: 600;
+  font-weight: var(--ui-weight-semibold);
 }
 
 .errorBox {
@@ -423,7 +423,7 @@
   gap: var(--ui-space-3);
   color: var(--ui-text-muted);
   font-size: var(--ui-text-sm);
-  font-weight: 600;
+  font-weight: var(--ui-weight-semibold);
 }
 
 .spinner {

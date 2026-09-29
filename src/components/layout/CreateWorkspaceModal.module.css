@@ -8,7 +8,7 @@
   background-color: var(--ui-bg-subtle);
   border: 1px dashed var(--ui-border-strong);
   padding: var(--ui-space-3) var(--ui-space-4);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   font-size: 13px;
   line-height: 1.5;
   color: var(--ui-text);
@@ -26,8 +26,8 @@
 
 .label {
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  font-weight: var(--ui-weight-bold);
+  letter-spacing: 0.05em;
   color: var(--ui-text);
 }
 
@@ -35,9 +35,9 @@
   width: 100%;
   padding: var(--ui-space-3) var(--ui-space-3);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--ui-weight-semibold);
   border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-surface);
   box-shadow: var(--ui-shadow-sm);
   outline: none;
@@ -52,7 +52,7 @@
 .previewBox {
   background: var(--ui-success-soft);
   border: 1px solid var(--ui-success-border);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   padding: var(--ui-space-3) var(--ui-space-3);
   font-size: 12px;
   color: var(--ui-success-text);
@@ -62,18 +62,18 @@
 }
 
 .previewLabel {
-  font-weight: 800;
+  font-weight: var(--ui-weight-bold);
   font-size: 10px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
 }
 
 .previewCode {
   font-family: var(--ui-font-mono, monospace);
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   word-break: break-all;
   background: var(--ui-success-soft);
   padding: var(--ui-space-1) var(--ui-space-2);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-xs);
   border: 1px solid var(--ui-success-border);
 }
 
@@ -82,9 +82,9 @@
   border: 1px solid var(--ui-danger-border);
   color: var(--ui-danger);
   padding: var(--ui-space-3) var(--ui-space-3);
-  border-radius: 6px;
+  border-radius: var(--ui-radius-sm);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
 }
 
 .actions {

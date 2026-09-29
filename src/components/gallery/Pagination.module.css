@@ -5,12 +5,23 @@
   align-items: center;
   flex-wrap: wrap;
   margin-top: var(--ui-space-6);
+  padding-top: var(--ui-space-5);
+  border-top: 1px solid var(--ui-border-subtle);
 }
 
 .ellipsis {
-  padding: var(--ui-space-2);
-  font-weight: 700;
+  padding: 0 var(--ui-space-1);
+  font-weight: var(--ui-weight-semibold);
+  color: var(--ui-text-subtle);
+  letter-spacing: 0.06em;
   user-select: none;
+}
+
+/* Page numbers read as compact chips: even width, tabular figures. */
+.pagination :global(button) {
+  min-width: 34px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 768px) {

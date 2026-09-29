@@ -80,7 +80,7 @@
   height: 32px;
   flex-shrink: 0;
   font-size: var(--ui-text-base);
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   background-color: transparent;
   color: var(--ui-text-subtle);
   border: 1px solid var(--ui-border);

@@ -1,27 +1,39 @@
 .dropzone {
   border: 2px dashed var(--ui-border-strong);
   background-color: var(--ui-surface);
+  background-image: radial-gradient(
+    130% 100% at 50% 0%,
+    var(--ui-accent-soft) 0%,
+    transparent 60%
+  );
   border-radius: var(--ui-radius-lg);
   padding: var(--ui-space-12) var(--ui-space-8);
   text-align: center;
   cursor: pointer;
-  transition: var(--ui-transition);
-  box-shadow: var(--ui-shadow-sm);
+  transition: var(--ui-transition-lift), border-color var(--ui-transition),
+    box-shadow var(--ui-transition);
+  box-shadow: var(--ui-shadow-card);
   outline: none;
 }
 
 .dropzone:hover {
-  border-color: var(--ui-border-active);
+  border-color: var(--ui-accent-border);
   background-color: var(--ui-surface-hover);
-  box-shadow: var(--ui-shadow-md);
-  transform: none;
+  box-shadow: var(--ui-shadow-raised);
+  transform: var(--ui-lift);
+}
+
+/* The zone is a focusable interactive region, so it needs its own ring. */
+.dropzone:focus-visible {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-soft), var(--ui-shadow-raised);
 }
 
 .dragging {
   border: 2px dashed var(--ui-accent);
   background-color: var(--ui-accent-soft);
-  box-shadow: 0 0 0 3px var(--ui-accent-soft);
-  transform: none;
+  box-shadow: 0 0 0 4px var(--ui-accent-soft), var(--ui-shadow-raised);
+  transform: scale(1.004);
 }
 
 .disabled {
@@ -40,25 +52,31 @@
 .title {
   font-family: var(--ui-font-heading);
   font-size: var(--ui-text-xl);
-  margin-bottom: 4px;
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: -0.011em;
+  color: var(--ui-text);
+  margin-bottom: var(--ui-space-1);
 }
 
 .subtitle {
   font-size: var(--ui-text-base);
   color: var(--ui-text-muted);
-  margin-bottom: 12px;
+  margin-bottom: var(--ui-space-4);
 }
 
 .formats {
-  font-size: var(--ui-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--ui-text-muted);
-  background-color: var(--ui-bg);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
+  font-size: 10px;
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ui-text-subtle);
+  background-color: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-full);
+  box-shadow: var(--ui-shadow-none);
   display: inline-block;
-  padding: var(--ui-space-2) var(--ui-space-3);
+  padding: var(--ui-space-1) var(--ui-space-3);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 768px) {

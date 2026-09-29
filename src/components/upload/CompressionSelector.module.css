@@ -27,7 +27,7 @@
 .sectionLabel {
   font-family: var(--ui-font-heading);
   font-size: var(--ui-text-sm);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
   color: var(--ui-text);
 }
 
@@ -38,7 +38,7 @@
 
 .statusBadge {
   font-size: var(--ui-text-xs);
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   padding: var(--ui-space-1) var(--ui-space-3);
   border: 1px solid var(--ui-border-strong);
   border-radius: 999px;
@@ -83,7 +83,7 @@
 }
 
 .presetCard:hover:not(:disabled) {
-  transform: translate(-1px, -1px);
+  transform: translateY(-1px);
   box-shadow: var(--ui-shadow-md);
   background-color: var(--ui-surface-hover);
 }
@@ -131,11 +131,11 @@
 
 .presetReduction {
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-text);
   background-color: rgba(0, 0, 0, 0.06);
   padding: 2px var(--ui-space-2);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-xs);
   width: fit-content;
 }
 
@@ -179,22 +179,22 @@
 
 .reductionPill {
   font-size: var(--ui-text-xs);
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   background-color: var(--ui-surface-inset);
   border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
+  border-radius: var(--ui-radius-xs);
   padding: 2px var(--ui-space-2);
 }
 
 .numberInput {
   width: 72px;
   text-align: center;
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   padding: 6px !important;
 }
 
 .percentSymbol {
-  font-weight: 800;
+  font-weight: var(--ui-weight-bold);
   font-size: var(--ui-text-sm);
   color: var(--ui-text);
 }
@@ -221,7 +221,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.65rem;
-  font-weight: 700;
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-text-subtle);
 }
 
