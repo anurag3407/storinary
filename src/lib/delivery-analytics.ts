@@ -98,6 +98,7 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
     groupedImages,
     groupedVideos,
     groupedReferrers,
+    groupedCache,
   ] = await Promise.all([
     prisma.deliveryEvent.aggregate({ _count: true, _sum: { bytes: true }, where: { createdAt: { gte: from } } }),
     prisma.deliveryEvent.aggregate({
@@ -142,6 +143,14 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
       orderBy: { _count: { referer: 'desc' } },
       take: 10,
     }),
+    // Images store their cache status in `rendition` ('hit:memory' | 'hit:disk'
+    // | 'miss'), so we can report a real hit ratio instead of a fixed estimate.
+    prisma.deliveryEvent.groupBy({
+      by: ['rendition'],
+      _count: true,
+      _sum: { bytes: true },
+      where: { createdAt: { gte: from }, imageId: { not: null } },
+    }),
   ]);
 
   const [imageRows, videoRows] = await Promise.all([
@@ -182,14 +191,33 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
     bucket.bytes += Number(row.bytes) || 0;
   }
 
-  const totalEvents = totalAggregate._count || 0;
-  const totalBytes = totalAggregate._sum.bytes || 0;
-  const hitRatio = totalEvents > 0 ? 99.4 : 100;
-  const cachedEvents = totalEvents > 0 ? Math.max(0, Math.round(totalEvents * (hitRatio / 100))) : 0;
-  const missEvents = Math.max(0, totalEvents - cachedEvents);
-  const memoryHits = Math.round(cachedEvents * 0.4);
-  const diskHits = cachedEvents - memoryHits;
-  const savedBytes = Math.max(0, Math.round(totalBytes * (hitRatio / 100)));
+  // Aggregate the recorded cache statuses. `hit:memory` and `hit:disk` count as
+  // cache hits (their bytes never touched origin); `miss` counts as a miss.
+  let memoryHits = 0;
+  let diskHits = 0;
+  let genericHits = 0;
+  let missEvents = 0;
+  let savedBytes = 0;
+  for (const row of groupedCache as Array<{
+    rendition: string | null;
+    _count: number;
+    _sum: { bytes: number | null };
+  }>) {
+    const count = Number(row._count) || 0;
+    const bytes = Number(row._sum?.bytes) || 0;
+    if (row.rendition === 'miss') {
+      missEvents += count;
+      continue;
+    }
+    if (row.rendition === 'hit:memory') memoryHits += count;
+    else if (row.rendition === 'hit:disk') diskHits += count;
+    else genericHits += count;
+    savedBytes += bytes;
+  }
+  const cachedEvents = memoryHits + diskHits + genericHits;
+  const cacheTotal = cachedEvents + missEvents;
+  const hitRatio =
+    cacheTotal > 0 ? Number(((cachedEvents / cacheTotal) * 100).toFixed(1)) : 0;
 
   const formatAssetDisplayName = (id: string | null | undefined): string => {
     if (!id || id === 'null' || id === 'undefined' || id.trim() === '') {

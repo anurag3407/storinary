@@ -270,6 +270,21 @@ describe('useUpload', () => {
     });
   });
 
+  it('includes the selected upload preset in the request body', async () => {
+    const { result } = renderHook(() => useUpload());
+    act(() => result.current.selectUploadPreset('website_hero'));
+    act(() => result.current.addFiles([new File(['x'], 'a.png', { type: 'image/png' })]));
+
+    await act(async () => {
+      await result.current.startUpload();
+    });
+
+    const body = MockXmlHttpRequest.lastInstance?.body as FormData;
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('upload_preset')).toBe('website_hero');
+    expect(body.get('file')).toBeInstanceOf(File);
+  });
+
   it('does nothing when no pending files exist', async () => {
     const { result } = renderHook(() => useUpload());
     let outcome: { completed: number; failed: number } | undefined;

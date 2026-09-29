@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License: GPL-3.0" /></a>
-  <img src="https://img.shields.io/badge/tests-551%20passing-brightgreen" alt="551 tests passing" />
+  <img src="https://img.shields.io/badge/tests-621%20passing-brightgreen" alt="621 tests passing" />
   <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6" alt="TypeScript strict" />
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome" /></a>
@@ -39,6 +39,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 - [Transformations Reference](#transformations-reference)
 - [API Reference](#api-reference)
 - [Security](#security)
+- [Troubleshooting](#troubleshooting)
 - [Testing](#testing)
 - [Deployment](#deployment)
 - [Project Structure](#project-structure)
@@ -69,7 +70,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 | **Image detail** | Full preview with zoom, metadata table with inline editing (tags / alt text / folder) |
 | **Dashboard** | Storage stats, format distribution, recent uploads, quick actions |
 | **Settings** | Connection test, default upload options, Supabase setup guide, danger zone |
-| **Admin auth** *(optional)* | Set `STORINARY_ADMIN_PASSWORD` to protect uploads, the library, and settings behind a login |
+| **Multi-tenant auth** | Email + password accounts and isolated workspaces via Better Auth, or drop in Clerk with one env flag |
 | **SVG hardening** | Malicious SVGs (scripts / event handlers) are rejected at upload and served with sandbox headers |
 | **Rate limiting** | Per-IP limits on expensive endpoints to prevent abuse |
 
@@ -121,7 +122,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 - **Prisma + SQLite (dev) / PostgreSQL (production)** — metadata database
 - **sharp** — server-side image processing
 - **@imgly/background-removal** — client-side background removal (WASM + ONNX)
-- **Vitest + Testing Library** — 284 tests across 46 files
+- **Vitest + Testing Library** — 621 tests across 110 files
 - Vanilla **CSS Modules** with a neobrutalism design system (no Tailwind)
 
 ## 🚀 Quickstart
@@ -129,7 +130,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 ### Prerequisites
 
 - **Node.js 20+** and npm
-- A free [Supabase](https://supabase.com) project (no credit card)
+- A free object-storage bucket — [Supabase](https://supabase.com), [Backblaze B2](https://www.backblaze.com/cloud-storage) (10 GB free), or [Appwrite](https://appwrite.io) (no credit card)
 
 ### 1. Install
 
@@ -145,25 +146,29 @@ npm install
 cp .env.example .env
 ```
 
-Fill in your Supabase credentials (see the in-app **Settings → Supabase Setup Instructions** for the step-by-step bucket setup):
+Then open `.env` and set, at minimum:
 
 ```env
 DATABASE_URL="file:./dev.db"
-NEXT_PUBLIC_SUPABASE_URL="https://your-project-ref.supabase.co"
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_..."   # new-format public key
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your_anon_key_here"           # or legacy anon key
-SUPABASE_SERVICE_ROLE_KEY="sb_secret_..."                    # NEW-format secret key (service role)
-SUPABASE_BUCKET_NAME="storinary"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_MAX_FILE_SIZE_MB="10"
-NEXT_PUBLIC_ALLOWED_FORMATS="image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml"
-# Optional: enable admin login
-STORINARY_ADMIN_PASSWORD="a-strong-password"
-# Optional: enable expiring private image/video delivery (falls back to the admin password)
-STORINARY_SIGNED_URL_SECRET="another-unique-random-secret"
+# Any random string of 32+ characters:  openssl rand -base64 48
+BETTER_AUTH_SECRET="change-this-to-a-random-string-of-at-least-32-chars"
 ```
 
-> **Create the bucket**: Supabase Dashboard → Storage → New bucket → name it `storinary` (or your `SUPABASE_BUCKET_NAME`) → **Public bucket: ON**.
+**Storage — pick one provider** (uncomment the matching block in `.env.example`; the app auto-detects it):
+
+```env
+# Supabase (see in-app Settings → Supabase Setup Instructions)
+NEXT_PUBLIC_SUPABASE_URL="https://your-project-ref.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="your_service_role_key"
+SUPABASE_BUCKET_NAME="storinary"
+
+# …or Backblaze B2 (10 GB free) / Appwrite — see the Configuration table below.
+```
+
+> **Create the bucket**: Supabase Dashboard → Storage → New bucket → name it `storinary` (or your `SUPABASE_BUCKET_NAME`) → **Public bucket: ON**. Backblaze and Appwrite buckets must also allow public reads.
+>
+> **Email is optional in development.** Signup, password reset, and invitations send email; if no provider is configured, the message (including the verification link) is printed to your server console instead, so you can sign up locally with zero setup. Set `isresend=true` + `RESEND_API_KEY`, or SMTP variables, to deliver real email in production.
 
 ### 3. Initialize the database
 
@@ -171,7 +176,7 @@ STORINARY_SIGNED_URL_SECRET="another-unique-random-secret"
 npx prisma migrate dev --name init
 ```
 
-Existing installations should run the new API-key migration:
+Existing installations should run any pending migrations:
 
 ```bash
 npx prisma migrate deploy
@@ -183,7 +188,15 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and upload your first image. 🎉
+Open [http://localhost:3000](http://localhost:3000).
+
+### 5. Create your account and first workspace
+
+1. Click **Sign In → Create Account** and register. In development, the verification link is printed to the terminal running `npm run dev` — open it to verify your email.
+2. You land on **Onboarding**; create a **Workspace**. A workspace (organization) isolates its assets, folders, API keys, and delivery URLs.
+3. Head to **Settings → Storage / Connection** to test your provider, then **Upload** your first image. 🎉
+
+> Auth is Better Auth by default. To use **Clerk** instead, set `isclerk=true` and provide the Clerk keys shown in `.env.example`.
 
 ## ⚙️ Configuration
 
@@ -208,10 +221,16 @@ Open [http://localhost:3000](http://localhost:3000) and upload your first image.
 | `SUPABASE_BUCKET_NAME` | — | Storage bucket name (default `storinary`, must exist & be **public**) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | Public/publishable key (optional fallback) |
 | **General & Security** | | |
-| `NEXT_PUBLIC_APP_URL` | ⚠️ | Public app URL — used for generated links & server fetches (set it in production) |
+| `NEXT_PUBLIC_APP_URL` | ⚠️ | Public app URL — used for generated links, emails & auth callbacks (set it in production) |
 | `NEXT_PUBLIC_MAX_FILE_SIZE_MB` | — | Max upload size in MB (default `10`) |
 | `NEXT_PUBLIC_ALLOWED_FORMATS` | — | Comma-separated allowed MIME types |
-| `STORINARY_ADMIN_PASSWORD` | — | Set to enable admin login + API protection |
+| **Authentication & Email** | | |
+| `BETTER_AUTH_SECRET` | ✅ (Better Auth) | 32+ char random secret. Required when `isclerk` is not `true` |
+| `isclerk` | — | `true` to use Clerk instead of Better Auth (default `false`) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` | ✅ (Clerk) | Required when `isclerk=true` |
+| `isresend` | — | `true` to deliver email via Resend; otherwise SMTP is used |
+| `RESEND_API_KEY` / `RESEND_FROM` | ✅ (Resend) | Required when `isresend=true`. In development, missing email config logs messages to the console instead |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | ✅ (SMTP) | Used when `isresend` is `false`/unset |
 | `STORINARY_SIGNED_URL_SECRET` | — | Enable signed/expiring delivery; unique secret recommended |
 | `STORINARY_TRANSFORM_CACHE_ENTRIES` | — | LRU cache entry limit (default `50`) |
 | `STORINARY_TRANSFORM_CACHE_MB` | — | LRU cache byte budget in MB (default `64`) |
@@ -546,7 +565,7 @@ if (!timingSafeEqual(Buffer.from(expected), Buffer.from(received))) {
 ## 🧭 Usage Guide
 
 ### Upload
-1. Go to **Upload** → drag & drop, browse, or **paste** images.
+1. Go to **Upload** → drag & drop, browse, or **paste** images. They are added to the queue — nothing uploads until you start it.
 2. Tune options: **Compress to WebP** (quality / max width), **Remove Background**, target **Folder**, **Tags**.
 3. Hit **Upload All** — watch each file go `Pending → Compressing → Removing BG → Uploading → Done`.
 4. Copy the finished links (URL / HTML / Markdown / All formats) straight into your site.
@@ -657,7 +676,7 @@ video removes stored derivative files.
 Click any image → live preview (click to zoom), metadata table with **inline editing** (tags / alt text / folder), and the transform panel with sliders + presets (150×150, 800×600, 1920×1080, 1200×630). Changes preview live and generate a copy-ready **Transform URL**.
 
 ### Settings
-- **Authentication** — status + sign out (when `STORINARY_ADMIN_PASSWORD` is set)
+- **Authentication** — signed-in account, workspace switching, and sign out
 - **Connection Status** — test connectivity
 - **Default Upload Settings** — persist upload defaults in your browser
 - **Supabase Setup Instructions** — collapsible 5-step guide
@@ -763,10 +782,9 @@ server route rather than hardcoding it.
 | `/api/images/:id/transform` | `GET` | Transformed image binary (same params as serve) |
 | `/api/serve/[...path]` | `GET` | CDN-style transforms; 301 → public URL when untransformed |
 | `/api/stats` | `GET` | Dashboard stats (totals, formats, folders, recent uploads) |
+| `/api/health` | `GET` | Public liveness probe for uptime monitors and deploy smoke tests |
 | `/api/reset` | `DELETE` | Wipe DB records (keeps storage files) — Danger Zone |
-| `/api/auth/login` | `POST` | Session login (when `STORINARY_ADMIN_PASSWORD` set) |
-| `/api/auth/logout` | `POST` | Clear session |
-| `/api/auth/status` | `GET` | Whether auth is enabled |
+| `/api/auth/[...all]` | `GET`, `POST` | Better Auth catch-all (sign-up, sign-in, sessions, organization, invitations) |
 | `/api/webhooks` | `GET`, `POST` | List or create outbound webhook endpoints |
 | `/api/webhooks/:id` | `PATCH`, `DELETE` | Pause/activate, rename, rotate secret, or delete |
 | `/api/webhooks/deliveries` | `GET` | Recent delivery history (`endpointId`, `limit`) |
@@ -779,7 +797,7 @@ server route rather than hardcoding it.
 
 ## 🔒 Security
 
-- **Admin auth** — with `STORINARY_ADMIN_PASSWORD` set, every API except the public CDN surface (`/api/serve`, `/transform`) and auth endpoints requires a session cookie; app pages redirect to `/login`. Sessions are stateless HMAC tokens (7-day expiry).
+- **Tenant auth** — every dashboard API and protected page requires an authenticated session (Better Auth or Clerk) with an active organization; unauthenticated visitors are redirected to `/login`. Public CDN routes (`/api/serve`, `/transform`, `/api/redirect`) stay open, and API keys resolve their own tenant. Each request is scoped to a single organization so tenants can never read another workspace's media.
 - **Rate limiting** — middleware enforces per-IP limits on serve/transform/uploads/deletes/reset/login.
 - **SVG hardening** — SVGs containing scripts/event handlers (including XML-entity-encoded variants) are rejected at upload; raw SVGs are served with `Content-Disposition: attachment` + a sandbox CSP.
 - **Secret hygiene** — `SUPABASE_SERVICE_ROLE_KEY` never enters the client bundle (no `NEXT_PUBLIC_` prefix); `.env` is gitignored.
@@ -834,10 +852,20 @@ public delivery remains immutable and cacheable.
 
 > ⚠️ **Prisma client gotcha:** the generated client must match `DATABASE_URL`. If you've run the `vercel-build` script (or `prisma generate --schema prisma/postgres/schema.prisma`) locally, the client will expect Postgres — regenerate it with plain `npx prisma generate` to go back to SQLite, or vice versa. A mismatch shows up as a dashboard "stats API unavailable" error.
 
+## 🩺 Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| Stuck on **"Check your inbox to verify your email"** with no email | In development this is expected when no provider is set — copy the verification link from the terminal running `npm run dev`. For production, configure Resend or SMTP. |
+| Redirected to `/login` in a loop, or APIs return `401` | You have no active workspace. Visit `/onboarding` and create one, or pick an existing workspace from the sidebar. |
+| Dashboard shows **"stats API unavailable"** | Prisma client/`DATABASE_URL` mismatch or the database wasn't migrated. Run `npx prisma generate` and `npx prisma migrate deploy` for the matching schema. |
+| Uploads fail with a storage error | No storage provider credentials are set (or the bucket isn't public). Configure one provider block in `.env` and test it in **Settings → Connection**. |
+| `BETTER_AUTH_SECRET is not set` warning | Set a 32+ character random secret, or set `isclerk=true` with Clerk keys. |
+
 ## 🧪 Testing
 
 ```bash
-npm test            # run all 551 tests once
+npm test            # run all 621 tests once
 npm run test:watch  # watch mode
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint
@@ -874,7 +902,8 @@ The committed migration creates the `Image` table. If you change the schema late
 | `SUPABASE_BUCKET_NAME` | Your public bucket name (e.g. `storinary`) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public/publishable key |
 | `NEXT_PUBLIC_APP_URL` | `https://<your-app>.vercel.app` |
-| `STORINARY_ADMIN_PASSWORD` *(optional)* | Enable login protection |
+| `BETTER_AUTH_SECRET` | 32+ char random secret (or set `isclerk=true` + Clerk keys instead) |
+| `RESEND_API_KEY` (+ `isresend=true`) *or* SMTP vars | So verification, reset, and invitation emails can be delivered |
 
 The included `vercel-build` script runs automatically on Vercel: it applies pending Postgres migrations (`prisma migrate deploy` — idempotent), generates the Postgres Prisma client, and builds.
 

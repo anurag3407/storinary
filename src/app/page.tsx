@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +11,7 @@ import { RecentUploads } from '@/components/dashboard/RecentUploads';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { LandingPage } from '@/components/landing/LandingPage';
 import { getStats } from '@/lib/stats';
-import { getTenantIdOrNull } from '@/lib/tenant';
+import { getTenantIdOrNull, hasAuthenticatedUser } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
 import { UploadIcon, VideoIcon, AlertIcon, FolderIcon, CameraIcon, DatabaseIcon, CalendarIcon } from '@/components/ui/icons';
 import styles from './page.module.css';
@@ -26,8 +27,14 @@ export const dynamic = 'force-dynamic';
 export default async function IndexPage() {
   const tenantId = await getTenantIdOrNull();
 
-  // If visitor is unauthenticated, present the SaaS Landing Page
   if (!tenantId) {
+    // A signed-in user without an active workspace must not be shown the
+    // marketing page — its "Open Console" link points back to `/`, which would
+    // trap them in a loop. Send them to workspace setup instead.
+    if (await hasAuthenticatedUser()) {
+      redirect('/onboarding');
+    }
+    // Otherwise this is a genuine visitor: show the SaaS Landing Page.
     return <LandingPage />;
   }
 
@@ -45,6 +52,7 @@ export default async function IndexPage() {
         <Header title="Dashboard" description="Overview of your image CDN." />
         <EmptyState
           icon={<AlertIcon size={26} />}
+          headingLevel={2}
           title="Could not load dashboard"
           description="The stats API is unavailable. Check that your database and environment variables are configured correctly, then try again."
           action={
@@ -83,6 +91,8 @@ export default async function IndexPage() {
 
       {(Boolean(stats.storagePercentage && stats.storagePercentage >= 80) || Boolean(stats.isQuotaExceeded)) && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             display: 'flex',
             alignItems: 'center',

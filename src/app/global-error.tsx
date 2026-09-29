@@ -30,6 +30,7 @@ export default function GlobalError({
         >
           <EmptyState
             icon={<AlertIcon size={26} />}
+            headingLevel={1}
             title="Something went wrong"
             description="A critical error occurred. Try reloading the page."
             action={

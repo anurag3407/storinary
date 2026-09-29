@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAppAuth } from '@/components/auth/AuthProvider';
-import { ChartIcon, VideoIcon, ClipboardIcon, RocketIcon, ZapIcon, StarIcon, WrenchIcon, LockIcon, MoneyIcon, CarIcon, BotIcon, ShieldIcon, BellIcon, CheckIcon, FolderIcon, SparklesIcon } from '@/components/ui/icons';
+import { ChartIcon, VideoIcon, ClipboardIcon, RocketIcon, ZapIcon, StarIcon, WrenchIcon, LockIcon, MoneyIcon, CarIcon, BotIcon, ShieldIcon, BellIcon, CheckIcon, FolderIcon, SparklesIcon, MenuIcon } from '@/components/ui/icons';
 import styles from './LandingPage.module.css';
 
 interface TransformationPreset {
@@ -88,6 +88,12 @@ const PRESETS: TransformationPreset[] = [
   },
 ];
 
+/** Public origin shown in docs/snippets — matches the deployment's own URL. */
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'https://storinary.sayalabs.in').replace(
+  /\/+$/,
+  ''
+);
+
 const CODE_EXAMPLES = {
   nextjs: `// Next.js 15 App Router Integration
 import Image from 'next/image';
@@ -95,7 +101,7 @@ import Image from 'next/image';
 export function ProductHero() {
   return (
     <Image
-      src="https://storinary.sayalabs.in/sayalabs/image/upload/w_1200,f_auto,q_80/hero.webp"
+      src="${APP_ORIGIN}/sayalabs/image/upload/w_1200,f_auto,q_80/hero.webp"
       alt="Hero Asset"
       width={1200}
       height={630}
@@ -119,7 +125,7 @@ const asset = await storinary.uploader.upload('./banner.png', {
 
 console.log(asset.secure_url);`,
   curl: `# REST API Upload (Cloudinary v1_1 compatible)
-curl -X POST https://storinary.sayalabs.in/api/v1_1/sayalabs/image/upload \\
+curl -X POST ${APP_ORIGIN}/api/v1_1/sayalabs/image/upload \\
   -H "Authorization: Bearer st_live_your_api_key" \\
   -F "file=@./photo.jpg" \\
   -F "folder=/products" \\
@@ -129,7 +135,7 @@ curl -X POST https://storinary.sayalabs.in/api/v1_1/sayalabs/image/upload \\
 // https://res.cloudinary.com/sayalabs/image/upload/w_400,c_fill/photo.jpg
 
 // AFTER (Storinary - Zero URL changes):
-// https://storinary.sayalabs.in/sayalabs/image/upload/w_400,c_fill/photo.jpg`,
+// ${APP_ORIGIN}/sayalabs/image/upload/w_400,c_fill/photo.jpg`,
 };
 
 export function LandingPage() {
@@ -138,10 +144,21 @@ export function LandingPage() {
   const [activeCodeTab, setActiveCodeTab] = useState<'nextjs' | 'sdk' | 'curl' | 'migrate'>('nextjs');
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+
+  // Let keyboard users dismiss the mobile menu with Escape.
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [navOpen]);
 
   const sampleUrl = activePreset.params
-    ? `https://storinary.sayalabs.in/sayalabs/image/upload/${activePreset.params}/logo.png`
-    : `https://storinary.sayalabs.in/sayalabs/image/upload/logo.png`;
+    ? `${APP_ORIGIN}/sayalabs/image/upload/${activePreset.params}/logo.png`
+    : `${APP_ORIGIN}/sayalabs/image/upload/logo.png`;
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(sampleUrl);
@@ -175,25 +192,38 @@ export function LandingPage() {
           <span className={styles.studioPill}>OPEN SOURCE</span>
         </Link>
 
-        <nav className={styles.navLinks}>
-          <a href="#features" className={styles.navLink}>
+        <nav
+          id="landing-nav"
+          className={`${styles.navLinks} ${navOpen ? styles.navLinksOpen : ''}`}
+        >
+          <a href="#features" className={styles.navLink} onClick={() => setNavOpen(false)}>
             Features
           </a>
-          <a href="#sandbox" className={styles.navLink}>
+          <a href="#sandbox" className={styles.navLink} onClick={() => setNavOpen(false)}>
             Live Sandbox
           </a>
-          <a href="#developer" className={styles.navLink}>
+          <a href="#developer" className={styles.navLink} onClick={() => setNavOpen(false)}>
             Developers
           </a>
-          <a href="#pricing" className={styles.navLink}>
+          <a href="#pricing" className={styles.navLink} onClick={() => setNavOpen(false)}>
             Plans &amp; Pricing
           </a>
-          <a href="#compare" className={styles.navLink}>
+          <a href="#compare" className={styles.navLink} onClick={() => setNavOpen(false)}>
             Why Storinary
           </a>
         </nav>
 
         <div className={styles.navActions}>
+          <button
+            type="button"
+            className={styles.navToggle}
+            onClick={() => setNavOpen((open) => !open)}
+            aria-label={navOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={navOpen}
+            aria-controls="landing-nav"
+          >
+            <MenuIcon size={20} />
+          </button>
           {session ? (
             <Link href="/" className={styles.navCtaBtn}>
               Open Console ➔
@@ -211,6 +241,7 @@ export function LandingPage() {
         </div>
       </header>
 
+      <main>
       {/* ── Hero Section ── */}
       <section className={styles.heroSection}>
         <div className={styles.heroBadge}>
@@ -284,7 +315,7 @@ export function LandingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ color: 'var(--ui-success)', fontWeight: 600 }}>GET</span>
               <span className={styles.urlText}>
-                https://storinary.sayalabs.in/sayalabs/image/upload/
+                {APP_ORIGIN}/sayalabs/image/upload/
                 {activePreset.params && (
                   <span className={styles.urlParam}>{activePreset.params}/</span>
                 )}
@@ -295,6 +326,9 @@ export function LandingPage() {
               {copiedUrl ? (
                 <>
                   <CheckIcon size={14} /> Copied URL!
+                  <span className="visually-hidden" role="status" aria-live="polite">
+                    URL copied to clipboard
+                  </span>
                 </>
               ) : (
                 <>
@@ -309,7 +343,7 @@ export function LandingPage() {
             <div className={styles.sandboxControls}>
               <div>
                 <div className={styles.controlGroupTitle}>Transformation Presets</div>
-                <div className={styles.presetChips}>
+                <div className={styles.presetChips} role="group" aria-label="Transformation presets">
                   {PRESETS.map((preset) => (
                     <button
                       key={preset.id}
@@ -318,6 +352,7 @@ export function LandingPage() {
                         activePreset.id === preset.id ? styles.presetChipActive : ''
                       }`}
                       onClick={() => setActivePreset(preset)}
+                      aria-pressed={activePreset.id === preset.id}
                     >
                       {preset.label}
                     </button>
@@ -450,9 +485,13 @@ export function LandingPage() {
         </div>
 
         <div className={styles.codeBox}>
-          <div className={styles.codeNav}>
+          <div className={styles.codeNav} role="tablist" aria-label="Code examples">
             <button
               type="button"
+              role="tab"
+              id="code-tab-nextjs"
+              aria-selected={activeCodeTab === 'nextjs'}
+              aria-controls="code-panel"
               className={`${styles.codeTab} ${activeCodeTab === 'nextjs' ? styles.codeTabActive : ''}`}
               onClick={() => setActiveCodeTab('nextjs')}
             >
@@ -460,6 +499,10 @@ export function LandingPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              id="code-tab-sdk"
+              aria-selected={activeCodeTab === 'sdk'}
+              aria-controls="code-panel"
               className={`${styles.codeTab} ${activeCodeTab === 'sdk' ? styles.codeTabActive : ''}`}
               onClick={() => setActiveCodeTab('sdk')}
             >
@@ -467,6 +510,10 @@ export function LandingPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              id="code-tab-curl"
+              aria-selected={activeCodeTab === 'curl'}
+              aria-controls="code-panel"
               className={`${styles.codeTab} ${activeCodeTab === 'curl' ? styles.codeTabActive : ''}`}
               onClick={() => setActiveCodeTab('curl')}
             >
@@ -474,6 +521,10 @@ export function LandingPage() {
             </button>
             <button
               type="button"
+              role="tab"
+              id="code-tab-migrate"
+              aria-selected={activeCodeTab === 'migrate'}
+              aria-controls="code-panel"
               className={`${styles.codeTab} ${activeCodeTab === 'migrate' ? styles.codeTabActive : ''}`}
               onClick={() => setActiveCodeTab('migrate')}
             >
@@ -488,6 +539,9 @@ export function LandingPage() {
               {copiedCode ? (
                 <>
                   <CheckIcon size={14} /> Copied!
+                  <span className="visually-hidden" role="status" aria-live="polite">
+                    Code copied to clipboard
+                  </span>
                 </>
               ) : (
                 <>
@@ -497,7 +551,13 @@ export function LandingPage() {
             </button>
           </div>
 
-          <div className={styles.codeBody}>
+          <div
+            className={styles.codeBody}
+            id="code-panel"
+            role="tabpanel"
+            aria-labelledby={`code-tab-${activeCodeTab}`}
+            tabIndex={0}
+          >
             <pre>
               <code>{CODE_EXAMPLES[activeCodeTab]}</code>
             </pre>
@@ -724,10 +784,10 @@ export function LandingPage() {
           <table className={styles.compareTable}>
             <thead>
               <tr>
-                <th>Feature</th>
-                <th className={styles.storinaryCol}><ZapIcon size={13} /> Storinary</th>
-                <th>Cloudinary</th>
-                <th>Cloudflare Images</th>
+                <th scope="col">Feature</th>
+                <th scope="col" className={styles.storinaryCol}><ZapIcon size={13} /> Storinary</th>
+                <th scope="col">Cloudinary</th>
+                <th scope="col">Cloudflare Images</th>
               </tr>
             </thead>
             <tbody>
@@ -785,6 +845,7 @@ export function LandingPage() {
           </Link>
         </div>
       </section>
+      </main>
 
       {/* ── Footer ── */}
       <footer className={styles.footer}>

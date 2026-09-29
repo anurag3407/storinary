@@ -48,6 +48,7 @@ export function DeliveryAnalyticsPanel() {
   }, [days, fetchAnalytics]);
 
   const maxDayBytes = Math.max(1, ...(data?.byDay.map((row) => row.bytes) || [1]));
+  const hasCacheData = Boolean(data && data.cache.cachedEvents + data.cache.missEvents > 0);
 
   return (
     <section className={styles.panel} aria-label="Delivery analytics">
@@ -56,13 +57,14 @@ export function DeliveryAnalyticsPanel() {
           <h2>Delivery & Bandwidth Analytics</h2>
           <span className={styles.headerSubtitle}>Real-time edge cache requests and asset bandwidth</span>
         </div>
-        <div className={styles.range}>
+        <div className={styles.range} role="group" aria-label="Analytics time range">
           {RANGES.map((range) => (
             <button
               key={range}
               type="button"
               className={days === range ? styles.activeRange : styles.rangeBtn}
               onClick={() => setDays(range)}
+              aria-pressed={days === range}
             >
               {range}d
             </button>
@@ -111,35 +113,47 @@ export function DeliveryAnalyticsPanel() {
             <div className={styles.cacheHeader}>
               <div className={styles.cacheTitleGroup}>
                 <span className={styles.cacheBadge}><ZapIcon size={12} /> HIGH-SPEED CACHE</span>
-                <span className={styles.cacheRatio}>{data.cache?.hitRatio ?? 99.4}% Hit Ratio</span>
+                <span className={styles.cacheRatio}>
+                  {hasCacheData ? `${data.cache.hitRatio}% Hit Ratio` : 'No cache data yet'}
+                </span>
               </div>
               <span className={styles.cacheSubtitle}>
-                {formatBytes(data.cache?.savedBytes ?? Math.round(data.totals.bytes * 0.98))} origin bandwidth saved
+                {hasCacheData
+                  ? `${formatBytes(data.cache.savedBytes)} origin bandwidth saved`
+                  : 'Delivery cache is warming up — no requests recorded yet'}
               </span>
             </div>
 
             <div className={styles.cacheMeterContainer}>
               <div
                 className={styles.cacheMeter}
-                style={{ width: `${Math.min(100, Math.max(10, data.cache?.hitRatio ?? 99.4))}%` }}
+                style={{
+                  width: `${hasCacheData ? Math.min(100, Math.max(0, data.cache.hitRatio)) : 0}%`,
+                }}
               />
             </div>
 
             <div className={styles.cacheBreakdown}>
               <div className={styles.cacheStat}>
-                <span className={styles.cacheDotMemory} />
+                <span className={styles.cacheDotMemory} aria-hidden="true" />
                 <span className={styles.cacheStatLabel}>Memory (L1):</span>
-                <span className={styles.cacheStatVal}>Instant (&lt;2ms)</span>
+                <span className={styles.cacheStatVal}>
+                  {data.cache.memoryHits.toLocaleString()} hits
+                </span>
               </div>
               <div className={styles.cacheStat}>
-                <span className={styles.cacheDotDisk} />
+                <span className={styles.cacheDotDisk} aria-hidden="true" />
                 <span className={styles.cacheStatLabel}>Disk SSD (L2):</span>
-                <span className={styles.cacheStatVal}>Cached (&lt;10ms)</span>
+                <span className={styles.cacheStatVal}>
+                  {data.cache.diskHits.toLocaleString()} hits
+                </span>
               </div>
               <div className={styles.cacheStat}>
-                <span className={styles.cacheDotMiss} />
+                <span className={styles.cacheDotMiss} aria-hidden="true" />
                 <span className={styles.cacheStatLabel}>Storage Fetch:</span>
-                <span className={styles.cacheStatVal}>1st Load Only</span>
+                <span className={styles.cacheStatVal}>
+                  {data.cache.missEvents.toLocaleString()} misses
+                </span>
               </div>
             </div>
           </div>
@@ -149,13 +163,18 @@ export function DeliveryAnalyticsPanel() {
               <span>DAILY BANDWIDTH ({days} DAYS)</span>
               <span>PEAK: {formatBytes(maxDayBytes)}</span>
             </div>
-            <div className={styles.chart} aria-label="Daily traffic chart">
+            <div
+              className={styles.chart}
+              role="img"
+              aria-label={`Daily bandwidth over the last ${days} days. ${data.totals.events.toLocaleString()} requests and ${formatBytes(data.totals.bytes)} delivered in total, peaking at ${formatBytes(maxDayBytes)} in a day.`}
+            >
               {data.byDay.map((point) => {
                 const heightPct = Math.round((point.bytes / maxDayBytes) * 100);
                 return (
                   <div
                     key={point.day}
                     className={styles.column}
+                    aria-hidden="true"
                     title={`${point.day}\nRequests: ${point.events}\nBandwidth: ${formatBytes(point.bytes)}`}
                   >
                     <span

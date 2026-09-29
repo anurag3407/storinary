@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { rawPrisma } from '@/lib/prisma';
 import { currentTenantScope } from '@/lib/prisma-scope';
 import { isClerkEnabled } from '@/lib/auth-config';
-import { getClerkTenantId } from '@/lib/clerk-auth';
+import { getClerkAuth, getClerkTenantId } from '@/lib/clerk-auth';
 
 /**
  * Raised when a request has no active organization. Routes translate this into
@@ -63,6 +63,26 @@ export async function getTenantIdOrNull(request?: Request): Promise<string | nul
     return await getTenantId(request);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Whether the request carries a verified user session, independent of whether
+ * an organization is active. Lets callers distinguish "signed out" from
+ * "signed in but has no workspace yet" — the latter should be routed to
+ * onboarding rather than shown the marketing page.
+ */
+export async function hasAuthenticatedUser(request?: Request): Promise<boolean> {
+  if (isClerkEnabled()) {
+    const clerkAuth = await getClerkAuth(request);
+    return Boolean(clerkAuth?.userId);
+  }
+  try {
+    const requestHeaders = request?.headers ?? (await headers());
+    const session = await auth.api.getSession({ headers: requestHeaders });
+    return Boolean(session?.user);
+  } catch {
+    return false;
   }
 }
 

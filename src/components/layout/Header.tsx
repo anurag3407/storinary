@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MenuIcon } from '@/components/ui/icons';
@@ -12,7 +13,21 @@ interface HeaderProps {
 }
 
 export function Header({ title, description, actions }: HeaderProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Keep the toggle's expanded state in sync with the sidebar, which owns the
+  // open/closed state (it also closes on backdrop click and navigation).
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      setSidebarOpen(Boolean(detail?.open));
+    };
+    window.addEventListener('storinary:sidebar-state', handler);
+    return () => window.removeEventListener('storinary:sidebar-state', handler);
+  }, []);
+
   const toggleSidebar = () => {
+    setSidebarOpen((open) => !open);
     window.dispatchEvent(new CustomEvent('storinary:toggle-sidebar'));
   };
 
@@ -24,6 +39,8 @@ export function Header({ title, description, actions }: HeaderProps) {
           className={styles.hamburger}
           onClick={toggleSidebar}
           aria-label="Toggle navigation sidebar"
+          aria-controls="app-sidebar"
+          aria-expanded={sidebarOpen}
         >
           <MenuIcon size={20} />
         </button>

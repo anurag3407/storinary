@@ -7,6 +7,7 @@ export default function NotFound() {
   return (
     <EmptyState
       icon={<SearchIcon size={26} />}
+      headingLevel={1}
       title="Page Not Found"
       description="The page you're looking for doesn't exist or may have been moved."
       action={

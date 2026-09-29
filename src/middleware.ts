@@ -24,6 +24,7 @@ function getSessionToken(request: NextRequest): string | null {
 
 const PROTECTED_PAGES = ['/upload', '/gallery', '/videos', '/settings', '/onboarding'];
 const PUBLIC_API = [
+  /^\/api\/health$/, // uptime / deployment smoke checks
   /^\/api\/auth\//,
   /^\/api\/serve\//,
   /^\/api\/redirect\//,

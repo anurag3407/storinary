@@ -19,6 +19,7 @@ export default function ErrorPage({
   return (
     <EmptyState
       icon={<AlertIcon size={26} />}
+      headingLevel={1}
       title="Something went wrong"
       description="An unexpected error occurred. Try reloading the page, or head back to the dashboard."
       action={

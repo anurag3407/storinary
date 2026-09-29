@@ -290,6 +290,7 @@ export default function GalleryPage() {
       {!isLoading && error && (
         <EmptyState
           icon={<AlertIcon size={26} />}
+          headingLevel={2}
           title="Something went wrong"
           description={error}
           action={
@@ -303,6 +304,7 @@ export default function GalleryPage() {
       {!isLoading && !error && images.length === 0 && (
         <EmptyState
           icon={<ImageIcon size={30} />}
+          headingLevel={2}
           title="No images yet"
           description="Upload some images to get started — they'll appear here with copy-ready CDN links."
           action={

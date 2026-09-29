@@ -52,6 +52,13 @@ export function Sidebar() {
     setIsOpen(false);
   }, [pathname]);
 
+  // Let the header's toggle button reflect the real open/closed state.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('storinary:sidebar-state', { detail: { open: isOpen } })
+    );
+  }, [isOpen]);
+
   // Load organizations for workspace selector
   useEffect(() => {
     if (isClerk) {
@@ -155,7 +162,11 @@ export function Sidebar() {
       {isOpen && (
         <div className={styles.backdrop} onClick={() => setIsOpen(false)} />
       )}
-      <aside className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}>
+      <aside
+        id="app-sidebar"
+        className={`${styles.sidebar} ${isOpen ? styles.open : ''}`}
+        aria-label="Workspace navigation"
+      >
         <Link href="/" className={styles.logo} onClick={() => setIsOpen(false)}>
           <Image
             src="/logo.png"

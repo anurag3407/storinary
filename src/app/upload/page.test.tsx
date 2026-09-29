@@ -10,34 +10,50 @@ vi.mock('@/hooks/useClipboard', () => ({
   useClipboard: () => ({ copy: vi.fn().mockResolvedValue(true) }),
 }));
 
+const useUploadMock = vi.hoisted(() => vi.fn());
+
 vi.mock('@/hooks/useUpload', () => ({
-  useUpload: () => ({
-    state: {
-      items: [],
-      globalOptions: {
-        folder: '/',
-        tags: '',
-        compress: false,
-        quality: 85,
-        maxWidth: 2048,
-        removeBg: false,
-        moderate: false,
-      },
-      isUploading: false,
-    },
-    addFiles: vi.fn(),
-    removeFile: vi.fn(),
-    updateGlobalOptions: vi.fn(),
-    startUpload: vi.fn(),
-    reset: vi.fn(),
-    selectedPreset: null,
-    selectUploadPreset: vi.fn(),
-  }),
+  useUpload: useUploadMock,
 }));
 
 describe('UploadPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useUploadMock.mockReturnValue({
+      state: {
+        items: [],
+        globalOptions: {
+          folder: '/',
+          tags: '',
+          compress: false,
+          quality: 85,
+          maxWidth: 2048,
+          removeBg: false,
+          moderate: false,
+        },
+        isUploading: false,
+      },
+      addFiles: vi.fn(),
+      removeFile: vi.fn(),
+      updateGlobalOptions: vi.fn(),
+      startUpload: vi.fn(),
+      reset: vi.fn(),
+      selectedPreset: null,
+      selectUploadPreset: vi.fn(),
+    });
+  });
+
+  it('uses a single upload state instance so presets reach the request', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ presets: [] }),
+    });
+
+    render(<UploadPage />);
+
+    // Calling useUpload twice split state into two instances and dropped the
+    // selected upload preset; guard against that regression.
+    expect(useUploadMock).toHaveBeenCalledTimes(1);
   });
 
   it('renders SaaS quota banner showing 100 MB free allocation', async () => {

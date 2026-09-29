@@ -22,8 +22,9 @@ export default function UploadPage() {
     updateGlobalOptions,
     startUpload,
     reset,
+    selectedPreset,
+    selectUploadPreset,
   } = useUpload();
-  const { selectedPreset, selectUploadPreset } = useUpload();
   const { toast } = useToast();
   const { copy } = useClipboard();
   const [presets, setPresets] = useState<UploadPresetRecord[]>([]);
@@ -66,15 +67,11 @@ export default function UploadPage() {
         setIsUpgradeModalOpen(true);
         return;
       }
+      // Queue only — the user reviews options (compression, background
+      // removal, folder, tags) and presses "Upload All" to start.
       addFiles(files);
-      // Auto-start upload for instant, seamless UX
-      setTimeout(async () => {
-        await startUpload();
-        loadQuota();
-        window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
-      }, 50);
     },
-    [addFiles, startUpload, quota, toast, loadQuota]
+    [addFiles, quota, toast]
   );
 
   // Keyboard shortcut: Ctrl/Cmd + V pastes images into the queue
@@ -99,17 +96,12 @@ export default function UploadPage() {
           return;
         }
         addFiles(files);
-        toast.info(`Pasted ${files.length} image(s)`);
-        setTimeout(async () => {
-          await startUpload();
-          loadQuota();
-          window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
-        }, 50);
+        toast.info(`Pasted ${files.length} image(s) — press Upload All to start`);
       }
     };
     window.addEventListener('paste', handler);
     return () => window.removeEventListener('paste', handler);
-  }, [addFiles, startUpload, toast, quota, loadQuota]);
+  }, [addFiles, toast, quota]);
 
   useEffect(() => {
     loadQuota();

@@ -144,7 +144,12 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { copy } = useClipboard();
-  const { signOut: authSignOut, isClerk } = useAppAuth();
+  const {
+    signOut: authSignOut,
+    isClerk,
+    organizations: appOrganizations,
+    activeOrganizationId,
+  } = useAppAuth();
 
   const [activeOrg, setActiveOrg] = useState<ActiveOrgData | null>(null);
   const [loadingOrg, setLoadingOrg] = useState(true);
@@ -243,7 +248,11 @@ export default function SettingsPage() {
       if (!silent) toast.success(`Connected to ${data.providerName || 'Storage'}!`);
     } catch {
       setConnection('disconnected');
-      if (!silent) toast.error('Connection failed');
+      if (!silent) {
+        toast.error(
+          'Could not reach the stats API — check your database and environment variables'
+        );
+      }
     }
   };
 
@@ -252,16 +261,32 @@ export default function SettingsPage() {
     setOptions(loadUploadDefaults());
     testConnection(true);
     loadQuota();
-    loadApiKeys();
-    loadWebhooks();
-    loadDeliveries();
-    loadPresets();
-    loadTransformations();
+    // Loads triggered on mount stay silent: if the database or env is
+    // misconfigured (common during setup) we should not stack half a dozen
+    // error toasts on the user at once.
+    loadApiKeys(true);
+    loadWebhooks(true);
+    loadDeliveries(true);
+    loadPresets(true);
+    loadTransformations(true);
     loadOrganization();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadApiKeys = async () => {
+  // When Clerk owns auth, workspace data comes from the auth context instead of
+  // Better Auth's API — otherwise this section falsely reports
+  // "No active workspace selected" (and invitations could never be sent).
+  useEffect(() => {
+    if (!isClerk) return;
+    const org =
+      appOrganizations.find((item) => item.id === activeOrganizationId) ?? appOrganizations[0];
+    if (org) {
+      setActiveOrg({ id: org.id, name: org.name, slug: org.slug, members: [] });
+    }
+    setLoadingOrg(false);
+  }, [isClerk, appOrganizations, activeOrganizationId]);
+
+  const loadApiKeys = async (silent = false) => {
     try {
       const [keysRes, usageRes] = await Promise.all([
         fetch('/api/api-keys', { cache: 'no-store' }),
@@ -275,7 +300,7 @@ export default function SettingsPage() {
       setApiKeys(keysData.keys ?? []);
       setApiKeyUsage(usageData);
     } catch {
-      toast.error('Could not load API keys');
+      if (!silent) toast.error('Could not load API keys');
     }
   };
 
@@ -292,13 +317,13 @@ export default function SettingsPage() {
     })();
   };
 
-  const loadTransformations = async () => {
+  const loadTransformations = async (silent = false) => {
     try {
       const res = await fetch('/api/named-transformations', { cache: 'no-store' });
       if (!res.ok) throw new Error();
       setTransformations((await res.json()).transformations ?? []);
     } catch {
-      toast.error('Could not load named transformations');
+      if (!silent) toast.error('Could not load named transformations');
     }
   };
 
@@ -332,13 +357,13 @@ export default function SettingsPage() {
     }
   };
 
-  const loadPresets = async () => {
+  const loadPresets = async (silent = false) => {
     try {
       const res = await fetch('/api/upload-presets', { cache: 'no-store' });
       if (!res.ok) throw new Error();
       setPresets((await res.json()).presets ?? []);
     } catch {
-      toast.error('Could not load upload presets');
+      if (!silent) toast.error('Could not load upload presets');
     }
   };
 
@@ -399,23 +424,23 @@ export default function SettingsPage() {
     }
   };
 
-  const loadWebhooks = async () => {
+  const loadWebhooks = async (silent = false) => {
     try {
       const res = await fetch('/api/webhooks', { cache: 'no-store' });
       if (!res.ok) throw new Error();
       setWebhooks((await res.json()).webhooks ?? []);
     } catch {
-      toast.error('Could not load webhooks');
+      if (!silent) toast.error('Could not load webhooks');
     }
   };
 
-  const loadDeliveries = async () => {
+  const loadDeliveries = async (silent = false) => {
     try {
       const res = await fetch('/api/webhooks/deliveries?limit=10', { cache: 'no-store' });
       if (!res.ok) throw new Error();
       setDeliveries((await res.json()).deliveries ?? []);
     } catch {
-      toast.error('Could not load webhook deliveries');
+      if (!silent) toast.error('Could not load webhook deliveries');
     }
   };
 
@@ -570,6 +595,7 @@ export default function SettingsPage() {
   };
 
   const loadOrganization = async () => {
+    if (isClerk) return;
     try {
       setLoadingOrg(true);
       const res = await authClient.organization.getFullOrganization();
@@ -877,30 +903,37 @@ export default function SettingsPage() {
                 <h3 style={{ fontSize: '13px', fontWeight: 800, marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Invite New Member
                 </h3>
-                <form onSubmit={handleInviteMember} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <input
-                    type="email"
-                    placeholder="teammate@company.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="nb-input"
-                    style={{ flex: '1 1 240px' }}
-                    required
-                  />
-                  <select
-                    aria-label="Member role"
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
-                    className="nb-input"
-                    style={{ width: '130px', fontWeight: 600 }}
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <Button type="submit" loading={inviting} icon={<MailIcon size={16} />}>
-                    Invite Member
-                  </Button>
-                </form>
+                {isClerk ? (
+                  <p style={{ color: 'var(--ui-text-muted)', fontSize: '14px' }}>
+                    Team members and invitations are managed in your Clerk dashboard for this
+                    deployment.
+                  </p>
+                ) : (
+                  <form onSubmit={handleInviteMember} style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <input
+                      type="email"
+                      placeholder="teammate@company.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="nb-input"
+                      style={{ flex: '1 1 240px' }}
+                      required
+                    />
+                    <select
+                      aria-label="Member role"
+                      value={inviteRole}
+                      onChange={(e) => setInviteRole(e.target.value as 'member' | 'admin')}
+                      className="nb-input"
+                      style={{ width: '130px', fontWeight: 600 }}
+                    >
+                      <option value="member">Member</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <Button type="submit" loading={inviting} icon={<MailIcon size={16} />}>
+                      Invite Member
+                    </Button>
+                  </form>
+                )}
               </div>
             </div>
           ) : (
@@ -1051,10 +1084,6 @@ export default function SettingsPage() {
               <input type="checkbox" checked={presetUnsigned} onChange={(event) => setPresetUnsigned(event.target.checked)} />
               Unsigned
             </label>
-            <label className={styles.inlineCheckbox}>
-              <input type="checkbox" checked={presetUnsigned} onChange={(event) => setPresetUnsigned(event.target.checked)} />
-              Unsigned
-            </label>
             {presetResourceType === 'video' && (
               <label className={styles.inlineCheckbox}>
                 <input type="checkbox" checked={presetRenditions} onChange={(event) => setPresetRenditions(event.target.checked)} />
@@ -1117,36 +1146,6 @@ export default function SettingsPage() {
         </section>
 
         <MetadataFieldManager />
-
-        {/* ── Section 0.8: Outbound Webhooks ──────────────── */}
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Named Transformations</h2>
-          <p className={styles.cardDescription}>
-            Reusable image pipelines. Use them on any public or signed delivery URL with
-            <code> ?t=name</code>; explicit query values override the named defaults.
-          </p>
-
-          <div className={styles.presetCreator}>
-            <input aria-label="Transformation name" className="nb-input" placeholder="hero_card" value={transformationName} onChange={(event) => setTransformationName(event.target.value)} />
-            <input aria-label="Transformation parameters" className="nb-input" placeholder="w=640&h=360&fit=cover&q=auto" value={transformationParams} onChange={(event) => setTransformationParams(event.target.value)} />
-            <Button onClick={handleCreateTransformation} disabled={!transformationName.trim() || !transformationParams.trim()}>Create</Button>
-          </div>
-
-          <div className={styles.keyList}>
-            {transformations.map((transformation) => (
-              <div key={transformation.id} className={styles.keyRow}>
-                <div>
-                  <strong>{transformation.name}</strong>
-                  <small>{transformation.params}</small>
-                </div>
-                <div className={styles.statusRow}>
-                  <Badge variant="default">?t={transformation.name}</Badge>
-                  <Button variant="danger" size="sm" onClick={() => handleDeleteTransformation(transformation.id)}>Delete</Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* ── Section 0.8: Outbound Webhooks ──────────────── */}
         <section className={styles.card}>
@@ -1252,6 +1251,14 @@ export default function SettingsPage() {
               Test Connection
             </Button>
           </div>
+
+          {connection === 'disconnected' && (
+            <p className={styles.cardDescription}>
+              Storinary could not read storage details from the app. This usually means the
+              database or environment variables are misconfigured — your storage bucket may be
+              fine. Fix the app configuration, then run the test again.
+            </p>
+          )}
 
           <div className={styles.infoGrid}>
             <div className={styles.infoItem}>

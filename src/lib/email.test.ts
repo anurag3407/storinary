@@ -81,6 +81,52 @@ describe('sendAuthEmail', () => {
     expect(sendMailMock).not.toHaveBeenCalled();
   });
 
+  it('prints the message instead of throwing in development when no provider is configured', async () => {
+    process.env.isresend = 'false';
+    delete process.env.SMTP_HOST;
+    delete process.env.SMTP_FROM;
+    const oldEnv = process.env.NODE_ENV;
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(
+      sendAuthEmail({
+        to: 'user@example.com',
+        subject: 'Verify your email',
+        text: 'Click https://example.com/verify?token=abc',
+      })
+    ).resolves.toBeUndefined();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('https://example.com/verify?token=abc')
+    );
+    expect(sendMailMock).not.toHaveBeenCalled();
+    expect(resendSendMock).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    (process.env as Record<string, string | undefined>).NODE_ENV = oldEnv;
+  });
+
+  it('ignores placeholder credentials copied from .env.example', async () => {
+    process.env.isresend = 'true';
+    process.env.RESEND_API_KEY = 're_your_resend_api_key';
+    const oldEnv = process.env.NODE_ENV;
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await sendAuthEmail({
+      to: 'user@example.com',
+      subject: 'Welcome',
+      text: 'Verify',
+    });
+
+    expect(resendSendMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+    (process.env as Record<string, string | undefined>).NODE_ENV = oldEnv;
+  });
+
   it('throws an error if Resend is enabled but API key is missing in non-test env', async () => {
     process.env.isresend = 'true';
     delete process.env.RESEND_API_KEY;

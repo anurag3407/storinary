@@ -14,7 +14,7 @@ import type { CollectionRecord } from '@/lib/collections';
 import { Badge } from '@/components/ui/Badge';
 import { StructuredMetadataControls } from '@/components/media/StructuredMetadataControls';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
-import { VideoIcon, AlertIcon } from '@/components/ui/icons';
+import { VideoIcon, AlertIcon, UploadIcon } from '@/components/ui/icons';
 import styles from './videos.module.css';
 
 function formatDuration(seconds: number): string {
@@ -671,9 +671,28 @@ export default function VideosPage() {
           ))}
         </div>
       ) : error ? (
-        <EmptyState icon={<AlertIcon size={26} />} title="Something went wrong" description={error} action={<Button variant="secondary" onClick={() => void loadVideos()}>Try Again</Button>} />
+        <EmptyState icon={<AlertIcon size={26} />} headingLevel={2} title="Something went wrong" description={error} action={<Button variant="secondary" onClick={() => void loadVideos()}>Try Again</Button>} />
       ) : videos.length === 0 ? (
-          <EmptyState icon={<VideoIcon size={30} />} title="No videos found" description={filters.search || filters.folder ? 'Try a different search or folder.' : 'Upload your first video to get started.'} />
+          <EmptyState
+            icon={<VideoIcon size={30} />}
+            headingLevel={2}
+            title={filters.search || filters.folder ? 'No videos found' : 'No videos yet'}
+            description={
+              filters.search || filters.folder
+                ? 'Try a different search or folder.'
+                : 'Upload your first MP4, WebM, or MOV to get streaming links and posters.'
+            }
+            action={
+              !filters.search && !filters.folder ? (
+                <Button
+                  icon={<UploadIcon size={16} />}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Upload Video
+                </Button>
+              ) : undefined
+            }
+          />
       ) : (
         <div className={styles.grid}>
           {videos.map((video) => (

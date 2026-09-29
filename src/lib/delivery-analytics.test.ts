@@ -77,6 +77,10 @@ describe('getDeliveryAnalytics', () => {
       ])
       .mockResolvedValueOnce([
         { referer: 'https://example.com', _count: 3 },
+      ])
+      .mockResolvedValueOnce([
+        { rendition: 'hit:memory', _count: 2, _sum: { bytes: 20 } },
+        { rendition: 'miss', _count: 1, _sum: { bytes: 10 } },
       ]);
 
     const result = await getDeliveryAnalytics(1);
@@ -89,5 +93,39 @@ describe('getDeliveryAnalytics', () => {
     expect(result.byDay[0].bytes).toBe(30);
     expect(result.topImages[0].originalName).toBe('image.png');
     expect(result.topVideos[0].originalName).toBe('video.mp4');
+  });
+
+  it('reports real cache metrics derived from recorded statuses', async () => {
+    prisma.deliveryEvent.aggregate.mockResolvedValue({ _count: 0, _sum: { bytes: 0 } });
+    prisma.$queryRaw.mockResolvedValue([]);
+    prisma.deliveryEvent.groupBy
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { rendition: 'hit:memory', _count: 3, _sum: { bytes: 300 } },
+        { rendition: 'hit:disk', _count: 1, _sum: { bytes: 100 } },
+        { rendition: 'miss', _count: 4, _sum: { bytes: 400 } },
+      ]);
+
+    const result = await getDeliveryAnalytics(7);
+
+    expect(result.cache.hitRatio).toBe(50);
+    expect(result.cache.memoryHits).toBe(3);
+    expect(result.cache.diskHits).toBe(1);
+    expect(result.cache.missEvents).toBe(4);
+    expect(result.cache.savedBytes).toBe(400);
+  });
+
+  it('reports a zero hit ratio when no delivery events exist', async () => {
+    prisma.deliveryEvent.aggregate.mockResolvedValue({ _count: 0, _sum: { bytes: 0 } });
+    prisma.$queryRaw.mockResolvedValue([]);
+    prisma.deliveryEvent.groupBy.mockResolvedValue([]);
+
+    const result = await getDeliveryAnalytics();
+
+    expect(result.cache.hitRatio).toBe(0);
+    expect(result.cache.cachedEvents).toBe(0);
+    expect(result.cache.missEvents).toBe(0);
   });
 });

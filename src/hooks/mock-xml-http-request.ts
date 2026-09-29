@@ -5,6 +5,9 @@ export class MockXmlHttpRequest {
 
   static instances = 0;
 
+  /** Most recently constructed request — lets tests inspect the sent body. */
+  static lastInstance: MockXmlHttpRequest | null = null;
+
   static resetBehavior() {
     MockXmlHttpRequest.behavior.mockReset();
   }
@@ -22,10 +25,12 @@ export class MockXmlHttpRequest {
   open = vi.fn();
   status = 200;
   responseText = '';
+  body: unknown;
   loadHandler?: (event: ProgressEvent<EventTarget>) => void;
 
   constructor() {
     MockXmlHttpRequest.instances += 1;
+    MockXmlHttpRequest.lastInstance = this;
   }
 
   triggerUploadProgress(event: ProgressEvent<EventTarget>) {
@@ -38,7 +43,8 @@ export class MockXmlHttpRequest {
     if (name === 'abort') this.abortListeners.push(listener);
   }
 
-  send() {
+  send(body?: unknown) {
+    this.body = body;
     MockXmlHttpRequest.behavior(this);
     this.loadHandler = (event) => {
       this.loadListeners.forEach((listener) => listener(event));
