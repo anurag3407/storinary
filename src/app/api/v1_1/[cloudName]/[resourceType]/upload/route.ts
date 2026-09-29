@@ -12,6 +12,7 @@ import { recordApiKeyUsage } from '@/lib/api-keys';
 import { dispatchWebhooks } from '@/lib/webhooks';
 import { recordInitialImageVersion } from '@/lib/asset-versions';
 import { tenantStoragePath } from '@/lib/tenant';
+import { checkStorageQuota, releasePendingBytes } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -265,7 +266,20 @@ export async function POST(
       return NextResponse.json({ error: { message: msg } }, { status: 400 });
     }
 
-    const folder = (typeof bodyData.folder === 'string' ? bodyData.folder.trim() : '').replace(/^\/+|\/+$/g, '');
+    // Enforce SaaS account storage quota (100 MB free tier) with in-flight reservation
+    const quotaCheck = await checkStorageQuota(org.id, parsedFile.size, { reserve: true });
+    if (!quotaCheck.allowed) {
+      if (authorizedKeyId) {
+        void recordApiKeyUsage(authorizedKeyId, effectiveResourceType === 'video' ? 'video-upload' : 'upload', { errors: 1 });
+      }
+      return NextResponse.json(
+        { error: { message: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)' } },
+        { status: 403 }
+      );
+    }
+
+    try {
+      const folder = (typeof bodyData.folder === 'string' ? bodyData.folder.trim() : '').replace(/^\/+|\/+$/g, '');
     const customPublicId = typeof bodyData.public_id === 'string' ? bodyData.public_id.trim() : '';
     const rawTags = typeof bodyData.tags === 'string' ? bodyData.tags.trim() : '';
 
@@ -422,5 +436,8 @@ export async function POST(
     }
 
     return NextResponse.json({ error: { message: 'Unsupported resource type' } }, { status: 400 });
-  });
+  } finally {
+    releasePendingBytes(org.id, parsedFile.size);
+  }
+});
 }

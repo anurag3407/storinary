@@ -9,16 +9,16 @@
  */
 
 export function isClerkEnabled(): boolean {
-  const val = (
-    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_IS_CLERK) ||
-    (typeof process !== 'undefined' && process.env.isclerk) ||
-    (typeof process !== 'undefined' && process.env.IS_CLERK) ||
-    ''
-  )
-    .trim()
-    .toLowerCase();
-
-  return val === 'true' || val === '1';
+  if (typeof process === 'undefined') return false;
+  const flags = [process.env.isclerk, process.env.IS_CLERK, process.env.NEXT_PUBLIC_IS_CLERK];
+  for (const f of flags) {
+    if (f !== undefined && f !== '') {
+      const s = f.trim().toLowerCase();
+      if (s === 'true' || s === '1') return true;
+      if (s === 'false' || s === '0') return false;
+    }
+  }
+  return false;
 }
 
 export function hasClerkKeys(): boolean {
@@ -39,16 +39,16 @@ export function hasClerkPublishableKey(): boolean {
 }
 
 export function isResendEnabled(): boolean {
-  const val = (
-    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_IS_RESEND) ||
-    (typeof process !== 'undefined' && process.env.isresend) ||
-    (typeof process !== 'undefined' && process.env.IS_RESEND) ||
-    ''
-  )
-    .trim()
-    .toLowerCase();
-
-  return val === 'true' || val === '1';
+  if (typeof process === 'undefined') return false;
+  const flags = [process.env.isresend, process.env.IS_RESEND, process.env.NEXT_PUBLIC_IS_RESEND];
+  for (const f of flags) {
+    if (f !== undefined && f !== '') {
+      const s = f.trim().toLowerCase();
+      if (s === 'true' || s === '1') return true;
+      if (s === 'false' || s === '0') return false;
+    }
+  }
+  return false;
 }
 
 export function hasResendKey(): boolean {

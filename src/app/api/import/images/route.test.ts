@@ -113,4 +113,19 @@ describe('POST /api/import/images', () => {
     expect(body.images).toHaveLength(1);
     expect(body.errors[0].error).toBe('Remote server returned 404');
   });
+
+  it('rejects import if file size exceeds storage quota', async () => {
+    mocks.fetchRemoteAsset.mockResolvedValue({
+      buffer: Buffer.alloc(105 * 1024 * 1024), // 105 MB > 100 MB free quota
+      contentType: 'image/png',
+      filename: 'large.png',
+    });
+
+    const response = await POST(request({ urls: ['https://example.com/large.png'] }));
+    const body = await response.json();
+    expect(body.images).toHaveLength(0);
+    expect(body.errors).toHaveLength(1);
+    expect(body.errors[0].error).toContain('Storage quota exceeded');
+    expect(mocks.uploadToStorage).not.toHaveBeenCalled();
+  });
 });

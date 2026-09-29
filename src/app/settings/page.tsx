@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { CreateWorkspaceModal } from '@/components/layout/CreateWorkspaceModal';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { useClipboard } from '@/hooks/useClipboard';
@@ -200,6 +201,32 @@ export default function SettingsPage() {
   const [isDeletingOrphans, setIsDeletingOrphans] = useState(false);
   const [confirmOrphans, setConfirmOrphans] = useState(false);
   const [orphanConfirmation, setOrphanConfirmation] = useState('');
+  const [quota, setQuota] = useState<{
+    planName: string;
+    limitFormatted: string;
+    usedFormatted: string;
+    remainingFormatted: string;
+    imageBytesFormatted: string;
+    videoBytesFormatted: string;
+    percentage: number;
+    isExceeded: boolean;
+    isNearLimit: boolean;
+    totalImages: number;
+    totalVideos: number;
+  } | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  const loadQuota = async () => {
+    try {
+      const res = await fetch('/api/quota', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.quota) setQuota(data.quota);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
 
   const testConnection = async (silent = false) => {
     setConnection('checking');
@@ -224,6 +251,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setOptions(loadUploadDefaults());
     testConnection(true);
+    loadQuota();
     loadApiKeys();
     loadWebhooks();
     loadDeliveries();
@@ -667,6 +695,105 @@ export default function SettingsPage() {
       />
 
       <div className={styles.grid}>
+        {/* ── Section: SaaS Plan & Storage Quota ───────────── */}
+        <section className={styles.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 className={styles.cardTitle} style={{ margin: 0 }}>SaaS Plan & Storage Quota</h2>
+              <Badge variant="success">Active Plan</Badge>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<ZapIcon size={16} />}
+              onClick={() => setIsUpgradeModalOpen(true)}
+            >
+              Upgrade Plan
+            </Button>
+          </div>
+          <p className={styles.cardDescription}>
+            Every Storinary account is provisioned with <strong>100 MB of free storage</strong>. Payment integration (Stripe &amp; Razorpay) is in development to unlock higher tiers.
+          </p>
+
+          <div
+            style={{
+              padding: '18px 20px',
+              backgroundColor: 'var(--ui-surface)',
+              border: '1px solid var(--ui-border-strong)',
+              borderRadius: 'var(--ui-radius-md)',
+              boxShadow: 'var(--ui-shadow-sm)',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ui-text-muted)' }}>
+                  CURRENT ALLOCATION
+                </span>
+                <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '2px' }}>
+                  {quota?.usedFormatted || '0 B'} <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--ui-text-muted)' }}>of {quota?.limitFormatted || '100 MB'}</span>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ui-text-muted)' }}>
+                  REMAINING QUOTA
+                </span>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: quota?.isExceeded ? '#ef4444' : '#10b981', marginTop: '2px' }}>
+                  {quota?.remainingFormatted || '100 MB'}
+                </div>
+              </div>
+            </div>
+
+            {/* Quota Progress Bar */}
+            <div
+              style={{
+                height: '8px',
+                width: '100%',
+                backgroundColor: 'var(--ui-surface-inset)',
+                borderRadius: '999px',
+                overflow: 'hidden',
+                marginBottom: '14px',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${Math.min(100, Math.max((quota?.percentage || 0) > 0 ? 3 : 0, quota?.percentage || 0))}%`,
+                  background: (quota?.percentage || 0) >= 100
+                    ? '#ef4444'
+                    : (quota?.percentage || 0) >= 80
+                      ? '#f59e0b'
+                      : 'var(--ui-primary, #8b5cf6)',
+                  borderRadius: '999px',
+                  transition: 'width 0.4s ease',
+                }}
+              />
+            </div>
+
+            {/* Breakdown */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--ui-surface-inset)', borderRadius: 'var(--ui-radius-sm)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>Images Storage</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>
+                  {quota?.imageBytesFormatted || '0 B'} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ui-text-muted)' }}>({quota?.totalImages || 0} files)</span>
+                </div>
+              </div>
+              <div style={{ padding: '10px 14px', background: 'var(--ui-surface-inset)', borderRadius: 'var(--ui-radius-sm)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>Videos Storage</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>
+                  {quota?.videoBytesFormatted || '0 B'} <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--ui-text-muted)' }}>({quota?.totalVideos || 0} files)</span>
+                </div>
+              </div>
+              <div style={{ padding: '10px 14px', background: 'var(--ui-surface-inset)', borderRadius: 'var(--ui-radius-sm)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--ui-text-muted)' }}>Active Tier</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px', color: 'var(--ui-primary, #8b5cf6)' }}>
+                  Free Developer
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Section 0: Workspace & Team ─────────────────── */}
         <section className={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
@@ -1540,6 +1667,12 @@ export default function SettingsPage() {
           loadOrganization();
           window.location.reload();
         }}
+      />
+
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentUsageFormatted={quota?.usedFormatted || '0 B'}
       />
     </div>
   );

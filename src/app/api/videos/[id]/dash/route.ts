@@ -12,6 +12,7 @@ import {
   type HlsVariantLabel,
 } from '@/lib/video-renditions';
 import { createDashPackageMetadata } from '@/lib/video-dash';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -67,6 +68,15 @@ export async function POST(
   try {
     const input = await getVideoFromStorage(source?.storagePath ?? video.storagePath);
     const generated = await createVideoDashPackage(input.buffer, video.id, labels);
+    const tenantId = authorization.organizationId || (video as { organizationId?: string }).organizationId || 'legacy';
+    const quotaCheck = await checkStorageQuota(tenantId, generated.totalFileSize);
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        { error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)', quotaExceeded: true },
+        { status: 403 }
+      );
+    }
+
     const metadata = createDashPackageMetadata({
       label: labels.join('-'),
       manifestPath: generated.manifestPath,

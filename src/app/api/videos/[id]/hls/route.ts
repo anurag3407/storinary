@@ -12,6 +12,7 @@ import {
   type HlsVariantLabel,
 } from '@/lib/video-renditions';
 import { createHlsPackageMetadata } from '@/lib/video-hls';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -73,6 +74,15 @@ export async function POST(
 
   try {
     const generated = await createVideoHlsPackage(input.buffer, video.id, labels);
+    const tenantId = authorization.organizationId || (video as { organizationId?: string }).organizationId || 'legacy';
+    const quotaCheck = await checkStorageQuota(tenantId, generated.totalFileSize);
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        { error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)', quotaExceeded: true },
+        { status: 403 }
+      );
+    }
+
     const metadata = createHlsPackageMetadata({
       label: labels.join('-'),
       masterPath: generated.masterManifest,

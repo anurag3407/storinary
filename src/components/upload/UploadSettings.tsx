@@ -106,7 +106,7 @@ export function UploadSettings({
               id="upload-folder"
               className="nb-input"
               type="text"
-              value={options.folder === '/' ? '' : options.folder.replace(/^\/+/, '')}
+              value={!options.folder || options.folder === '/' ? '' : options.folder.replace(/^\/+/, '')}
               placeholder="folder/path"
               disabled={disabled}
               onChange={(e) =>

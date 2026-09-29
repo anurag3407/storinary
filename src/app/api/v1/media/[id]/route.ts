@@ -28,6 +28,7 @@ async function findImage(id: string) {
   return prisma.image.findUnique({
     where: { id },
     select: {
+      organizationId: true,
       id: true, originalName: true, storagePath: true, publicUrl: true,
       width: true, height: true, fileSize: true, format: true,
       mimeType: true, folder: true, tags: true, altText: true,
@@ -171,7 +172,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (!image) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       const version = image.versions.find((candidate) => candidate.id === body.restoreVersionId);
       if (!version) return NextResponse.json({ error: 'Version not found' }, { status: 404 });
-      const restored = await restoreImageFromVersion({ ...image, organizationId: 'legacy' }, serializeImageVersion(version));
+      const restored = await restoreImageFromVersion(image, serializeImageVersion(version));
       const restoredResource = {
         ...restored.updated,
         organizationId: restored.updated.organizationId,

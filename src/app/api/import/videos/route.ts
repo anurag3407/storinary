@@ -15,6 +15,7 @@ import {
 import { dispatchWebhooks } from '@/lib/webhooks';
 import { generateShortId } from '@/lib/utils';
 import { fetchRemoteAsset, validateImportPayload } from '@/lib/remote-import';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest) {
 
   const results = await Promise.allSettled(payload.urls.map(async (url) => {
     const remote = await fetchRemoteAsset(url, ALLOWED_VIDEO_TYPES, MAX_FILE_SIZE);
+    const quotaCheck = await checkStorageQuota(tenantId, remote.buffer.length);
+    if (!quotaCheck.allowed) {
+      throw new Error(quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)');
+    }
     const metadata = await getVideoMetadata(remote.buffer, remote.contentType);
     const shortId = generateShortId();
     const storagePathRaw = generateStorageKey(
@@ -76,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const created = await prisma.video.create({
       data: {
-        organizationId: 'legacy',
+        organizationId: tenantId,
         originalName: remote.filename,
         storagePath,
         publicUrl: getPublicUrl(storagePath),
@@ -98,6 +103,10 @@ export async function POST(request: NextRequest) {
     for (const label of Object.keys(RENDITION_PRESETS) as Array<keyof typeof RENDITION_PRESETS>) {
       const preset = RENDITION_PRESETS[label];
       const rendition = await createVideoRendition(remote.buffer, label);
+      const renditionQuota = await checkStorageQuota(tenantId, rendition.buffer.length);
+      if (!renditionQuota.allowed) {
+        break; // Stop creating further renditions if quota is reached
+      }
       const renditionKey = await tenantStoragePath(tenantId, generateStorageKey(`${remote.filename}-${label}.mp4`, `${shortId}-${label}`, 'mp4'));
       await uploadToStorage(rendition.buffer, renditionKey, 'video/mp4');
       await prisma.videoRendition.create({

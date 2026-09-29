@@ -39,6 +39,8 @@ export async function getStats(): Promise<StatsResponse> {
     videoVersionsStorageResult,
     videoRenditionsStorageResult,
     videoHlsStorageResult,
+    videoDashStorageResult,
+    videoClipStorageResult,
   ] = await Promise.allSettled([
     prisma.image?.count?.() ?? Promise.resolve(0),
     prisma.image?.aggregate?.({ _sum: { fileSize: true } }) ??
@@ -62,6 +64,10 @@ export async function getStats(): Promise<StatsResponse> {
       Promise.resolve({ _sum: { fileSize: 0 } }),
     prisma.videoHlsPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
       Promise.resolve({ _sum: { totalFileSize: 0 } }),
+    prisma.videoDashPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
+      Promise.resolve({ _sum: { totalFileSize: 0 } }),
+    prisma.videoClip?.aggregate?.({ _sum: { fileSize: true } }) ??
+      Promise.resolve({ _sum: { fileSize: 0 } }),
   ]);
 
   const totalImages = totalImagesResult.status === 'fulfilled' ? totalImagesResult.value : 0;
@@ -100,21 +106,26 @@ export async function getStats(): Promise<StatsResponse> {
     (videoHlsStorageResult.status === 'fulfilled' &&
     videoHlsStorageResult.value._sum.totalFileSize
       ? videoHlsStorageResult.value._sum.totalFileSize
+      : 0) +
+    (videoDashStorageResult.status === 'fulfilled' &&
+    videoDashStorageResult.value._sum.totalFileSize
+      ? videoDashStorageResult.value._sum.totalFileSize
+      : 0) +
+    (videoClipStorageResult.status === 'fulfilled' &&
+    videoClipStorageResult.value._sum.fileSize
+      ? videoClipStorageResult.value._sum.fileSize
       : 0);
 
   const allStorageBytes = totalStorageBytes + totalVideoBytes;
   const providerInfo = getStorageProviderInfo();
 
-  let storageLimitBytes = 2 * 1024 * 1024 * 1024; // 2 GB for Appwrite
-  if (providerInfo.provider === 'backblaze') {
-    storageLimitBytes = 10 * 1024 * 1024 * 1024; // 10 GB for Backblaze B2
-  } else if (providerInfo.provider === 'supabase') {
-    storageLimitBytes = 1 * 1024 * 1024 * 1024; // 1 GB for Supabase Free
-  }
-
+  // 100 MB free quota limit per SaaS account/workspace
+  const storageLimitBytes = 100 * 1024 * 1024;
+  const storageRemainingBytes = Math.max(0, storageLimitBytes - allStorageBytes);
   const storagePercentage = Number(
     Math.min(100, Math.max(0, (allStorageBytes / storageLimitBytes) * 100)).toFixed(1)
   );
+  const isQuotaExceeded = allStorageBytes >= storageLimitBytes;
 
   return {
     totalImages,
@@ -123,8 +134,12 @@ export async function getStats(): Promise<StatsResponse> {
     totalStorageBytes: allStorageBytes,
     totalStorageFormatted: formatStorage(allStorageBytes),
     storageLimitBytes,
-    storageLimitFormatted: formatStorage(storageLimitBytes),
+    storageLimitFormatted: '100 MB',
+    storageRemainingBytes,
+    storageRemainingFormatted: formatStorage(storageRemainingBytes),
     storagePercentage,
+    isQuotaExceeded,
+    planName: 'Free Developer Tier',
     imagesByFormat: Object.fromEntries(
       imagesByFormat.map((g) => [g.format, g._count])
     ),

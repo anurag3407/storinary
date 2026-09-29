@@ -30,12 +30,13 @@ vi.mock('@/lib/media-management-auth', () => ({
   recordManagementApiKeyUsage: recordUsageMock,
 }));
 
-vi.mock('@/lib/prisma', () => ({
-  prisma: {
+vi.mock('@/lib/prisma', () => {
+  const p = {
     video: { findUnique: findUniqueMock },
     videoHlsPackage: { upsert: upsertMock },
-  },
-}));
+  };
+  return { prisma: p, rawPrisma: p };
+});
 
 vi.mock('@/lib/storage', () => ({
   getVideoFromStorage: getVideoMock,

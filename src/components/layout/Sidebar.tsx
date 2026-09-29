@@ -8,6 +8,7 @@ import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { UserButton } from '@clerk/nextjs';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { type IconProps, DashboardIcon, ImageIcon, SettingsIcon, SparklesIcon, UploadIcon, VideoIcon } from '@/components/ui/icons';
 import type { StatsResponse } from '@/types';
 import styles from './Sidebar.module.css';
@@ -31,6 +32,7 @@ export function Sidebar() {
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [activeOrgId, setActiveOrgId] = useState<string>('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const {
     organizations: authOrgs,
     activeOrganizationId: authActiveOrgId,
@@ -102,18 +104,33 @@ export function Sidebar() {
     }
   };
 
-  // Fetch real storage stats
+  // Fetch real storage stats on navigation and on quota update events
   useEffect(() => {
-    fetch('/api/stats')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data) {
-          setStats(data);
-        }
-      })
-      .catch(() => {
-        /* stats unavailable */
-      });
+    const fetchStats = () => {
+      fetch('/api/stats')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data) {
+            setStats(data);
+          }
+        })
+        .catch(() => {
+          /* stats unavailable */
+        });
+    };
+
+    fetchStats();
+
+    const handleQuotaUpdated = () => fetchStats();
+    const handleOpenUpgrade = () => setIsUpgradeModalOpen(true);
+
+    window.addEventListener('storinary:quota-updated', handleQuotaUpdated);
+    window.addEventListener('storinary:open-upgrade', handleOpenUpgrade);
+
+    return () => {
+      window.removeEventListener('storinary:quota-updated', handleQuotaUpdated);
+      window.removeEventListener('storinary:open-upgrade', handleOpenUpgrade);
+    };
   }, [pathname]);
 
   // Hide sidebar on standalone landing / login / onboarding page
@@ -130,9 +147,8 @@ export function Sidebar() {
   }
 
   const usedFormatted = stats?.totalStorageFormatted || '0 B';
-  const limitFormatted = stats?.storageLimitFormatted || '2 GB';
+  const limitFormatted = stats?.storageLimitFormatted || '100 MB';
   const pct = stats?.storagePercentage ?? 0;
-  const providerDisplay = stats?.providerName || 'Cloud Storage';
 
   return (
     <>
@@ -235,7 +251,18 @@ export function Sidebar() {
 
         <div className={styles.storageBox}>
           <div className={styles.storageHeader}>
-            <span className={styles.storageLabel}>Storage ({providerDisplay})</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className={styles.storageLabel}>PLAN</span>
+              <span className={styles.planBadge}>FREE TIER</span>
+            </div>
+            <button
+              type="button"
+              className={styles.upgradeBtn}
+              onClick={() => setIsUpgradeModalOpen(true)}
+              title="Upgrade storage plan"
+            >
+              Upgrade
+            </button>
           </div>
           <span className={styles.storageValue}>
             {usedFormatted} / {limitFormatted}
@@ -248,12 +275,29 @@ export function Sidebar() {
             aria-valuemax={100}
           >
             <div
-              className={styles.storageFill}
+              className={`${styles.storageFill} ${
+                pct >= 100
+                  ? styles.storageFillDanger
+                  : pct >= 80
+                    ? styles.storageFillWarning
+                    : ''
+              }`}
               style={{ width: `${Math.min(100, Math.max(pct > 0 ? 3 : 0, pct))}%` }}
             />
           </div>
-          <span className={styles.storageSub}>{pct}% used</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+            <span style={{ fontSize: '11px', color: pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : 'var(--ui-text-subtle)' }}>
+              {pct >= 100 ? 'Quota Reached' : pct >= 80 ? 'Approaching Limit' : '100 MB Limit'}
+            </span>
+            <span className={styles.storageSub} style={{ margin: 0 }}>{pct}%</span>
+          </div>
         </div>
+
+        <UpgradeModal
+          isOpen={isUpgradeModalOpen}
+          onClose={() => setIsUpgradeModalOpen(false)}
+          currentUsageFormatted={usedFormatted}
+        />
       </aside>
     </>
   );

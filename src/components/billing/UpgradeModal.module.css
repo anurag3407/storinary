@@ -1,0 +1,159 @@
+.noticeBanner {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: var(--ui-radius-md, 8px);
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  color: var(--ui-text-muted, #94a3b8);
+  line-height: 1.5;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.noticeIcon {
+  color: var(--ui-primary, #8b5cf6);
+  flex-shrink: 0;
+}
+
+.tiersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 860px) {
+  .tiersGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tierCard {
+  background: var(--ui-bg-surface, #1e293b);
+  border: 1px solid var(--ui-border, #334155);
+  border-radius: var(--ui-radius-lg, 12px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.tierCard:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.tierCardActive {
+  border-color: var(--ui-primary, #8b5cf6);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.tierCardFeatured {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, var(--ui-bg-surface, #1e293b) 100%);
+}
+
+.tierBadge {
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  background: var(--ui-primary, #8b5cf6);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.tierBadgeCurrent {
+  background: #10b981;
+}
+
+.tierHeader {
+  margin-bottom: 16px;
+}
+
+.tierName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ui-text, #f8fafc);
+  margin-bottom: 6px;
+}
+
+.tierPriceContainer {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tierPrice {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--ui-text, #f8fafc);
+}
+
+.tierPeriod {
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted, #94a3b8);
+}
+
+.tierDesc {
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.featureList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.checkIcon {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tierAction {
+  margin-top: auto;
+}
+
+.currentBtn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--ui-radius-md, 8px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: default;
+  text-align: center;
+}
+
+.footerNote {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--ui-text-muted, #94a3b8);
+  border-top: 1px solid var(--ui-border, #334155);
+  padding-top: 16px;
+}

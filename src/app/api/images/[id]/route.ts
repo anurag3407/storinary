@@ -21,6 +21,7 @@ import {
 } from '@/lib/asset-versions';
 import { getImageMetadata } from '@/lib/image-processing';
 import { isSafeSvg } from '@/lib/svg-security';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -136,6 +137,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json(
         { error: 'SVG contains unsafe content (scripts or event handlers are not allowed)' },
         { status: 400 }
+      );
+    }
+
+    // Enforce SaaS account storage quota (100 MB free tier)
+    const quotaCheck = await checkStorageQuota(image.organizationId || 'legacy', metadata.size);
+    if (!quotaCheck.allowed) {
+      return NextResponse.json(
+        { error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)', quotaExceeded: true },
+        { status: 403 }
       );
     }
 

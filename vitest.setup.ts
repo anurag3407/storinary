@@ -9,6 +9,8 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
 process.env.SUPABASE_BUCKET_NAME = 'storinary';
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+process.env.isclerk = 'false';
+process.env.isresend = 'false';
 
 // Auto-cleanup rendered DOM between tests
 afterEach(() => {

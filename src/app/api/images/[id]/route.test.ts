@@ -10,6 +10,7 @@ const {
   imageVersionFindFirstMock,
   getImageMetadataMock,
   generateShortIdMock,
+  quotaCheckMock,
 } = vi.hoisted(() => ({
   imageMock: {
     findUnique: vi.fn(),
@@ -21,9 +22,14 @@ const {
   imageVersionFindFirstMock: vi.fn(),
   getImageMetadataMock: vi.fn(),
   generateShortIdMock: vi.fn(),
+  quotaCheckMock: vi.fn(),
 }));
 
 const { dispatchWebhooksMock } = vi.hoisted(() => ({ dispatchWebhooksMock: vi.fn() }));
+
+vi.mock('@/lib/quota', () => ({
+  checkStorageQuota: quotaCheckMock,
+}));
 
 vi.mock('@/lib/prisma', () => {
   const scoped = {
@@ -158,6 +164,7 @@ describe('PATCH /api/images/:id', () => {
     imageVersionFindFirstMock.mockReset().mockResolvedValue({ version: 1 });
     getImageMetadataMock.mockReset();
     generateShortIdMock.mockReset().mockReturnValue('replacement-id');
+    quotaCheckMock.mockReset().mockResolvedValue({ allowed: true });
   });
 
   it('updates provided metadata fields', async () => {
@@ -236,6 +243,33 @@ describe('PATCH /api/images/:id', () => {
       'image.updated',
       expect.objectContaining({ action: 'replaced' })
     );
+  });
+
+  it('rejects image replacement with 403 when storage quota is exceeded', async () => {
+    quotaCheckMock.mockResolvedValueOnce({
+      allowed: false,
+      error: 'Storage quota exceeded (100 MB free tier limit)',
+    });
+    imageMock.findUnique.mockResolvedValue(MOCK_ROW);
+    getImageMetadataMock.mockResolvedValue({ width: 320, height: 240, format: 'png', size: 15 * 1024 * 1024 });
+
+    const request = new NextRequest('http://localhost/api/images/img-1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: {
+        name: 'huge.png',
+        type: 'image/png',
+        data: Buffer.from('replace').toString('base64'),
+      } }),
+    });
+    const response = await PATCH(request, context);
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.quotaExceeded).toBe(true);
+    expect(body.error).toContain('Storage quota exceeded');
+    expect(imageVersionCreateMock).not.toHaveBeenCalled();
+    expect(imageMock.update).not.toHaveBeenCalled();
   });
 
   it('restores a historical image without deleting its bytes', async () => {

@@ -20,6 +20,7 @@ import {
   createVideoClip,
   isFfmpegAvailable,
 } from '@/lib/video-renditions';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -146,6 +147,14 @@ export async function POST(
     const buffer = await createVideoClip(source.buffer, start, end, { format, muted });
     let clip = null;
     if (persist) {
+      const quotaCheck = await checkStorageQuota(tenantId, buffer.length);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json(
+          { error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)', quotaExceeded: true },
+          { status: 403 }
+        );
+      }
+
       const storagePathRaw = generateStorageKey(
         `${safeFileName(video.originalName)}-${name}.${format}`,
         `${video.id}-clip`,

@@ -21,10 +21,12 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/tenant', () => ({
   getTenantIdOrNull: getTenantIdOrNullMock,
+  TenantContextError: class TenantContextError extends Error {},
 }));
 
 vi.mock('@/lib/prisma-scope', () => ({
   enterTenantScope: enterTenantScopeMock,
+  createTenantScopedClient: vi.fn((client) => client),
 }));
 
 const VERIFIED_SESSION = {

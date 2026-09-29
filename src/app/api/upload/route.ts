@@ -11,6 +11,7 @@ import { authorizeDashboardOrApiKey } from '@/lib/media-auth';
 import { recordApiKeyUsage } from '@/lib/api-keys';
 import { dispatchWebhooks } from '@/lib/webhooks';
 import { recordInitialImageVersion } from '@/lib/asset-versions';
+import { checkStorageQuota, releasePendingBytes } from '@/lib/quota';
 import type { UploadResponse } from '@/types';
 import type { ModerationResult } from '@/types';
 
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
     );
   }
   const tenantId = authorization.organizationId;
+  enterTenantScope(tenantId);
 
   const files = formData
     .getAll('file')
@@ -119,7 +121,26 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  // Process all files concurrently with Promise.allSettled
+  // Enforce SaaS account storage quota (100 MB free tier) with in-flight reservation
+  const totalIncomingBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const quotaCheck = await checkStorageQuota(tenantId, totalIncomingBytes, { reserve: true });
+  if (!quotaCheck.allowed) {
+    if (authorization.keyId) {
+      void recordApiKeyUsage(authorization.keyId, 'upload', { errors: files.length });
+    }
+    return NextResponse.json(
+      {
+        success: false,
+        images: [],
+        errors: [{ filename: 'quota', error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)' }],
+        quotaExceeded: true,
+      },
+      { status: 403 }
+    );
+  }
+
+  try {
+    // Process all files concurrently with Promise.allSettled
   const results = await Promise.allSettled(
     files.map(async (file) => {
       // 1. Validate file type and size
@@ -218,20 +239,23 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (authorization.keyId) {
-    await recordApiKeyUsage(authorization.keyId, 'upload', {
-      assets: images.length,
-      errors: errors.length,
-      bytes: images.reduce((total, image) => total + image.fileSize, 0),
-    });
-  }
+    if (authorization.keyId) {
+      await recordApiKeyUsage(authorization.keyId, 'upload', {
+        assets: images.length,
+        errors: errors.length,
+        bytes: images.reduce((total, image) => total + image.fileSize, 0),
+      });
+    }
 
-  return NextResponse.json(
-    {
-      success: errors.length === 0,
-      images,
-      errors,
-    },
-    { status: 200 }
-  );
+    return NextResponse.json(
+      {
+        success: errors.length === 0,
+        images,
+        errors,
+      },
+      { status: 200 }
+    );
+  } finally {
+    releasePendingBytes(tenantId, totalIncomingBytes);
+  }
 }

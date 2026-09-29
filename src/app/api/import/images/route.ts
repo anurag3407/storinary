@@ -13,6 +13,7 @@ import {
   fetchRemoteAsset,
   validateImportPayload,
 } from '@/lib/remote-import';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,10 @@ export async function POST(request: NextRequest) {
   const results = await Promise.allSettled(
     payload.urls.map(async (url) => {
       const remote = await fetchRemoteAsset(url, ALLOWED_FORMATS, MAX_FILE_SIZE);
+      const quotaCheck = await checkStorageQuota(tenantId, remote.buffer.length);
+      if (!quotaCheck.allowed) {
+        throw new Error(quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)');
+      }
       const metadata = await getImageMetadata(remote.buffer);
       const mimeType = remote.contentType;
       const format = metadata.format;

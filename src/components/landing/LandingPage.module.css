@@ -835,6 +835,175 @@
   text-decoration: underline;
 }
 
+/* ── Pricing Section ── */
+.pricingSection {
+  max-width: 1200px;
+  margin: 0 auto 80px;
+  padding: 0 24px;
+}
+
+.pricingNotice {
+  background: var(--ui-accent-soft);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-md);
+  padding: 14px 20px;
+  max-width: 800px;
+  margin: 0 auto 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ui-text);
+  line-height: 1.5;
+}
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--ui-space-6);
+  align-items: stretch;
+}
+
+.pricingCard {
+  background: var(--ui-white);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  padding: var(--ui-space-8) var(--ui-space-6);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pricingCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ui-shadow-md);
+}
+
+.pricingCardFeatured {
+  border: 2px solid var(--ui-accent);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pricingBadge {
+  position: absolute;
+  top: -12px;
+  right: 20px;
+  background: var(--ui-accent);
+  color: var(--ui-white);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.pricingBadgeCurrent {
+  background: var(--ui-success);
+}
+
+.pricingCardHeader {
+  margin-bottom: var(--ui-space-5);
+  border-bottom: 1px solid var(--ui-border);
+  padding-bottom: var(--ui-space-5);
+}
+
+.pricingCardName {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ui-text);
+  margin-bottom: var(--ui-space-2);
+}
+
+.pricingCardPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: var(--ui-space-2);
+}
+
+.pricingCardPrice {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--ui-text);
+  line-height: 1;
+}
+
+.pricingCardPeriod {
+  font-size: 14px;
+  color: var(--ui-text-muted);
+}
+
+.pricingCardDesc {
+  font-size: 13px;
+  color: var(--ui-text-muted);
+  line-height: 1.5;
+}
+
+.pricingCardFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--ui-space-6) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-grow: 1;
+}
+
+.pricingCardFeatureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ui-text);
+  line-height: 1.4;
+}
+
+.pricingCheckIcon {
+  color: var(--ui-success);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pricingCardAction {
+  margin-top: auto;
+}
+
+.pricingBtn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: var(--ui-radius-sm);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.pricingBtnPrimary {
+  background: var(--ui-text);
+  color: var(--ui-white);
+  border: 1px solid var(--ui-text);
+}
+
+.pricingBtnPrimary:hover {
+  background: #000;
+  color: #fff;
+}
+
+.pricingBtnSecondary {
+  background: transparent;
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+}
+
+.pricingBtnSecondary:hover {
+  background: var(--ui-bg-subtle);
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .navbar {
@@ -851,7 +1020,8 @@
     border-bottom: 1px solid var(--ui-border);
   }
   .pillarsGrid,
-  .featuresGrid {
+  .featuresGrid,
+  .pricingGrid {
     grid-template-columns: 1fr;
   }
 }

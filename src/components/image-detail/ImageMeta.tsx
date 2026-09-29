@@ -67,7 +67,10 @@ export function ImageMeta({ image, versions = [] }: ImageMetaProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`Failed to ${successMessage.toLowerCase()}`);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to ${successMessage.toLowerCase()}`);
+    }
     toast.success(successMessage);
     router.refresh();
   };

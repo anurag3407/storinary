@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAppAuth } from '@/components/auth/AuthProvider';
-import { ChartIcon, VideoIcon, ClipboardIcon, RocketIcon, ZapIcon, StarIcon, WrenchIcon, LockIcon, MoneyIcon, CarIcon, BotIcon, ShieldIcon, BellIcon, CheckIcon, FolderIcon } from '@/components/ui/icons';
+import { ChartIcon, VideoIcon, ClipboardIcon, RocketIcon, ZapIcon, StarIcon, WrenchIcon, LockIcon, MoneyIcon, CarIcon, BotIcon, ShieldIcon, BellIcon, CheckIcon, FolderIcon, SparklesIcon } from '@/components/ui/icons';
 import styles from './LandingPage.module.css';
 
 interface TransformationPreset {
@@ -184,6 +184,9 @@ export function LandingPage() {
           </a>
           <a href="#developer" className={styles.navLink}>
             Developers
+          </a>
+          <a href="#pricing" className={styles.navLink}>
+            Plans &amp; Pricing
           </a>
           <a href="#compare" className={styles.navLink}>
             Why Storinary
@@ -557,6 +560,152 @@ export function LandingPage() {
               Deliver real-time webhook events on asset upload, transformation completion, and
               moderation flags.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing Section ── */}
+      <section id="pricing" className={styles.pricingSection}>
+        <div className={styles.sectionHeader}>
+          <span className={styles.sectionTag}>Transparent Plans</span>
+          <h2 className={styles.sectionTitle}>Predictable SaaS Pricing</h2>
+          <p className={styles.sectionSubtitle}>
+            Every account starts with 100 MB free cloud storage. Scale up effortlessly as your media delivery grows.
+          </p>
+        </div>
+
+        <div className={styles.pricingNotice}>
+          <SparklesIcon size={20} />
+          <div>
+            <strong>SaaS Storage Allocation:</strong> Every developer account is provisioned with <strong>100 MB complimentary storage</strong> with unrestricted transformations, global CDN delivery, and API keys. Automated billing will be enabled once payment gateways finalize.
+          </div>
+        </div>
+
+        <div className={styles.pricingGrid}>
+          {/* Free Tier */}
+          <div className={`${styles.pricingCard} ${styles.pricingCardFeatured}`}>
+            <span className={`${styles.pricingBadge} ${styles.pricingBadgeCurrent}`}>Free Tier (Active)</span>
+            <div className={styles.pricingCardHeader}>
+              <div className={styles.pricingCardName}>Free Developer</div>
+              <div className={styles.pricingCardPriceRow}>
+                <span className={styles.pricingCardPrice}>$0</span>
+                <span className={styles.pricingCardPeriod}>/ forever</span>
+              </div>
+              <p className={styles.pricingCardDesc}>
+                Everything you need to build, test, and ship modern media pipelines.
+              </p>
+            </div>
+            <ul className={styles.pricingCardFeatures}>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span><strong>100 MB</strong> Cloud Media Storage</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>On-The-Fly WebP &amp; AVIF Transcoding</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Smart Center &amp; Face Cropping</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>REST API, Scoped Keys &amp; Webhooks</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Multi-Workspace &amp; Team Collaboration</span>
+              </li>
+            </ul>
+            <div className={styles.pricingCardAction}>
+              <Link href={session ? "/" : "/login?mode=sign-up"} className={`${styles.pricingBtn} ${styles.pricingBtnPrimary}`}>
+                {session ? "Open Console (100 MB Ready)" : "Get Started Free ➔"}
+              </Link>
+            </div>
+          </div>
+
+          {/* Pro Plan */}
+          <div className={styles.pricingCard}>
+            <span className={styles.pricingBadge}>Coming Soon</span>
+            <div className={styles.pricingCardHeader}>
+              <div className={styles.pricingCardName}>Pro Creator</div>
+              <div className={styles.pricingCardPriceRow}>
+                <span className={styles.pricingCardPrice}>$19</span>
+                <span className={styles.pricingCardPeriod}>/ month</span>
+              </div>
+              <p className={styles.pricingCardDesc}>
+                For production applications, ecommerce catalogs, and high-frequency uploads.
+              </p>
+            </div>
+            <ul className={styles.pricingCardFeatures}>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span><strong>50 GB</strong> High-Speed Cloud Storage</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Adaptive Bitrate Video (HLS &amp; DASH)</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Custom CDN Domain &amp; Dedicated SSL</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Priority High-Concurrency Workers</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>90-Day Analytics &amp; Delivery Auditing</span>
+              </li>
+            </ul>
+            <div className={styles.pricingCardAction}>
+              <Link href={session ? "/settings" : "/login?mode=sign-up"} className={`${styles.pricingBtn} ${styles.pricingBtnSecondary}`}>
+                Join Pro Waitlist
+              </Link>
+            </div>
+          </div>
+
+          {/* Enterprise Plan */}
+          <div className={styles.pricingCard}>
+            <span className={styles.pricingBadge}>Coming Soon</span>
+            <div className={styles.pricingCardHeader}>
+              <div className={styles.pricingCardName}>Enterprise Scale</div>
+              <div className={styles.pricingCardPriceRow}>
+                <span className={styles.pricingCardPrice}>Custom</span>
+                <span className={styles.pricingCardPeriod}>/ contract</span>
+              </div>
+              <p className={styles.pricingCardDesc}>
+                Dedicated edge clusters, custom SLAs, and custom compliance controls.
+              </p>
+            </div>
+            <ul className={styles.pricingCardFeatures}>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span><strong>Unlimited</strong> Scalable Multi-Cloud Storage</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>99.99% Uptime Enterprise SLA</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>Dedicated Single-Tenant Processing Clusters</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>SAML / SSO &amp; Custom Role Permissions</span>
+              </li>
+              <li className={styles.pricingCardFeatureItem}>
+                <CheckIcon size={16} className={styles.pricingCheckIcon} />
+                <span>24/7 Dedicated Solutions Engineer</span>
+              </li>
+            </ul>
+            <div className={styles.pricingCardAction}>
+              <a href="mailto:sayalabs.studio@gmail.com?subject=Storinary Enterprise Inquiry" className={`${styles.pricingBtn} ${styles.pricingBtnSecondary}`}>
+                Contact Enterprise
+              </a>
+            </div>
           </div>
         </div>
       </section>

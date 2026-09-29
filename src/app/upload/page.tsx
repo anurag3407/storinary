@@ -10,6 +10,7 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/hooks/useToast';
 import { useUpload } from '@/hooks/useUpload';
 import type { UploadPresetRecord } from '@/lib/upload-presets';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { UploadIcon, GlobeIcon, ClipboardIcon, TrashIcon, LinkGlyphIcon, TagIcon } from '@/components/ui/icons';
 import styles from './upload.module.css';
 
@@ -28,25 +29,58 @@ export default function UploadPage() {
   const [presets, setPresets] = useState<UploadPresetRecord[]>([]);
   const [importUrls, setImportUrls] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [quota, setQuota] = useState<{
+    usedFormatted: string;
+    limitFormatted: string;
+    remainingFormatted: string;
+    remainingBytes: number;
+    percentage: number;
+    isExceeded: boolean;
+    isNearLimit: boolean;
+  } | null>(null);
 
   const { items, globalOptions, isUploading } = state;
   const pendingCount = items.filter((i) => i.status === 'pending').length;
   const doneItems = items.filter((i) => i.status === 'done' && i.result);
 
+  const loadQuota = useCallback(() => {
+    fetch('/api/quota', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.quota) setQuota(data.quota);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleFilesAdded = useCallback(
     (files: File[]) => {
+      if (quota?.isExceeded) {
+        toast.error('Cannot upload: 100 MB storage quota reached. Please upgrade your plan.');
+        setIsUpgradeModalOpen(true);
+        return;
+      }
+      const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+      if (quota && quota.remainingBytes !== undefined && totalBytes > quota.remainingBytes) {
+        toast.error(`Cannot upload: Adding ${files.length} file(s) would exceed your remaining quota (${quota.remainingFormatted}). Please upgrade your plan.`);
+        setIsUpgradeModalOpen(true);
+        return;
+      }
       addFiles(files);
       // Auto-start upload for instant, seamless UX
-      setTimeout(() => {
-        void startUpload();
+      setTimeout(async () => {
+        await startUpload();
+        loadQuota();
+        window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
       }, 50);
     },
-    [addFiles, startUpload]
+    [addFiles, startUpload, quota, toast, loadQuota]
   );
 
   // Keyboard shortcut: Ctrl/Cmd + V pastes images into the queue
   useEffect(() => {
     const handler = (e: ClipboardEvent) => {
+      if (quota?.isExceeded) return;
       const clipboardItems = e.clipboardData?.items;
       if (!clipboardItems) return;
       const files: File[] = [];
@@ -58,23 +92,32 @@ export default function UploadPage() {
       }
       if (files.length > 0) {
         e.preventDefault();
+        const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+        if (quota && quota.remainingBytes !== undefined && totalBytes > quota.remainingBytes) {
+          toast.error(`Cannot paste: Adding ${files.length} file(s) would exceed your remaining quota (${quota.remainingFormatted}). Please upgrade your plan.`);
+          setIsUpgradeModalOpen(true);
+          return;
+        }
         addFiles(files);
         toast.info(`Pasted ${files.length} image(s)`);
-        setTimeout(() => {
-          void startUpload();
+        setTimeout(async () => {
+          await startUpload();
+          loadQuota();
+          window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
         }, 50);
       }
     };
     window.addEventListener('paste', handler);
     return () => window.removeEventListener('paste', handler);
-  }, [addFiles, startUpload, toast]);
+  }, [addFiles, startUpload, toast, quota, loadQuota]);
 
   useEffect(() => {
+    loadQuota();
     fetch('/api/upload-presets?active=true', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : { presets: [] }))
       .then((data) => setPresets(data.presets ?? []))
       .catch(() => setPresets([]));
-  }, []);
+  }, [loadQuota]);
 
   const handleSelectPreset = (name: string) => {
     selectUploadPreset(name);
@@ -98,6 +141,8 @@ export default function UploadPage() {
 
   const handleUploadAll = async () => {
     const result = await startUpload();
+    loadQuota();
+    window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     if (!result) return;
     if (result.failed > 0) {
       toast.warning(`Uploaded ${result.completed}, ${result.failed} failed`);
@@ -107,6 +152,12 @@ export default function UploadPage() {
   };
 
   const importFromUrls = async () => {
+    if (quota?.isExceeded) {
+      toast.error('Cannot import: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+
     const urls = importUrls
       .split(/\r?\n|,\s*/)
       .map((url) => url.trim())
@@ -129,6 +180,8 @@ export default function UploadPage() {
         throw new Error(body.error || 'Import failed');
       }
       const body = await response.json();
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
       if (body.errors?.length) {
         toast.warning(`Imported ${body.images.length}, ${body.errors.length} failed`);
       } else {
@@ -189,7 +242,7 @@ export default function UploadPage() {
               size="md"
               icon={<UploadIcon size={16} />}
               onClick={handleUploadAll}
-              disabled={isUploading || pendingCount === 0}
+              disabled={isUploading || pendingCount === 0 || Boolean(quota?.isExceeded)}
               loading={isUploading}
             >
               {isUploading ? 'Uploading…' : `Upload All (${pendingCount})`}
@@ -198,16 +251,79 @@ export default function UploadPage() {
         }
       />
 
+      {quota && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 18px',
+            borderRadius: 'var(--ui-radius-md, 8px)',
+            marginBottom: '16px',
+            backgroundColor: quota.isExceeded
+              ? 'rgba(239, 68, 68, 0.1)'
+              : quota.isNearLimit
+                ? 'rgba(245, 158, 11, 0.1)'
+                : 'var(--ui-surface)',
+            border: `1px solid ${
+              quota.isExceeded
+                ? 'rgba(239, 68, 68, 0.4)'
+                : quota.isNearLimit
+                  ? 'rgba(245, 158, 11, 0.4)'
+                  : 'var(--ui-border-strong)'
+            }`,
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                backgroundColor: quota.isExceeded
+                  ? '#ef4444'
+                  : quota.isNearLimit
+                    ? '#f59e0b'
+                    : 'var(--ui-primary, #8b5cf6)',
+                color: 'white',
+              }}
+            >
+              {quota.isExceeded ? 'Quota Exceeded' : quota.isNearLimit ? 'Storage Warning' : 'Account Quota'}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--ui-text)' }}>
+              {quota.isExceeded ? (
+                <strong>100 MB free quota limit reached ({quota.usedFormatted} used). Uploads are paused until upgraded.</strong>
+              ) : (
+                <>
+                  Using <strong>{quota.usedFormatted}</strong> of <strong>100 MB</strong> ({quota.percentage}% used • {quota.remainingFormatted} available)
+                </>
+              )}
+            </span>
+          </div>
+          <Button
+            variant={quota.isExceeded ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setIsUpgradeModalOpen(true)}
+          >
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
+
       <UploadSettings
         options={globalOptions}
         presets={presets}
         selectedPreset={selectedPreset}
         onPresetChange={handleSelectPreset}
         onChange={updateGlobalOptions}
-        disabled={isUploading}
+        disabled={isUploading || Boolean(quota?.isExceeded)}
       />
 
-      <DropZone onFilesAdded={handleFilesAdded} disabled={isUploading} />
+      <DropZone onFilesAdded={handleFilesAdded} disabled={isUploading || Boolean(quota?.isExceeded)} />
 
       <section className={styles.importPanel}>
         <label htmlFor="image-import-urls">Import image URLs</label>
@@ -221,7 +337,11 @@ export default function UploadPage() {
         />
         <div>
           <span>Public HTTPS URLs only. Maximum 10 per batch.</span>
-          <Button onClick={() => void importFromUrls()} loading={isImporting} disabled={!importUrls.trim()}>
+          <Button
+            onClick={() => void importFromUrls()}
+            loading={isImporting}
+            disabled={!importUrls.trim() || Boolean(quota?.isExceeded)}
+          >
             Import Images
           </Button>
         </div>
@@ -262,6 +382,12 @@ export default function UploadPage() {
           </div>
         </div>
       )}
+
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentUsageFormatted={quota?.usedFormatted || '0 B'}
+      />
     </div>
   );
 }

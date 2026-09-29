@@ -13,6 +13,7 @@ const {
   uploadMock,
   ffmpegAvailableMock,
   createRenditionMock,
+  quotaCheckMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   recordUsageMock: vi.fn(),
@@ -23,6 +24,11 @@ const {
   uploadMock: vi.fn(),
   ffmpegAvailableMock: vi.fn(),
   createRenditionMock: vi.fn(),
+  quotaCheckMock: vi.fn(),
+}));
+
+vi.mock('@/lib/quota', () => ({
+  checkStorageQuota: quotaCheckMock,
 }));
 
 vi.mock('@/lib/media-management-auth', () => ({
@@ -74,6 +80,7 @@ describe('POST /api/videos/:id/renditions', () => {
     uploadMock.mockReset().mockResolvedValue(undefined);
     ffmpegAvailableMock.mockReset().mockResolvedValue(true);
     createRenditionMock.mockReset();
+    quotaCheckMock.mockReset().mockResolvedValue({ allowed: true });
   });
 
   it('generates both default renditions', async () => {
@@ -142,5 +149,30 @@ describe('POST /api/videos/:id/renditions', () => {
     ffmpegAvailableMock.mockResolvedValue(false);
     expect((await POST(makeRequest(), { params: Promise.resolve({ id: 'video-1' }) })).status).toBe(503);
     expect(getVideoMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects rendition generation with 403 when storage quota is exceeded', async () => {
+    quotaCheckMock.mockResolvedValue({
+      allowed: false,
+      error: 'Storage quota exceeded (100 MB free tier limit)',
+    });
+    createRenditionMock.mockResolvedValue({
+      buffer: Buffer.from('large-video-rendition'),
+      width: 1280,
+      height: 720,
+      bitrateKbps: 2500,
+    });
+
+    const response = await POST(makeRequest('?labels=720p'), {
+      params: Promise.resolve({ id: 'video-1' }),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.success).toBe(false);
+    expect(body.quotaExceeded).toBe(true);
+    expect(body.errors[0].error).toContain('Storage quota exceeded');
+    expect(uploadMock).not.toHaveBeenCalled();
+    expect(upsertMock).not.toHaveBeenCalled();
   });
 });

@@ -61,9 +61,8 @@ export async function getTenantId(request?: Request): Promise<string> {
 export async function getTenantIdOrNull(request?: Request): Promise<string | null> {
   try {
     return await getTenantId(request);
-  } catch (error) {
-    if (error instanceof TenantContextError) return null;
-    throw error;
+  } catch {
+    return null;
   }
 }
 

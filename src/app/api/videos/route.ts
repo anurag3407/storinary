@@ -21,6 +21,7 @@ import {
 } from '@/lib/video-renditions';
 import { dispatchWebhooks } from '@/lib/webhooks';
 import { recordInitialVideoVersion } from '@/lib/asset-versions';
+import { checkStorageQuota, releasePendingBytes } from '@/lib/quota';
 import type { VideoListResponse, VideoSortField } from '@/types';
 
 export const runtime = 'nodejs';
@@ -158,6 +159,7 @@ export async function POST(request: NextRequest) {
     );
   }
   const tenantId = auth.organizationId;
+  enterTenantScope(tenantId);
 
   const files = formData.getAll('file').filter((file): file is File => file instanceof File && file.size > 0);
   if (files.length === 0) {
@@ -169,7 +171,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Maximum 5 videos per request' }, { status: 400 });
   }
 
-  const folder = preset?.folder ?? (formData.get('folder')?.toString() || '/');
+  // Enforce SaaS account storage quota (100 MB free tier) with in-flight reservation
+  const totalIncomingBytes = files.reduce((sum, f) => sum + f.size, 0);
+  const quotaCheck = await checkStorageQuota(tenantId, totalIncomingBytes, { reserve: true });
+  if (!quotaCheck.allowed) {
+    if (auth.keyId) void recordApiKeyUsage(auth.keyId, 'video-upload', { errors: files.length });
+    return NextResponse.json(
+      { error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)', quotaExceeded: true },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const folder = preset?.folder ?? (formData.get('folder')?.toString() || '/');
   const tags = preset?.tags ?? (formData.get('tags')?.toString() || '');
   const altText = formData.get('altText')?.toString() || '';
 
@@ -215,7 +229,7 @@ export async function POST(request: NextRequest) {
 
     const created = await prisma.video.create({
       data: {
-        organizationId: 'legacy',
+        organizationId: tenantId,
         originalName: file.name,
         storagePath,
         publicUrl: getPublicUrl(storagePath),
@@ -234,11 +248,17 @@ export async function POST(request: NextRequest) {
 
     await recordInitialVideoVersion(created);
 
-    if (!renditionsEnabled) return created;
+    if (!renditionsEnabled) {
+      return { ...created, renditions: [] };
+    }
 
     for (const label of Object.keys(RENDITION_PRESETS) as Array<keyof typeof RENDITION_PRESETS>) {
       const preset = RENDITION_PRESETS[label];
       const rendition = await createVideoRendition(buffer, label);
+      const renditionQuota = await checkStorageQuota(tenantId, rendition.buffer.length);
+      if (!renditionQuota.allowed) {
+        break; // Stop creating further renditions if quota would be exceeded
+      }
       const renditionKey = await tenantStoragePath(tenantId, generateStorageKey(`${file.name}-${label}.mp4`, `${shortId}-${label}`, 'mp4'));
       await uploadToStorage(rendition.buffer, renditionKey, 'video/mp4');
       await prisma.videoRendition.create({
@@ -277,13 +297,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (auth.keyId) {
-    await recordApiKeyUsage(auth.keyId, 'video-upload', {
-      assets: videos.length,
-      errors: errors.length,
-      bytes: files.reduce((total, file) => total + file.size, 0),
-    });
-  }
+    if (auth.keyId) {
+      await recordApiKeyUsage(auth.keyId, 'video-upload', {
+        assets: videos.length,
+        errors: errors.length,
+        bytes: files.reduce((total, file) => total + file.size, 0),
+      });
+    }
 
-  return NextResponse.json({ success: errors.length === 0, videos, errors }, { status: 201 });
+    return NextResponse.json({ success: errors.length === 0, videos, errors }, { status: 201 });
+  } finally {
+    releasePendingBytes(tenantId, totalIncomingBytes);
+  }
 }

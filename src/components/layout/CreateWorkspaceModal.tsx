@@ -131,7 +131,7 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreated }: CreateWorks
         <div className={styles.introBox}>
           <p>
             <strong>What is a Workspace?</strong> Each organization has its own isolated assets,
-            custom folders, team members, API keys, and dedicated CDN URLs.
+            custom folders, team members, API keys, and dedicated CDN URLs. Includes <strong>100 MB complimentary cloud storage</strong> on the Free Developer Tier.
           </p>
         </div>
 

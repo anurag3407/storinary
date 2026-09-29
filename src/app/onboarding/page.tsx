@@ -24,6 +24,7 @@ export default function OnboardingPage() {
     organizations: authOrgs,
     createOrganization: authCreateOrg,
     setActiveOrganization: authSetActiveOrg,
+    signOut: authSignOut,
     isClerk,
   } = useAppAuth();
 
@@ -177,7 +178,7 @@ export default function OnboardingPage() {
 
         <div className={styles.infoBox}>
           <BulbIcon size={15} /> <strong>What is a Workspace?</strong> Workspaces isolate your uploaded assets, folders,
-          team members, and CDN URL namespace.
+          team members, and CDN URL namespace. Each workspace receives <strong>100 MB complimentary storage</strong> on the Free Developer Tier.
         </div>
 
         {organizations.length > 0 && (
@@ -252,8 +253,7 @@ export default function OnboardingPage() {
             type="button"
             className={styles.signOutBtn}
             onClick={async () => {
-              await authClient.signOut();
-              router.replace('/login');
+              await authSignOut();
             }}
           >
             Sign out of this account

@@ -98,9 +98,19 @@ export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
         )}
 
         {item.status === 'error' && (
-          <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Badge variant="danger">Error</Badge>
-            {onRetry && (
+            {item.error?.toLowerCase().includes('quota') ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('storinary:open-upgrade'));
+                }}
+              >
+                Upgrade Plan
+              </Button>
+            ) : onRetry ? (
               <Button
                 variant="secondary"
                 size="sm"
@@ -108,8 +118,8 @@ export function UploadItem({ item, onRemove, onRetry }: UploadItemProps) {
               >
                 Retry
               </Button>
-            )}
-          </>
+            ) : null}
+          </div>
         )}
       </div>
 

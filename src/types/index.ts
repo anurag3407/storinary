@@ -384,6 +384,10 @@ export interface StatsResponse {
   storageEndpoint?: string;
   isConfigured?: boolean;
   supabaseBucket?: string; // bucket name (for Settings connection display backwards compat)
+  planName?: string;
+  storageRemainingBytes?: number;
+  storageRemainingFormatted?: string;
+  isQuotaExceeded?: boolean;
 }
 
 // ════════════════════════════════════════════════════════════

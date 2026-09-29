@@ -9,6 +9,7 @@ import {
   isFfmpegAvailable,
   type RenditionLabel,
 } from '@/lib/video-renditions';
+import { checkStorageQuota } from '@/lib/quota';
 
 export const runtime = 'nodejs';
 
@@ -68,6 +69,20 @@ export async function POST(
   for (const label of labels) {
     try {
       const generated = await createVideoRendition(source.buffer, label);
+
+      // Enforce SaaS account storage quota (100 MB free tier)
+      const quotaCheck = await checkStorageQuota(tenantId, generated.buffer.length);
+      if (!quotaCheck.allowed) {
+        errors.push({
+          label,
+          error: quotaCheck.error || 'Storage quota exceeded (100 MB free tier limit)',
+        });
+        void recordManagementApiKeyUsage(authorization.keyId, 'write', {
+          errors: 1,
+        }).catch(() => {});
+        continue;
+      }
+
       const shortId = `${id}-${label}`.replace(/[^a-z0-9-]/gi, '');
       const storagePath = await tenantStoragePath(tenantId, `videos/renditions/${shortId}.mp4`);
       await uploadToStorage(generated.buffer, storagePath, 'video/mp4');
@@ -111,6 +126,22 @@ export async function POST(
   }
 
   const replaced = labels.filter((label) => existing.has(label)).length;
+  const isQuotaFailure = results.length === 0 && errors.some((e) => e.error?.toLowerCase().includes('quota'));
+
+  if (isQuotaFailure) {
+    return NextResponse.json(
+      {
+        success: false,
+        created: 0,
+        updated: 0,
+        renditions: [],
+        errors,
+        quotaExceeded: true,
+      },
+      { status: 403 }
+    );
+  }
+
   return NextResponse.json({
     success: errors.length === 0,
     created: results.length - replaced,

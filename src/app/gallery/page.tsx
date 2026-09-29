@@ -127,6 +127,7 @@ export default function GalleryPage() {
       await deleteImages(Array.from(selectedIds));
       toast.success(`Deleted ${count} image(s)`);
       setConfirmDelete(false);
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch {
       toast.error('Failed to delete images');
     } finally {
@@ -138,6 +139,7 @@ export default function GalleryPage() {
     try {
       await deleteImages([id]);
       toast.success('Image deleted');
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch {
       toast.error('Failed to delete image');
     }

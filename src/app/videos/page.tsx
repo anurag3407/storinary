@@ -13,6 +13,7 @@ import type { VideoClipRecord, VideoListResponse, VideoRecord } from '@/types';
 import type { CollectionRecord } from '@/lib/collections';
 import { Badge } from '@/components/ui/Badge';
 import { StructuredMetadataControls } from '@/components/media/StructuredMetadataControls';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { VideoIcon, AlertIcon } from '@/components/ui/icons';
 import styles from './videos.module.css';
 
@@ -140,8 +141,31 @@ export default function VideosPage() {
   const [savingMetadataId, setSavingMetadataId] = useState('');
   const [clipDrafts, setClipDrafts] = useState<Record<string, { name: string; start: string; duration: string }>>({});
   const [clipBusyId, setClipBusyId] = useState('');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [quota, setQuota] = useState<{
+    usedFormatted: string;
+    limitFormatted: string;
+    remainingFormatted: string;
+    remainingBytes: number;
+    percentage: number;
+    isExceeded: boolean;
+    isNearLimit: boolean;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<number | null>(null);
+
+  const loadQuota = useCallback(() => {
+    fetch('/api/quota', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.quota) setQuota(data.quota);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadQuota();
+  }, [loadQuota]);
 
   const loadCollections = useCallback(async () => {
     try {
@@ -219,6 +243,17 @@ export default function VideosPage() {
 
   const uploadVideos = async (files: FileList | null) => {
     if (!files?.length) return;
+    if (quota?.isExceeded) {
+      toast.error('Cannot upload: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+    const totalBytes = Array.from(files).reduce((acc, f) => acc + f.size, 0);
+    if (quota && quota.remainingBytes !== undefined && totalBytes > quota.remainingBytes) {
+      toast.error(`Cannot upload: Adding ${files.length} video(s) would exceed your remaining quota (${quota.remainingFormatted}). Please upgrade your plan.`);
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setIsUploading(true);
     try {
       const formData = new FormData();
@@ -239,6 +274,8 @@ export default function VideosPage() {
       toast.success(`${files.length} video(s) uploaded`);
       setFilters((current) => ({ ...current, page: DEFAULT_FILTERS.page }));
       await loadVideos();
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Upload failed');
     } finally {
@@ -250,6 +287,11 @@ export default function VideosPage() {
   const importVideoFromUrl = async () => {
     const url = importUrl.trim();
     if (!url) return;
+    if (quota?.isExceeded) {
+      toast.error('Cannot import: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setIsUploading(true);
     try {
       const response = await fetch('/api/import/videos?renditions=true', {
@@ -267,6 +309,8 @@ export default function VideosPage() {
       setImportUrl('');
       setFilters((current) => ({ ...current, page: DEFAULT_FILTERS.page }));
       await loadVideos();
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Import failed');
     } finally {
@@ -282,6 +326,8 @@ export default function VideosPage() {
       setVideos((current) => current.filter((video) => video.id !== id));
       setPagination((current) => ({ ...current, total: Math.max(0, current.total - 1) }));
       toast.success('Video deleted');
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch {
       toast.error('Could not delete video');
     } finally {
@@ -290,6 +336,11 @@ export default function VideosPage() {
   };
 
   const generateHls = async (id: string) => {
+    if (quota?.isExceeded) {
+      toast.error('Cannot generate adaptive package: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setGeneratingHlsId(id);
     try {
       const response = await fetch(`/api/videos/${id}/hls?variants=360p,720p`, { method: 'POST' });
@@ -299,6 +350,8 @@ export default function VideosPage() {
       }
       toast.success('Adaptive stream ready');
       await loadVideos();
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to generate adaptive stream');
     } finally {
@@ -307,6 +360,11 @@ export default function VideosPage() {
   };
 
   const generateDash = async (id: string) => {
+    if (quota?.isExceeded) {
+      toast.error('Cannot generate DASH package: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setGeneratingDashId(id);
     try {
       const response = await fetch(`/api/videos/${id}/dash?variants=360p,720p`, { method: 'POST' });
@@ -316,6 +374,8 @@ export default function VideosPage() {
       }
       toast.success('DASH stream ready');
       await loadVideos();
+      loadQuota();
+      window.dispatchEvent(new CustomEvent('storinary:quota-updated'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to generate DASH stream');
     } finally {
@@ -372,6 +432,11 @@ export default function VideosPage() {
       toast.error('Clip name, start, and duration are required');
       return;
     }
+    if (quota?.isExceeded) {
+      toast.error('Cannot persist clip: 100 MB storage quota reached. Please upgrade your plan.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
     setClipBusyId(videoId);
     try {
       const response = await fetch(`/api/videos/${videoId}/clip`, {
@@ -391,6 +456,7 @@ export default function VideosPage() {
         : video));
       setClipDrafts((current) => ({ ...current, [videoId]: { name: '', start: '', duration: '' } }));
       toast.success('Clip created');
+      loadQuota();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to create clip');
     } finally {
@@ -413,6 +479,7 @@ export default function VideosPage() {
         ? { ...video, clips: (video.clips ?? []).filter((clip) => clip.name !== clipName) }
         : video));
       toast.success('Clip deleted');
+      loadQuota();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to delete clip');
     } finally {
@@ -422,7 +489,82 @@ export default function VideosPage() {
 
   return (
     <div className={styles.page}>
-      <Header title="Videos" description="Upload and stream MP4 or WebM assets with range requests." />
+      <Header
+        title="Videos"
+        description="Upload and stream MP4 or WebM assets with range requests."
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setIsUpgradeModalOpen(true)}
+          >
+            Plan &amp; Storage
+          </Button>
+        }
+      />
+
+      {quota && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 18px',
+            borderRadius: 'var(--ui-radius-md, 8px)',
+            marginBottom: '16px',
+            backgroundColor: quota.isExceeded
+              ? 'rgba(239, 68, 68, 0.1)'
+              : quota.isNearLimit
+                ? 'rgba(245, 158, 11, 0.1)'
+                : 'var(--ui-surface)',
+            border: `1px solid ${
+              quota.isExceeded
+                ? 'rgba(239, 68, 68, 0.4)'
+                : quota.isNearLimit
+                  ? 'rgba(245, 158, 11, 0.4)'
+                  : 'var(--ui-border-strong)'
+            }`,
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                backgroundColor: quota.isExceeded
+                  ? '#ef4444'
+                  : quota.isNearLimit
+                    ? '#f59e0b'
+                    : 'var(--ui-primary, #8b5cf6)',
+                color: 'white',
+              }}
+            >
+              {quota.isExceeded ? 'Quota Exceeded' : quota.isNearLimit ? 'Storage Warning' : 'Account Quota'}
+            </span>
+            <span style={{ fontSize: '13px', color: 'var(--ui-text)' }}>
+              {quota.isExceeded ? (
+                <strong>100 MB free quota limit reached ({quota.usedFormatted} used). Video uploads and processing are paused.</strong>
+              ) : (
+                <>
+                  Using <strong>{quota.usedFormatted}</strong> of <strong>100 MB</strong> ({quota.percentage}% used • {quota.remainingFormatted} available)
+                </>
+              )}
+            </span>
+          </div>
+          <Button
+            variant={quota.isExceeded ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setIsUpgradeModalOpen(true)}
+          >
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       <section className={styles.uploader}>
         <input
@@ -675,6 +817,12 @@ export default function VideosPage() {
         currentPage={pagination.page}
         totalPages={pagination.totalPages}
         onPageChange={(page) => setFilters((current) => ({ ...current, page }))}
+      />
+
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentUsageFormatted={quota?.usedFormatted || '0 B'}
       />
     </div>
   );
