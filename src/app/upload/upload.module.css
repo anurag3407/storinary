@@ -5,10 +5,10 @@
 }
 
 .completedPanel {
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: var(--ui-hairline);
   border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-lg);
+  box-shadow: var(--ui-shadow-card);
   padding: var(--ui-space-6);
 }
 
@@ -17,7 +17,7 @@
   gap: var(--ui-space-3);
   padding: var(--ui-space-5);
   border: var(--ui-hairline);
-  box-shadow: var(--ui-shadow-lg);
+  box-shadow: var(--ui-shadow-card);
   background: white;
 }
 

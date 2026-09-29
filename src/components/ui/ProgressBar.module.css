@@ -7,7 +7,7 @@
 
 .container {
   flex: 1;
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   overflow: hidden;

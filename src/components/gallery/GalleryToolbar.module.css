@@ -1,8 +1,10 @@
 .toolbar {
-  background-color: var(--ui-white);
-  border: var(--ui-hairline);
-  border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-lg);
+  background-color: var(--ui-glass-strong);
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
+  border: 1px solid var(--ui-glass-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-card);
   padding: var(--ui-space-4);
   display: flex;
   flex-wrap: wrap;
@@ -32,19 +34,22 @@
 
 .selectedInfo {
   font-size: var(--ui-text-xs);
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  background-color: var(--ui-accent);
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 2px;
-  box-shadow: var(--ui-shadow-sm);
-  padding: var(--ui-space-1) var(--ui-space-3);
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.01em;
+  color: var(--ui-accent-text);
+  background-color: var(--ui-accent-soft);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-full);
+  box-shadow: var(--ui-shadow-none);
+  padding: 3px var(--ui-space-3);
+  font-variant-numeric: tabular-nums;
 }
 
 .showing {
   font-size: var(--ui-text-xs);
-  color: var(--ui-text-muted);
-  font-weight: 600;
+  color: var(--ui-text-subtle);
+  font-weight: var(--ui-weight-medium);
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 768px) {

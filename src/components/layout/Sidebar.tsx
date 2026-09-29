@@ -205,6 +205,8 @@ export function Sidebar() {
           }}
         />
 
+        <div className={styles.navSectionLabel}>Platform</div>
+
         <nav className={styles.nav} aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {
             const isActive =
@@ -226,7 +228,7 @@ export function Sidebar() {
         </nav>
 
         {isClerk && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.75rem 1rem', borderTop: '1px solid var(--ui-border)' }}>
+          <div className={styles.userArea}>
             <UserButton showName />
           </div>
         )}

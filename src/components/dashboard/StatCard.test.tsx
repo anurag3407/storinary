@@ -10,17 +10,22 @@ describe('StatCard', () => {
     expect(screen.getByText('Total Images')).toBeInTheDocument();
   });
 
-  it('applies the default color to the card', () => {
+  it('applies the default accent to the card', () => {
     const { container } = render(<StatCard label="X" value={1} icon="📷" />);
     const card = container.firstElementChild as HTMLElement;
-    expect(card).toHaveStyle({ backgroundColor: 'var(--ui-chart-1)' });
+    expect(card.style.getPropertyValue('--stat-accent')).toBe('var(--ui-chart-1)');
   });
 
-  it('applies a custom color to the card', () => {
+  it('applies a custom accent to the card', () => {
     const { container } = render(
       <StatCard label="X" value={1} icon="💾" color="var(--ui-chart-3)" />
     );
     const card = container.firstElementChild as HTMLElement;
-    expect(card).toHaveStyle({ backgroundColor: 'var(--ui-chart-3)' });
+    expect(card.style.getPropertyValue('--stat-accent')).toBe('var(--ui-chart-3)');
+  });
+
+  it('renders the sub badge when provided', () => {
+    render(<StatCard label="X" value={1} icon="📷" sub="12% of quota" />);
+    expect(screen.getByText('12% of quota')).toBeInTheDocument();
   });
 });

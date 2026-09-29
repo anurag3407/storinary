@@ -1,8 +1,8 @@
 .card {
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: var(--ui-hairline);
   border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-lg);
+  box-shadow: var(--ui-shadow-card);
   padding: var(--ui-space-6);
   overflow: hidden;
 }
@@ -37,7 +37,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   cursor: pointer;
@@ -91,7 +91,7 @@
 
 .versionList button {
   border: 1px solid var(--ui-border);
-  background: var(--ui-white);
+  background: var(--ui-surface);
   border-radius: 4px;
   padding: .15rem .45rem;
   cursor: pointer;

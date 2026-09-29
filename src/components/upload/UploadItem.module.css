@@ -6,12 +6,12 @@
   border-radius: var(--ui-radius);
   box-shadow: var(--ui-shadow-md);
   padding: var(--ui-space-3) var(--ui-space-4);
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   transition: var(--ui-transition);
 }
 
 .item:hover {
-  box-shadow: var(--ui-shadow-lg);
+  box-shadow: var(--ui-shadow-card);
   transform: translate(-1px, -1px);
 }
 
@@ -73,7 +73,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   color: var(--ui-text);
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;

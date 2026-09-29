@@ -1,8 +1,8 @@
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--ui-space-5);
-  margin-bottom: var(--ui-space-8);
+  gap: var(--ui-space-4);
+  margin-bottom: var(--ui-space-6);
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {

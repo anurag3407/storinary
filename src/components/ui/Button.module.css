@@ -3,17 +3,22 @@
   align-items: center;
   justify-content: center;
   gap: var(--ui-space-2);
-  font-weight: 500;
+  font-weight: var(--ui-weight-semibold);
   letter-spacing: -0.01em;
   border: 1px solid transparent;
   border-radius: var(--ui-radius);
   cursor: pointer;
-  transition: background-color var(--ui-transition), color var(--ui-transition),
-    border-color var(--ui-transition), box-shadow var(--ui-transition);
+  transition: transform var(--ui-transition), background-color var(--ui-transition),
+    color var(--ui-transition), border-color var(--ui-transition),
+    box-shadow var(--ui-transition);
   user-select: none;
   line-height: 1.4;
   white-space: nowrap;
   text-decoration: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn:focus-visible {
@@ -29,37 +34,48 @@
 
 /* ── Variants ─────────────────────────── */
 .primary {
-  background-color: var(--ui-accent);
+  background-image: var(--ui-grad-accent);
   color: var(--ui-text-inverse);
+  box-shadow: var(--ui-shadow-accent);
 }
 
 .primary:hover:not(:disabled) {
-  background-color: var(--ui-accent-hover);
+  background-image: var(--ui-grad-accent-hover);
+  color: var(--ui-text-inverse);
+  transform: var(--ui-lift);
+  box-shadow: 0 2px 4px rgba(0, 71, 255, 0.2), 0 14px 26px -8px rgba(0, 71, 255, 0.42);
 }
 
 .primary:active:not(:disabled) {
-  background-color: var(--ui-accent-active);
+  background-image: var(--ui-grad-accent-hover);
+  box-shadow: var(--ui-shadow-xs);
 }
 
 .secondary {
   background-color: var(--ui-surface);
   color: var(--ui-text);
   border-color: var(--ui-border-strong);
-  box-shadow: var(--ui-shadow-xs);
+  box-shadow: var(--ui-shadow-card);
 }
 
 .secondary:hover:not(:disabled) {
   background-color: var(--ui-surface-hover);
   border-color: var(--ui-border-active);
+  transform: var(--ui-lift);
+  box-shadow: var(--ui-shadow-raised);
 }
 
 .danger {
   background-color: var(--ui-danger);
   color: var(--ui-text-inverse);
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .danger:hover:not(:disabled) {
   background-color: var(--ui-danger-hover);
+  color: var(--ui-text-inverse);
+  transform: var(--ui-lift);
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.18), 0 12px 22px -8px rgba(220, 38, 38, 0.4);
 }
 
 .outline {

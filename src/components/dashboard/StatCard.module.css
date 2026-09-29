@@ -1,56 +1,86 @@
 .card {
-  border: 1px solid transparent;
-  border-radius: var(--ui-radius-md);
-  box-shadow: var(--ui-shadow-sm);
+  position: relative;
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-lg);
+  background-color: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
   padding: var(--ui-space-5);
   text-align: left;
-  transition: box-shadow var(--ui-transition);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;
+  transition: var(--ui-transition-lift);
+}
+
+/* Accent rule along the top edge — the card's only colour moment. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--stat-accent) 0%,
+    color-mix(in srgb, var(--stat-accent) 20%, transparent) 100%
+  );
 }
 
 .card:hover {
-  box-shadow: var(--ui-shadow-md);
+  transform: var(--ui-lift);
+  box-shadow: var(--ui-shadow-raised);
+  border-color: color-mix(in srgb, var(--stat-accent) 26%, var(--ui-border));
 }
 
 .topRow {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--ui-space-4);
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-5);
 }
 
 .icon {
   display: inline-flex;
   align-items: center;
-  color: currentColor;
-  opacity: 0.9;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: var(--ui-radius-md);
+  color: var(--stat-accent);
+  background: color-mix(in srgb, var(--stat-accent) 11%, var(--ui-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--stat-accent) 20%, transparent);
 }
 
 .subBadge {
   font-size: var(--ui-text-xs);
   font-weight: var(--ui-weight-medium);
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.32);
   padding: 2px var(--ui-space-2);
   border-radius: var(--ui-radius-full);
-  color: var(--ui-white);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--stat-accent) 72%, var(--ui-text));
+  background: color-mix(in srgb, var(--stat-accent) 9%, var(--ui-surface));
+  border: 1px solid color-mix(in srgb, var(--stat-accent) 18%, transparent);
 }
 
 .value {
   font-size: var(--ui-text-3xl);
-  font-weight: var(--ui-weight-semibold);
+  font-weight: var(--ui-weight-bold);
   line-height: var(--ui-leading-tight);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.032em;
   margin-bottom: var(--ui-space-1);
   word-break: break-word;
-  color: var(--ui-white);
+  color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .label {
-  font-size: var(--ui-text-xs);
-  font-weight: var(--ui-weight-medium);
-  letter-spacing: 0.01em;
-  color: var(--ui-white);
+  font-size: 11px;
+  font-weight: var(--ui-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ui-text-subtle);
 }

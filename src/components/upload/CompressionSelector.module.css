@@ -68,7 +68,7 @@
 }
 
 .presetCard {
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: var(--ui-hairline);
   border-radius: var(--ui-radius);
   padding: var(--ui-space-3) var(--ui-space-3);
@@ -148,7 +148,7 @@
 
 /* ─── Slider & Number Section ─── */
 .sliderSection {
-  background-color: var(--ui-white);
+  background-color: var(--ui-surface);
   border: var(--ui-hairline);
   border-radius: var(--ui-radius);
   padding: var(--ui-space-4);

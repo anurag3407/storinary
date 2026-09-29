@@ -11,11 +11,32 @@
 }
 
 .skeletonCard {
-  background-color: var(--ui-bg);
-  border: var(--ui-hairline);
-  border-radius: var(--ui-radius);
-  animation: pulse 1.5s ease-in-out infinite;
+  background-color: var(--ui-surface-inset);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  overflow: hidden;
+  position: relative;
   aspect-ratio: 3 / 4;
+}
+
+.skeletonCard::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.6s var(--ui-ease-out) infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes pulse {

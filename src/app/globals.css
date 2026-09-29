@@ -143,17 +143,42 @@
   --ui-ring: 0 0 0 3px rgba(0, 71, 255, 0.18);
   --ui-ring-inset: inset 0 0 0 1px var(--ui-accent);
 
-  --ui-shadow-xs: 0 1px 2px rgba(12, 10, 9, 0.05);
-  --ui-shadow-sm: 0 1px 2px rgba(12, 10, 9, 0.05), 0 1px 3px rgba(12, 10, 9, 0.04);
-  --ui-shadow-md: 0 2px 4px rgba(12, 10, 9, 0.04), 0 6px 16px rgba(12, 10, 9, 0.06);
-  --ui-shadow-lg: 0 4px 8px rgba(12, 10, 9, 0.04), 0 16px 32px rgba(12, 10, 9, 0.08);
-  --ui-shadow-xl: 0 8px 16px rgba(12, 10, 9, 0.05), 0 32px 64px rgba(12, 10, 9, 0.12);
+  --ui-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --ui-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --ui-shadow-md: 0 2px 4px rgba(15, 23, 42, 0.04), 0 8px 16px -4px rgba(15, 23, 42, 0.08);
+  --ui-shadow-lg: 0 4px 6px -2px rgba(15, 23, 42, 0.04),
+    0 18px 32px -10px rgba(15, 23, 42, 0.12);
+  --ui-shadow-xl: 0 8px 10px -4px rgba(15, 23, 42, 0.05),
+    0 32px 56px -12px rgba(15, 23, 42, 0.18);
   --ui-shadow-none: none;
+
+  /* Named tiers — reach for these before the numeric ramp above. */
+  --ui-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --ui-shadow-raised: 0 2px 4px rgba(15, 23, 42, 0.05), 0 12px 24px -8px rgba(15, 23, 42, 0.1);
+  --ui-shadow-accent: 0 1px 2px rgba(0, 71, 255, 0.18), 0 8px 18px -6px rgba(0, 71, 255, 0.32);
+
+  /* ── Gradients & Glass ────────────────── */
+  --ui-grad-accent: linear-gradient(135deg, #3b82f6 0%, #0047ff 52%, #2f2be0 100%);
+  --ui-grad-accent-hover: linear-gradient(135deg, #2f74ea 0%, #0037cc 52%, #2623c4 100%);
+  --ui-grad-accent-soft: linear-gradient(180deg, #f8faff 0%, #eef2ff 100%);
+  --ui-grad-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 100%);
+  --ui-grad-surface: linear-gradient(180deg, var(--ui-surface) 0%, var(--ui-bg-subtle) 100%);
+
+  --ui-glass: rgba(250, 250, 249, 0.72);
+  --ui-glass-strong: rgba(250, 250, 249, 0.88);
+  --ui-glass-border: rgba(12, 10, 9, 0.07);
+  --ui-blur: saturate(180%) blur(14px);
 
   /* ── Motion ───────────────────────────── */
   --ui-transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
   --ui-transition-slow: 280ms cubic-bezier(0.4, 0, 0.2, 1);
   --ui-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ui-lift: translateY(-2px);
+  --ui-transition-lift: transform 220ms var(--ui-ease-out),
+    box-shadow 220ms var(--ui-ease-out), border-color var(--ui-transition),
+    background-color var(--ui-transition);
 }
 
 /* ── Reset ─────────────────────────────────── */
@@ -261,6 +286,20 @@ button {
   min-width: 0;
   min-height: 100vh;
   margin-left: var(--ui-sidebar-width);
+  /* Ambient corner tint keeps large empty areas from reading as flat grey. */
+  background-color: var(--ui-bg);
+  background-image: radial-gradient(
+      920px 440px at 100% -10%,
+      color-mix(in srgb, var(--ui-accent) 5%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(
+      720px 360px at -8% 108%,
+      color-mix(in srgb, var(--ui-chart-4) 4%, transparent),
+      transparent 60%
+    );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 .app-content {
@@ -358,16 +397,17 @@ button {
 /* Cards */
 .nb-card {
   background-color: var(--ui-surface);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  box-shadow: var(--ui-shadow-sm);
+  border: var(--ui-hairline);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-card);
   padding: var(--ui-space-6);
-  transition: box-shadow var(--ui-transition), border-color var(--ui-transition);
+  transition: var(--ui-transition-lift);
 }
 
 .nb-card:hover {
   border-color: var(--ui-border-strong);
-  box-shadow: var(--ui-shadow-md);
+  box-shadow: var(--ui-shadow-raised);
+  transform: var(--ui-lift);
 }
 
 /* Inputs — applies to every text-ish <input>, including unclassed ones */
@@ -381,9 +421,11 @@ textarea,
   font-size: var(--ui-text-sm);
   line-height: var(--ui-leading-snug);
   border: 1px solid var(--ui-border-strong);
-  border-radius: var(--ui-radius);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.03);
   outline: none;
-  transition: border-color var(--ui-transition), box-shadow var(--ui-transition);
+  transition: border-color var(--ui-transition), box-shadow var(--ui-transition),
+    background-color var(--ui-transition);
 }
 
 input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):hover,
@@ -535,7 +577,7 @@ select:focus,
   letter-spacing: 0.06em;
   text-align: left;
   padding: var(--ui-space-3) var(--ui-space-4);
-  background: var(--ui-bg-subtle);
+  background: var(--ui-grad-surface);
   color: var(--ui-text-muted);
   border-bottom: 1px solid var(--ui-border);
   white-space: nowrap;
@@ -546,6 +588,7 @@ select:focus,
   padding: var(--ui-space-4);
   color: var(--ui-text);
   border-bottom: 1px solid var(--ui-border-subtle);
+  font-variant-numeric: tabular-nums;
 }
 
 .nb-table tr:last-child td {
@@ -650,9 +693,14 @@ select:focus,
 }
 
 /* ── Custom Scrollbar ──────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 ::-webkit-scrollbar-track {
@@ -662,15 +710,46 @@ select:focus,
 ::-webkit-scrollbar-thumb {
   background: var(--ui-border-strong);
   border-radius: var(--ui-radius-full);
-  border: 2px solid var(--ui-bg);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  transition: background-color var(--ui-transition);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--ui-border-active);
+  background-clip: content-box;
 }
 
 /* ── Selection ─────────────────────────────── */
 ::selection {
-  background: var(--ui-accent-soft);
+  background: color-mix(in srgb, var(--ui-accent) 18%, transparent);
   color: var(--ui-text);
+}
+
+/* ── Numeric alignment for data-dense UI ───── */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ── Reduced motion ────────────────────────── */
+/* Honour the OS setting: keep colour/opacity feedback, drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  *:hover,
+  .nb-card:hover {
+    transform: none !important;
+  }
 }

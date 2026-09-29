@@ -1,38 +1,39 @@
 .card {
-  background-color: var(--ui-white);
-  border: var(--ui-hairline);
-  border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-lg);
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-card);
   overflow: hidden;
-  transition: var(--ui-transition);
+  transition: var(--ui-transition-lift);
   cursor: pointer;
   display: flex;
   flex-direction: column;
 }
 
 .card:hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--ui-shadow-xl);
+  transform: var(--ui-lift);
+  box-shadow: var(--ui-shadow-raised);
+  border-color: var(--ui-border);
 }
 
 .card:focus-visible {
-  outline: 3px solid var(--ui-accent);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ui-ring);
 }
 
 .selected {
   border-color: var(--ui-accent);
-  box-shadow: 0 0 0 3px var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-border), var(--ui-shadow-card);
 }
 
 .selected:hover {
-  box-shadow: 0 0 0 3px var(--ui-accent);
+  box-shadow: 0 0 0 3px var(--ui-accent-border), var(--ui-shadow-raised);
 }
 
 .imageWrap {
   position: relative;
-  border-bottom: var(--ui-hairline);
-  background-color: var(--ui-bg);
+  border-bottom: 1px solid var(--ui-border-subtle);
+  background-color: var(--ui-surface-inset);
 }
 
 .image {
@@ -47,8 +48,11 @@
   top: 8px;
   left: 8px;
   z-index: 2;
-  background-color: var(--ui-white);
-  border-radius: 4px;
+  background-color: var(--ui-glass-strong);
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: var(--ui-shadow-sm);
   padding: 2px;
 }
 
@@ -67,8 +71,9 @@
 
 .filename {
   display: block;
-  font-weight: 600;
+  font-weight: var(--ui-weight-semibold);
   font-size: var(--ui-text-sm);
+  color: var(--ui-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -78,14 +83,16 @@
   display: flex;
   justify-content: space-between;
   gap: var(--ui-space-2);
-  color: var(--ui-text-muted);
+  color: var(--ui-text-subtle);
   font-size: var(--ui-text-xs);
   margin-top: var(--ui-space-1);
+  font-variant-numeric: tabular-nums;
 }
 
 .actions {
   display: flex;
-  border-top: 1px solid var(--ui-border);
+  border-top: 1px solid var(--ui-border-subtle);
+  background-color: var(--ui-bg-subtle);
 }
 
 .actionBtn {
@@ -98,7 +105,7 @@
   font-weight: var(--ui-weight-medium);
   background: none;
   border: none;
-  border-right: 1px solid var(--ui-border);
+  border-right: 1px solid var(--ui-border-subtle);
   color: var(--ui-text-muted);
   text-decoration: none;
   transition: var(--ui-transition), color var(--ui-transition);
@@ -114,5 +121,6 @@
 }
 
 .actionBtn:hover {
-  background-color: var(--ui-bg);
+  background-color: var(--ui-surface-hover);
+  color: var(--ui-accent-text);
 }

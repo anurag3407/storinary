@@ -8,20 +8,33 @@
 }
 
 .icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: var(--ui-space-5);
+  font-size: 30px;
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-grad-accent-soft);
+  border: 1px solid var(--ui-accent-border);
+  box-shadow: var(--ui-shadow-xs);
 }
 
 .title {
   font-family: var(--ui-font-heading);
-  font-size: var(--ui-text-2xl);
-  margin-bottom: 8px;
+  font-size: var(--ui-text-xl);
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: -0.018em;
+  color: var(--ui-text);
+  margin-bottom: var(--ui-space-2);
 }
 
 .description {
   font-size: var(--ui-text-base);
   color: var(--ui-text-muted);
-  margin-bottom: 24px;
+  line-height: var(--ui-leading-snug);
+  margin-bottom: var(--ui-space-6);
   max-width: 400px;
 }
 

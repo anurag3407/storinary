@@ -1,6 +1,6 @@
 .panel {
   border: var(--ui-hairline);
-  box-shadow: var(--ui-shadow-lg);
+  box-shadow: var(--ui-shadow-card);
   background: white;
   padding: var(--ui-space-4);
 }

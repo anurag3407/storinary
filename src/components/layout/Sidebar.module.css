@@ -5,6 +5,11 @@
   width: var(--ui-sidebar-width);
   height: 100vh;
   background-color: var(--ui-surface);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-accent) 3%, var(--ui-surface)) 0%,
+    var(--ui-surface) 240px
+  );
   border-right: 1px solid var(--ui-border);
   display: flex;
   flex-direction: column;
@@ -17,8 +22,8 @@
   display: flex;
   align-items: center;
   gap: var(--ui-space-3);
-  padding: var(--ui-space-5);
-  border-bottom: 1px solid var(--ui-border);
+  padding: var(--ui-space-5) var(--ui-space-4);
+  border-bottom: 1px solid var(--ui-border-subtle);
   text-decoration: none;
   flex-shrink: 0;
   transition: background-color var(--ui-transition);
@@ -33,8 +38,10 @@
 .logoMark {
   width: 36px;
   height: 36px;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-surface-inset);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow-xs);
   flex-shrink: 0;
   object-fit: cover;
 }
@@ -42,25 +49,30 @@
 .logoBrand {
   display: flex;
   flex-direction: column;
-  line-height: 1.3;
+  line-height: 1.25;
+  min-width: 0;
 }
 
 .logoTitle {
-  font-size: var(--ui-text-md);
-  font-weight: var(--ui-weight-semibold);
+  font-size: var(--ui-text-sm);
+  font-weight: var(--ui-weight-bold);
   color: var(--ui-text);
-  letter-spacing: -0.02em;
+  letter-spacing: 0.09em;
 }
 
 .logoSub {
-  font-size: var(--ui-text-xs);
-  font-weight: var(--ui-weight-normal);
+  font-size: 10px;
+  font-weight: var(--ui-weight-medium);
   color: var(--ui-text-subtle);
+  letter-spacing: 0.13em;
 }
 
 .workspaceSelector {
-  padding: var(--ui-space-4) var(--ui-space-5) var(--ui-space-5);
-  border-bottom: 1px solid var(--ui-border);
+  margin: var(--ui-space-4) var(--ui-space-3) var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-grad-accent-soft);
   display: flex;
   flex-direction: column;
   gap: var(--ui-space-2);
@@ -74,29 +86,31 @@
 }
 
 .workspaceLabel {
-  font-size: var(--ui-text-xs);
-  font-weight: var(--ui-weight-medium);
+  font-size: 10px;
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
   color: var(--ui-text-subtle);
 }
 
 .workspaceNewBtn {
   font-size: var(--ui-text-xs);
   font-weight: var(--ui-weight-medium);
-  background: transparent;
-  border: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-accent-border);
   border-radius: var(--ui-radius-full);
   padding: 2px var(--ui-space-2);
   cursor: pointer;
-  transition: all var(--ui-transition);
-  color: var(--ui-text-muted);
+  transition: var(--ui-transition);
+  color: var(--ui-accent-text);
 }
 
 .workspaceNewBtn:hover {
-  background: var(--ui-accent-soft);
-  border-color: var(--ui-accent-border);
-  color: var(--ui-accent-text);
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: var(--ui-text-inverse);
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--ui-shadow-accent);
 }
 
 .createWorkspacePrompt {
@@ -107,17 +121,19 @@
   gap: var(--ui-space-2);
   padding: var(--ui-space-2) var(--ui-space-3);
   font-size: var(--ui-text-sm);
-  font-weight: var(--ui-weight-medium);
-  background: var(--ui-accent);
+  font-weight: var(--ui-weight-semibold);
+  background: var(--ui-grad-accent);
   border: 1px solid transparent;
-  border-radius: var(--ui-radius);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: var(--ui-shadow-accent);
   cursor: pointer;
-  transition: background-color var(--ui-transition);
+  transition: var(--ui-transition-lift);
   color: var(--ui-text-inverse);
 }
 
 .createWorkspacePrompt:hover {
-  background: var(--ui-accent-hover);
+  background: var(--ui-grad-accent-hover);
+  transform: var(--ui-lift);
 }
 
 .workspaceSelect {
@@ -127,11 +143,15 @@
   font-weight: var(--ui-weight-medium);
   background: var(--ui-surface);
   border: 1px solid var(--ui-border-strong);
-  border-radius: var(--ui-radius);
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   color: var(--ui-text);
   outline: none;
   transition: border-color var(--ui-transition), box-shadow var(--ui-transition);
+}
+
+.workspaceSelect:hover {
+  border-color: var(--ui-border-active);
 }
 
 .workspaceSelect:focus {
@@ -139,26 +159,36 @@
   box-shadow: var(--ui-ring);
 }
 
+.navSectionLabel {
+  font-size: 10px;
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ui-text-subtle);
+  margin: var(--ui-space-3) var(--ui-space-4) 0;
+}
+
 .nav {
   display: flex;
   flex-direction: column;
   flex: 1;
   gap: 2px;
-  padding: var(--ui-space-4) var(--ui-space-3);
+  padding: var(--ui-space-2) var(--ui-space-3) var(--ui-space-4);
 }
 
 .navLink {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--ui-space-3);
-  padding: var(--ui-space-2) var(--ui-space-3);
+  padding: 7px var(--ui-space-3);
   font-size: var(--ui-text-base);
   font-weight: var(--ui-weight-medium);
   color: var(--ui-text-muted);
   text-decoration: none;
   border-radius: var(--ui-radius);
-  border-left: 2px solid transparent;
-  transition: background-color var(--ui-transition), color var(--ui-transition);
+  transition: background-color var(--ui-transition), color var(--ui-transition),
+    box-shadow var(--ui-transition);
   cursor: pointer;
 }
 
@@ -173,17 +203,29 @@
 }
 
 .active {
-  background-color: var(--ui-accent-soft);
+  background: var(--ui-grad-accent-soft);
   color: var(--ui-accent-text);
-  border-left-color: var(--ui-accent);
   font-weight: var(--ui-weight-semibold);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px var(--ui-accent-border);
 }
 
 .active:hover {
-  background-color: var(--ui-accent-soft);
+  background: var(--ui-grad-accent-soft);
   color: var(--ui-accent-text);
   transform: none;
+}
+
+/* Leading accent rail marks the active route. */
+.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 var(--ui-radius-full) var(--ui-radius-full) 0;
+  background: var(--ui-grad-accent);
 }
 
 .navIcon {
@@ -208,9 +250,12 @@
 }
 
 .storageBox {
-  padding: var(--ui-space-5);
-  border-top: 1px solid var(--ui-border);
-  background-color: var(--ui-bg-subtle);
+  margin: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-card);
   flex-shrink: 0;
 }
 
@@ -222,8 +267,10 @@
 
 .storageLabel {
   display: block;
-  font-size: var(--ui-text-xs);
-  font-weight: var(--ui-weight-medium);
+  font-size: 10px;
+  font-weight: var(--ui-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ui-text-subtle);
 }
 
@@ -231,22 +278,24 @@
   display: block;
   font-weight: var(--ui-weight-semibold);
   font-size: var(--ui-text-sm);
-  margin: var(--ui-space-1) 0;
+  margin: var(--ui-space-2) 0;
   color: var(--ui-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .storageBar {
   height: 6px;
   border-radius: var(--ui-radius-full);
-  background-color: var(--ui-border-strong);
+  background-color: var(--ui-border-subtle);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
   overflow: hidden;
 }
 
 .storageFill {
   height: 100%;
-  background-color: var(--ui-accent);
+  background-image: var(--ui-grad-accent);
   border-radius: var(--ui-radius-full);
-  transition: width 0.4s var(--ui-ease);
+  transition: width 0.5s var(--ui-ease-out);
 }
 
 .storageSub {
@@ -255,6 +304,16 @@
   color: var(--ui-text-subtle);
   margin-top: var(--ui-space-2);
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border-top: 1px solid var(--ui-border-subtle);
+  flex-shrink: 0;
 }
 
 .backdrop {
@@ -264,7 +323,7 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.2s var(--ui-ease);
+    transition: transform 0.24s var(--ui-ease-out);
   }
 
   .sidebar.open {
@@ -275,7 +334,8 @@
     display: block;
     position: fixed;
     inset: 0;
-    background-color: rgba(12, 10, 9, 0.45);
+    background-color: rgba(12, 10, 9, 0.5);
+    backdrop-filter: blur(3px);
     z-index: 99;
   }
 }
