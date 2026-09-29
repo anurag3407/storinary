@@ -7,7 +7,6 @@ import {
   createPreviewUrl,
   loadUploadDefaults,
 } from '@/lib/upload-helpers';
-import { analyzeSubjectMask, createSubjectMask } from '@/lib/bg-removal';
 import type {
   ContentSafetyResult,
   ImageRecord,
@@ -234,6 +233,7 @@ export function useUpload() {
         // and catches tightly cropped explicit subjects without an external API.
         if (opts.moderate || globalOptions.moderate) {
           dispatch({ type: 'UPDATE_ITEM_STATUS', payload: { id: item.id, status: 'moderating' } });
+          const { createSubjectMask, analyzeSubjectMask } = await import('@/lib/bg-removal');
           const mask = await createSubjectMask(item.file);
           const moderation = await analyzeSubjectMask(mask);
           dispatch({ type: 'SET_ITEM_MODERATION', payload: { id: item.id, moderation } });

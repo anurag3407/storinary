@@ -32,7 +32,14 @@ type RouteContext = { params: Promise<{ id: string }> };
  */
 export async function GET(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
-  const data = await getImageDetail(id);
+
+  let data: Awaited<ReturnType<typeof getImageDetail>> = null;
+  try {
+    data = await getImageDetail(id);
+  } catch {
+    // Infrastructure failure — not the same as a missing asset.
+    return NextResponse.json({ error: 'Failed to load image' }, { status: 500 });
+  }
   if (!data) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

@@ -5,8 +5,16 @@
  * convention: {baseKey}_thumb.webp, {baseKey}_medium.webp, {baseKey}_large.webp
  */
 
-import sharp from 'sharp';
 import { uploadToStorage, getPublicUrl } from './storage';
+
+async function getSharp() {
+  try {
+    const mod = await import('sharp');
+    return mod.default || mod;
+  } catch {
+    return null;
+  }
+}
 
 export interface EagerVariant {
   /** Human-readable label (thumb, medium, large). */
@@ -44,6 +52,11 @@ export async function generateEagerTransforms(
 ): Promise<EagerVariant[]> {
   // Skip eager transforms for formats that don't benefit or break
   if (format === 'svg' || format === 'gif') {
+    return [];
+  }
+
+  const sharp = await getSharp();
+  if (!sharp) {
     return [];
   }
 

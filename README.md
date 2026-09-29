@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License: GPL-3.0" /></a>
-  <img src="https://img.shields.io/badge/tests-621%20passing-brightgreen" alt="621 tests passing" />
+  <img src="https://img.shields.io/badge/tests-639%20passing-brightgreen" alt="639 tests passing" />
   <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6" alt="TypeScript strict" />
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome" /></a>
@@ -122,7 +122,7 @@ Built for the exact problem Cloudinary users hit on the free tier: your account 
 - **Prisma + SQLite (dev) / PostgreSQL (production)** — metadata database
 - **sharp** — server-side image processing
 - **@imgly/background-removal** — client-side background removal (WASM + ONNX)
-- **Vitest + Testing Library** — 621 tests across 110 files
+- **Vitest + Testing Library** — 639 tests across 114 files
 - Vanilla **CSS Modules** with a neobrutalism design system (no Tailwind)
 
 ## 🚀 Quickstart
@@ -865,7 +865,7 @@ public delivery remains immutable and cacheable.
 ## 🧪 Testing
 
 ```bash
-npm test            # run all 621 tests once
+npm test            # run all 639 tests once
 npm run test:watch  # watch mode
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint

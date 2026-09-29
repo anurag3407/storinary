@@ -361,11 +361,15 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.24s var(--ui-ease-out);
+    /* visibility:hidden removes the closed drawer from the tab order and the
+       accessibility tree — translateX alone leaves it keyboard-focusable. */
+    visibility: hidden;
+    transition: transform 0.24s var(--ui-ease-out), visibility 0.24s var(--ui-ease-out);
   }
 
   .sidebar.open {
     transform: translateX(0);
+    visibility: visible;
   }
 
   .backdrop {

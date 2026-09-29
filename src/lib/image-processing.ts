@@ -1,5 +1,21 @@
-import sharp from 'sharp';
+import { imageSize } from 'image-size';
+import type sharpType from 'sharp';
 import type { TransformParams } from '@/types';
+
+let sharpInstance: typeof sharpType | null = null;
+let sharpChecked = false;
+
+async function getSharp(): Promise<typeof sharpType | null> {
+  if (sharpChecked) return sharpInstance;
+  sharpChecked = true;
+  try {
+    const mod = await import('sharp');
+    sharpInstance = (mod.default || mod) as typeof sharpType;
+  } catch {
+    sharpInstance = null;
+  }
+  return sharpInstance;
+}
 
 /**
  * Extract metadata from an image buffer.
@@ -10,11 +26,52 @@ export async function getImageMetadata(buffer: Buffer): Promise<{
   format: string;
   size: number;
 }> {
-  const metadata = await sharp(buffer).metadata();
+  // 1. Pure-JS header parsing (works on all runtimes without native binaries)
+  try {
+    const dimensions = imageSize(buffer);
+    if (dimensions && dimensions.width && dimensions.height) {
+      return {
+        width: dimensions.width,
+        height: dimensions.height,
+        format: dimensions.type || 'unknown',
+        size: buffer.length,
+      };
+    }
+  } catch {
+    // imageSize could not parse format, fallback
+  }
+
+  // 2. Fall back to sharp if available
+  const sharp = await getSharp();
+  if (sharp) {
+    try {
+      const metadata = await sharp(buffer).metadata();
+      return {
+        width: metadata.width || 0,
+        height: metadata.height || 0,
+        format: metadata.format || 'unknown',
+        size: buffer.length,
+      };
+    } catch {
+      // sharp could not parse format, fallback
+    }
+  }
+
+  // 3. Fallback for SVG or unparseable buffers
+  const str = buffer.toString('utf-8', 0, Math.min(buffer.length, 1000));
+  if (str.includes('<svg')) {
+    return {
+      width: 800,
+      height: 600,
+      format: 'svg',
+      size: buffer.length,
+    };
+  }
+
   return {
-    width: metadata.width || 0,
-    height: metadata.height || 0,
-    format: metadata.format || 'unknown',
+    width: 0,
+    height: 0,
+    format: 'unknown',
     size: buffer.length,
   };
 }
@@ -44,6 +101,21 @@ export async function transformImage(
       if (!width && height) width = Math.round((height * left) / right);
       else if (!height && width) height = Math.round((width * right) / left);
     }
+  }
+
+  const sharp = await getSharp();
+  if (!sharp) {
+    const isAutoFormat = params.fmt === 'auto';
+    const outputFormat = isAutoFormat
+      ? negotiateFormat(acceptHeader, params.fmt)
+      : (params.fmt || 'webp');
+    const contentType = `image/${outputFormat}`;
+    return {
+      buffer,
+      contentType,
+      format: outputFormat,
+      isAutoFormat,
+    };
   }
 
   let pipeline = sharp(buffer);
@@ -281,7 +353,7 @@ function gravityPosition(
     case 'auto':
     case 'face':
     case 'faces':
-      return sharp.strategy.attention;
+      return sharpInstance?.strategy?.attention ?? 'centre';
     default: return 'centre';
   }
 }
@@ -302,6 +374,15 @@ export async function optimizeForUpload(
   buffer: Buffer,
   maxWidth: number = 4096
 ): Promise<{ buffer: Buffer; format: string; contentType: string }> {
+  const sharp = await getSharp();
+  if (!sharp) {
+    const meta = await getImageMetadata(buffer);
+    return {
+      buffer,
+      format: meta.format || 'jpeg',
+      contentType: meta.format ? `image/${meta.format}` : 'image/jpeg',
+    };
+  }
   const metadata = await sharp(buffer).metadata();
   let pipeline = sharp(buffer).rotate(); // auto-orient based on EXIF
 
@@ -324,6 +405,10 @@ export async function createVideoPoster(buffer: Buffer): Promise<{
   contentType: string;
   format: string;
 }> {
+  const sharp = await getSharp();
+  if (!sharp) {
+    return { buffer, contentType: 'image/jpeg', format: 'jpeg' };
+  }
   const resultBuffer = await sharp(buffer)
     .resize({ width: 1280, height: 720, fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 82, effort: 4 })

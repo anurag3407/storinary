@@ -42,3 +42,11 @@ prisma/dev.db-*
 
 # cloudinary migration backup (images + manifest — do not commit)
 /cloudinary-backup/
+
+# OpenNext
+.open-next
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example

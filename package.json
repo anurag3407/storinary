@@ -22,17 +22,24 @@
   },
   "homepage": "https://github.com/anurag3407/storinary-cloud#readme",
   "scripts": {
-    "dev": "next dev",
+    "prebuild": "node scripts/patch-onnx.js && prisma generate --schema prisma/postgres/schema.prisma",
     "build": "next build",
+    "dev": "next dev",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "pretest": "prisma generate --schema prisma/schema.prisma",
     "test": "vitest run",
     "build:sdk": "npm run build --prefix packages/storinary",
     "test:watch": "vitest",
-    "vercel-build": "node scripts/vercel-build.js"
+    "vercel-build": "node scripts/vercel-build.js",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@cf-wasm/photon": "^0.4.0",
     "@clerk/nextjs": "^7.9.7",
     "@imgly/background-removal": "^1.7.0",
     "@prisma/client": "^6.0.0",
@@ -40,6 +47,7 @@
     "better-auth": "^1.7.6",
     "dashjs": "^5.2.1",
     "hls.js": "^1.7.1",
+    "image-size": "^2.0.4",
     "nanoid": "^5.0.0",
     "next": "^15.0.0",
     "node-appwrite": "^28.0.0",
@@ -51,6 +59,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
+    "@opennextjs/cloudflare": "^1.20.7",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -59,12 +68,14 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.5",
+    "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "fflate": "^0.8.3",
     "jsdom": "^29.1.1",
     "prisma": "^6.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.143.1"
   }
 }

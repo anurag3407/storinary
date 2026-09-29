@@ -2,13 +2,19 @@
 
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import styles from '@/app/login/login.module.css';
 import { LockIcon, AlertIcon, EyeOffIcon, EyeIcon } from '@/components/ui/icons';
 
 function ResetPasswordForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Better Auth redirects here with ?token=… (or ?error=INVALID_TOKEN when the
+  // link is expired). The reset endpoint rejects requests without a token, so
+  // the token must be read from the URL and passed through.
+  const token = searchParams.get('token') ?? '';
+  const linkInvalid = searchParams.get('error') === 'INVALID_TOKEN';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -24,7 +30,7 @@ function ResetPasswordForm() {
     setLoading(true);
     setError(null);
     try {
-      const res = await authClient.resetPassword({ newPassword: password });
+      const res = await authClient.resetPassword({ newPassword: password, token });
       if (res.error) {
         setError(res.error.message || 'Password reset failed. The link may have expired.');
       } else {
@@ -37,6 +43,35 @@ function ResetPasswordForm() {
     }
   };
 
+  if (!token || linkInvalid) {
+    return (
+      <div className={styles.pageContainer}>
+        <div className={styles.formPanel} style={{ width: '100%' }}>
+          <Link href="/login" className={styles.backHomeLink}>
+            ← Back to Sign In
+          </Link>
+
+          <div className={styles.authCard}>
+            <div className={styles.cardTop}>
+              <div className={styles.cardIcon}><AlertIcon size={22} /></div>
+              <h1 className={styles.cardTitle}>Reset link expired</h1>
+              <p className={styles.cardSubtitle}>
+                This password reset link is invalid or has already been used. Request a new one to
+                continue.
+              </p>
+            </div>
+
+            <div className={styles.cardFooter}>
+              <Link href="/forgot-password" style={{ color: 'var(--ui-text)', fontWeight: 600 }}>
+                Request a new reset link
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.formPanel} style={{ width: '100%' }}>
@@ -47,7 +82,7 @@ function ResetPasswordForm() {
         <div className={styles.authCard}>
           <div className={styles.cardTop}>
             <div className={styles.cardIcon}><LockIcon size={22} /></div>
-            <h2 className={styles.cardTitle}>Set new password</h2>
+            <h1 className={styles.cardTitle}>Set new password</h1>
             <p className={styles.cardSubtitle}>
               Choose a strong password with at least 8 characters.
             </p>

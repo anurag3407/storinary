@@ -47,10 +47,14 @@ export default function GalleryPage() {
   const [isManagingFolders, setIsManagingFolders] = useState(false);
 
   const loadCollections = useCallback(async () => {
-    const response = await fetch('/api/collections', { cache: 'no-store' });
-    if (!response.ok) return;
-    const data = await response.json();
-    setCollections(data.collections ?? []);
+    try {
+      const response = await fetch('/api/collections', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setCollections(data.collections ?? []);
+    } catch {
+      // Collections are optional chrome — an outage must not break the gallery.
+    }
   }, []);
 
   useEffect(() => {

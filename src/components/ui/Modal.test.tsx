@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Modal } from './Modal';
@@ -77,5 +78,31 @@ describe('Modal', () => {
     );
     await userEvent.click(screen.getByRole('dialog'));
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('moves focus into the dialog and restores it to the trigger on close', async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open dialog
+          </button>
+          <Modal isOpen={open} onClose={() => setOpen(false)} title="Hi">
+            body
+          </Modal>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const trigger = screen.getByRole('button', { name: 'Open dialog' });
+    await userEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });

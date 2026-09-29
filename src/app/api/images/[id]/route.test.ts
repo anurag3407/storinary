@@ -84,7 +84,9 @@ const MOCK_ROW = {
 const context = { params: Promise.resolve({ id: 'img-1' }) };
 
 describe('GET /api/images/:id', () => {
-  beforeEach(() => imageMock.findUnique.mockReset());
+  beforeEach(() => {
+    imageMock.findUnique.mockReset();
+  });
 
   it('returns the image with generated links', async () => {
     imageMock.findUnique.mockResolvedValue(MOCK_ROW);
@@ -105,6 +107,20 @@ describe('GET /api/images/:id', () => {
     const response = await GET(request, context);
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: 'Not found' });
+  });
+
+  it('returns 500 (not 404) when the database lookup fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    imageMock.findUnique.mockImplementation(() => {
+      throw new Error('connection refused');
+    });
+
+    const request = new NextRequest('http://localhost/api/images/img-1');
+    const response = await GET(request, context);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: 'Failed to load image' });
+    errorSpy.mockRestore();
   });
 });
 
