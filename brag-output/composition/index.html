@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Storinary — Launch Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #090a0f;
+        color: #ffffff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        overflow: hidden;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #090a0f;
+        background-image: 
+          radial-gradient(circle at 50% 20%, rgba(0, 71, 255, 0.15) 0%, transparent 60%),
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 100% 100%, 48px 48px, 48px 48px;
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Global Header Overlay */
+      .brand-top {
+        position: absolute;
+        top: 48px;
+        left: 64px;
+        right: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 100;
+      }
+      .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .brand-logo-img {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+      }
+      .brand-name {
+        font-size: 26px;
+        font-weight: 900;
+        letter-spacing: 2px;
+        color: #ffffff;
+      }
+      .brand-tag {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #60a5fa;
+        background: rgba(96, 165, 250, 0.15);
+        border: 1px solid rgba(96, 165, 250, 0.4);
+        padding: 4px 10px;
+        border-radius: 6px;
+      }
+      .brand-meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      .meta-pill {
+        font-size: 14px;
+        font-weight: 600;
+        color: #cbd5e1;
+        background: #141722;
+        border: 1px solid #282e3e;
+        padding: 6px 14px;
+        border-radius: 8px;
+      }
+
+      /* SCENE 1 STYLES */
+      .scene1-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 1500px;
+      }
+      .warning-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 1.5px solid #ef4444;
+        color: #fca5a5;
+        padding: 12px 28px;
+        border-radius: 999px;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 36px;
+        position: relative;
+      }
+      .warning-strike {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 4px;
+        background: #ef4444;
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+      .hero-title-main {
+        font-size: 88px;
+        font-weight: 900;
+        line-height: 1.06;
+        letter-spacing: -2px;
+        margin: 0;
+        color: #ffffff;
+      }
+      .hero-title-highlight {
+        color: #3b82f6;
+        text-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+        display: block;
+      }
+      .hero-subhead {
+        font-size: 26px;
+        font-weight: 500;
+        color: #cbd5e1;
+        margin-top: 28px;
+        max-width: 1000px;
+      }
+      .hero-pills-row {
+        display: flex;
+        gap: 16px;
+        margin-top: 36px;
+      }
+      .hero-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #141722;
+        border: 1.5px solid #282e3e;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .pill-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 10px #10b981;
+      }
+
+      /* SCENE 2 STYLES (URL DIFF & LATENCY) */
+      .scene2-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 1540px;
+      }
+      .scene2-tag {
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        color: #60a5fa;
+        text-transform: uppercase;
+        margin-bottom: 16px;
+      }
+      .scene2-heading {
+        font-size: 64px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+        margin: 0 0 40px 0;
+        text-align: center;
+      }
+      .url-diff-card {
+        width: 100%;
+        background: #11141c;
+        border: 2px solid #282e3e;
+        border-radius: 20px;
+        padding: 36px 44px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .url-bar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #1e2330;
+        padding-bottom: 16px;
+      }
+      .url-bar-label {
+        font-size: 15px;
+        font-weight: 700;
+        color: #94a3b8;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .url-bar-protocol {
+        font-family: monospace, monospace;
+        font-size: 14px;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.15);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+      }
+      .url-line {
+        font-family: monospace, monospace;
+        font-size: 28px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        line-height: 1.6;
+      }
+      .domain-old {
+        color: #ef4444;
+        text-decoration: line-through;
+        opacity: 0.7;
+      }
+      .domain-new {
+        color: #38bdf8;
+        font-weight: 800;
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        padding: 2px 10px;
+        border-radius: 8px;
+      }
+      .url-path {
+        color: #e2e8f0;
+      }
+      .url-params {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+      .metrics-grid-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        width: 100%;
+        margin-top: 36px;
+      }
+      .metric-box {
+        background: #11141c;
+        border: 1.5px solid #282e3e;
+        border-radius: 16px;
+        padding: 24px 28px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .metric-icon-wrap {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: rgba(59, 130, 246, 0.15);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+      }
+      .metric-value {
+        font-size: 32px;
+        font-weight: 900;
+        color: #ffffff;
+      }
+      .metric-label {
+        font-size: 15px;
+        color: #cbd5e1;
+        font-weight: 500;
+      }
+
+      /* SCENE 3 STYLES (3 POWER PILLARS) */
+      .scene3-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 1600px;
+      }
+      .scene3-heading {
+        font-size: 60px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+        margin: 0 0 16px 0;
+        text-align: center;
+      }
+      .scene3-sub {
+        font-size: 24px;
+        color: #cbd5e1;
+        margin: 0 0 48px 0;
+        text-align: center;
+      }
+      .pillars-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+        width: 100%;
+      }
+      .pillar-card {
+        background: #12151f;
+        border: 2px solid #282e3e;
+        border-radius: 20px;
+        padding: 36px 32px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+      }
+      .pillar-badge {
+        display: inline-flex;
+        align-self: flex-start;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        padding: 6px 12px;
+        border-radius: 6px;
+        margin-bottom: 24px;
+      }
+      .badge-green {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.15);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+      .badge-blue {
+        color: #60a5fa;
+        background: rgba(96, 165, 250, 0.15);
+        border: 1px solid rgba(96, 165, 250, 0.4);
+      }
+      .badge-purple {
+        color: #c084fc;
+        background: rgba(192, 132, 252, 0.15);
+        border: 1px solid rgba(192, 132, 252, 0.4);
+      }
+      .pillar-title {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1.2;
+        margin: 0 0 16px 0;
+      }
+      .pillar-desc {
+        font-size: 18px;
+        line-height: 1.6;
+        color: #cbd5e1;
+        margin: 0 0 28px 0;
+        flex-grow: 1;
+      }
+      .pillar-chips-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .pillar-chip {
+        font-family: monospace, monospace;
+        font-size: 13px;
+        font-weight: 600;
+        color: #e2e8f0;
+        background: #1a1e2d;
+        padding: 6px 12px;
+        border-radius: 6px;
+      }
+
+      /* SCENE 4 STYLES (OBSERVABILITY & $0 INVOICE) */
+      .scene4-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 1540px;
+      }
+      .scene4-heading {
+        font-size: 64px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+        margin: 0 0 36px 0;
+        text-align: center;
+      }
+      .dashboard-mockup {
+        width: 100%;
+        background: #11141c;
+        border: 2px solid #282e3e;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+      }
+      .dash-topbar {
+        background: #161a25;
+        border-bottom: 1.5px solid #282e3e;
+        padding: 16px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .dash-breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #cbd5e1;
+      }
+      .dash-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #10b981;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .dash-body {
+        padding: 40px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 28px;
+      }
+      .dash-stat-card {
+        background: #151923;
+        border: 1.5px solid #282e3e;
+        border-radius: 16px;
+        padding: 32px 28px;
+      }
+      .dash-stat-card.highlight-zero {
+        border-color: #10b981;
+        background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.15) 0%, #151923 70%);
+      }
+      .dash-stat-label {
+        font-size: 16px;
+        font-weight: 600;
+        color: #cbd5e1;
+        margin-bottom: 12px;
+      }
+      .dash-stat-number {
+        font-size: 56px;
+        font-weight: 900;
+        line-height: 1;
+        color: #ffffff;
+      }
+      .dash-stat-number.green {
+        color: #10b981;
+        text-shadow: 0 0 30px rgba(16, 185, 129, 0.4);
+      }
+      .dash-stat-sub {
+        font-size: 14px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-top: 12px;
+      }
+      .dash-stat-sub.positive {
+        color: #10b981;
+      }
+      .dash-callout {
+        margin-top: 24px;
+        font-size: 20px;
+        color: #cbd5e1;
+        font-weight: 600;
+      }
+
+      /* SCENE 5 STYLES (OUTRO & CTA) */
+      .scene5-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        max-width: 1400px;
+      }
+      .outro-logo-wrap {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        margin-bottom: 28px;
+      }
+      .outro-glow {
+        position: absolute;
+        inset: -20px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.6) 0%, transparent 70%);
+        filter: blur(20px);
+      }
+      .outro-logo-img {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .outro-brand-title {
+        font-size: 72px;
+        font-weight: 900;
+        letter-spacing: -1px;
+        margin: 0;
+        color: #ffffff;
+      }
+      .outro-tagline {
+        font-size: 32px;
+        font-weight: 700;
+        color: #60a5fa;
+        margin: 16px 0 32px 0;
+      }
+      .outro-badges {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 40px;
+      }
+      .outro-badge {
+        font-size: 16px;
+        font-weight: 700;
+        background: #141722;
+        border: 1.5px solid #282e3e;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 10px;
+      }
+      .outro-cta-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        background: #0047ff;
+        color: #ffffff;
+        font-size: 26px;
+        font-weight: 800;
+        padding: 18px 48px;
+        border-radius: 14px;
+        box-shadow: 0 10px 40px rgba(0, 71, 255, 0.5);
+      }
+      .outro-repo {
+        font-family: monospace, monospace;
+        font-size: 18px;
+        color: #94a3b8;
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-width="1920"
+      data-height="1080"
+      data-duration="20"
+    >
+      <!-- Audio Tracks with exact media durations -->
+      <audio
+        id="bgm"
+        src="assets/music/bgm.mp3"
+        data-start="0"
+        data-duration="20"
+        data-track-index="10"
+        data-volume="0.85"
+      ></audio>
+      <audio
+        id="sfx-switch"
+        src="assets/sfx/switch.ogg"
+        data-start="4.2"
+        data-duration="0.62"
+        data-track-index="11"
+        data-volume="0.75"
+      ></audio>
+      <audio
+        id="sfx-drop"
+        src="assets/sfx/drop.ogg"
+        data-start="8.2"
+        data-duration="0.11"
+        data-track-index="12"
+        data-volume="0.65"
+      ></audio>
+      <audio
+        id="sfx-click"
+        src="assets/sfx/click.ogg"
+        data-start="17.0"
+        data-duration="0.05"
+        data-track-index="13"
+        data-volume="0.8"
+      ></audio>
+
+      <!-- Persistent Brand Header -->
+      <header id="brand-header" class="brand-top">
+        <div class="brand-lockup">
+          <img id="header-logo" src="assets/images/logo.png" alt="Storinary" class="brand-logo-img" />
+          <span class="brand-name">STORINARY</span>
+          <span class="brand-tag">OPEN SOURCE</span>
+        </div>
+        <div class="brand-meta">
+          <span class="meta-pill">by Sayalabs</span>
+          <span class="meta-pill">v1.0.0</span>
+        </div>
+      </header>
+
+      <!-- SCENE 1: The Problem & The Revelation (0.0s - 3.5s) -->
+      <section id="scene-1" class="clip" data-start="0" data-duration="3.5">
+        <div id="scene1-container" class="scene1-content">
+          <div id="s1-warning" class="warning-card">
+            <span>⚠️</span>
+            <span>CLOUDINARY USAGE: 25/25 Credits Exceeded · Assets Deleted in 30 Days</span>
+            <div id="s1-strike" class="warning-strike"></div>
+          </div>
+          <h1 id="s1-title" class="hero-title-main">
+            UNLIMITED MEDIA DELIVERY.
+            <span class="hero-title-highlight">ZERO CLOUD INVOICES.</span>
+          </h1>
+          <p id="s1-subhead" class="hero-subhead">
+            The free, self-hosted Cloudinary alternative. Own your images, transform on the fly, and never get your account disabled.
+          </p>
+          <div id="s1-pills" class="hero-pills-row">
+            <div class="hero-pill"><span class="pill-dot"></span> 100% Drop-In API Compatibility</div>
+            <div class="hero-pill"><span class="pill-dot"></span> Client-Side WASM Background Removal</div>
+            <div class="hero-pill"><span class="pill-dot"></span> $0.00 Egress & Storage Bill</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 2: Drop-In URL Compatibility (3.5s - 8.0s) -->
+      <section id="scene-2" class="clip" data-start="3.5" data-duration="4.5">
+        <div id="scene2-container" class="scene2-content">
+          <span id="s2-tag" class="scene2-tag">Drop-In Migration</span>
+          <h2 id="s2-heading" class="scene2-heading">Swap The Domain. Keep Everything Else.</h2>
+          <div id="s2-url-card" class="url-diff-card">
+            <div class="url-bar-header">
+              <span class="url-bar-label">Live Cloudinary Syntax Adapter</span>
+              <span class="url-bar-protocol">HTTP GET 200 OK</span>
+            </div>
+            <div class="url-line">
+              <span class="url-path">https://</span>
+              <span id="s2-old-domain" class="domain-old">res.cloudinary.com</span>
+              <span id="s2-new-domain" class="domain-new">storinary.sayalabs.in</span>
+              <span class="url-path">/sayalabs/image/upload/</span>
+              <span id="s2-params" class="url-params">w_800,c_fill,f_auto,q_80</span>
+              <span class="url-path">/hero.webp</span>
+            </div>
+          </div>
+          <div id="s2-metrics" class="metrics-grid-row">
+            <div class="metric-box">
+              <div class="metric-icon-wrap">⚡</div>
+              <div>
+                <div class="metric-value">16ms</div>
+                <div class="metric-label">Sub-20ms Edge Delivery</div>
+              </div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-icon-wrap">📉</div>
+              <div>
+                <div class="metric-value">84%</div>
+                <div class="metric-label">Bandwidth Saved (WebP/AVIF)</div>
+              </div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-icon-wrap">🔒</div>
+              <div>
+                <div class="metric-value">HMAC</div>
+                <div class="metric-label">Signed Expiring URLs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 3: 3 Power Pillars (8.0s - 13.5s) -->
+      <section id="scene-3" class="clip" data-start="8.0" data-duration="5.5">
+        <div id="scene3-container" class="scene3-content">
+          <h2 id="s3-heading" class="scene3-heading">Built For Modern High-Volume Stacks</h2>
+          <p id="s3-sub" class="scene3-sub">Zero per-image pricing · Zero vendor lock-in</p>
+          <div class="pillars-grid">
+            <div id="s3-card-1" class="pillar-card">
+              <span class="pillar-badge badge-green">Free & Unlimited</span>
+              <h3 class="pillar-title">Client-Side AI Background Removal</h3>
+              <p class="pillar-desc">
+                In-browser WASM neural net removes image backgrounds privately with $0 server GPU cost.
+              </p>
+              <div class="pillar-chips-list">
+                <span class="pillar-chip">@imgly/background-removal</span>
+                <span class="pillar-chip">100% Private</span>
+              </div>
+            </div>
+            <div id="s3-card-2" class="pillar-card">
+              <span class="pillar-badge badge-blue">Multi-Cloud</span>
+              <h3 class="pillar-title">Bring Your Own Object Storage</h3>
+              <p class="pillar-desc">
+                Host assets directly in your Backblaze B2, Appwrite Storage, or Supabase S3 bucket.
+              </p>
+              <div class="pillar-chips-list">
+                <span class="pillar-chip">Backblaze 10GB Free</span>
+                <span class="pillar-chip">Appwrite Student Pack</span>
+              </div>
+            </div>
+            <div id="s3-card-3" class="pillar-card">
+              <span class="pillar-badge badge-purple">Video Pipeline</span>
+              <h3 class="pillar-title">Video Ingestion & Range Streaming</h3>
+              <p class="pillar-desc">
+                Authenticated MP4/WebM uploads with automatic FFmpeg subject poster extraction and HLS variants.
+              </p>
+              <div class="pillar-chips-list">
+                <span class="pillar-chip">FFmpeg Posters</span>
+                <span class="pillar-chip">Adaptive Playback</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 4: Console Observability & $0.00 Invoice (13.5s - 17.0s) -->
+      <section id="scene-4" class="clip" data-start="13.5" data-duration="3.5">
+        <div id="scene4-container" class="scene4-content">
+          <h2 id="s4-heading" class="scene4-heading">Full Production Observability</h2>
+          <div id="s4-dashboard" class="dashboard-mockup">
+            <div class="dash-topbar">
+              <div class="dash-breadcrumbs">
+                <span>Sayalabs Studio</span>
+                <span>/</span>
+                <span>Production Console</span>
+              </div>
+              <div class="dash-status">
+                <span class="pill-dot"></span>
+                <span>All Edge Nodes Operational</span>
+              </div>
+            </div>
+            <div class="dash-body">
+              <div class="dash-stat-card">
+                <div class="dash-stat-label">Total Assets Managed</div>
+                <div class="dash-stat-number" id="s4-count-assets">12,480</div>
+                <div class="dash-stat-sub">Across 8 folders & collections</div>
+              </div>
+              <div class="dash-stat-card">
+                <div class="dash-stat-label">Edge Cache Hit Ratio</div>
+                <div class="dash-stat-number" id="s4-count-cache">99.98%</div>
+                <div class="dash-stat-sub positive">Sub-20ms Anycast CDN</div>
+              </div>
+              <div class="dash-stat-card highlight-zero">
+                <div class="dash-stat-label">Current Monthly Invoice</div>
+                <div class="dash-stat-number green">$0.00</div>
+                <div class="dash-stat-sub positive">Cloudinary equivalent: $480.00/mo</div>
+              </div>
+            </div>
+          </div>
+          <div id="s4-callout" class="dash-callout">
+            Never get surprised by overage fees or deleted assets again.
+          </div>
+        </div>
+      </section>
+
+      <!-- SCENE 5: Outro & Call to Action (17.0s - 20.0s) -->
+      <section id="scene-5" class="clip" data-start="17.0" data-duration="3.0">
+        <div id="scene5-container" class="scene5-content">
+          <div id="s5-logo" class="outro-logo-wrap">
+            <div class="outro-glow"></div>
+            <img id="outro-logo-img" src="assets/images/logo.png" alt="Storinary Logo" class="outro-logo-img" />
+          </div>
+          <h1 id="s5-title" class="outro-brand-title">STORINARY</h1>
+          <p id="s5-tagline" class="outro-tagline">Own your images. Never get deleted.</p>
+          <div id="s5-badges" class="outro-badges">
+            <span class="outro-badge">GPL-3.0 Open Source</span>
+            <span class="outro-badge">Next.js 15 App Router</span>
+            <span class="outro-badge">639 Passing Tests</span>
+          </div>
+          <div id="s5-cta" class="outro-cta-btn">
+            <span>Deploy Free in 2 Minutes ➔</span>
+          </div>
+          <div id="s5-repo" class="outro-repo">
+            github.com/anurag3407/storinary-cloud
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Single paused GSAP timeline registered on window.__timelines["main"]
+      const tl = gsap.timeline({ paused: true });
+
+      // Persistent header entrance
+      tl.from("#brand-header", { y: -20, opacity: 0, duration: 0.6, ease: "power2.out" }, 0.1);
+
+      // --- SCENE 1 (0.0s - 3.5s) ---
+      tl.from("#s1-warning", { y: 24, opacity: 0, duration: 0.5, ease: "power3.out" }, 0.2);
+      tl.to("#s1-strike", { scaleX: 1, duration: 0.35, ease: "power2.inOut" }, 1.1);
+      tl.to("#s1-warning", { opacity: 0.3, scale: 0.95, duration: 0.3 }, 1.4);
+
+      tl.from("#s1-title", { y: 40, opacity: 0, duration: 0.7, ease: "power3.out" }, 1.4);
+      tl.from("#s1-subhead", { y: 20, opacity: 0, duration: 0.5, ease: "power2.out" }, 1.8);
+      tl.from("#s1-pills .hero-pill", { y: 20, opacity: 0, duration: 0.4, stagger: 0.12, ease: "power2.out" }, 2.1);
+      tl.to("#scene1-container", { y: -30, opacity: 0, duration: 0.4, ease: "power2.in" }, 3.1);
+
+      // --- SCENE 2 (3.5s - 8.0s) ---
+      tl.from("#s2-tag", { y: 15, opacity: 0, duration: 0.3, ease: "power2.out" }, 3.55);
+      tl.from("#s2-heading", { y: 25, opacity: 0, duration: 0.5, ease: "power3.out" }, 3.65);
+      tl.from("#s2-url-card", { scale: 0.94, opacity: 0, duration: 0.6, ease: "back.out(1.4)" }, 3.8);
+
+      // Strike Cloudinary domain & drop in Storinary domain
+      tl.fromTo("#s2-old-domain", { opacity: 1 }, { opacity: 0.4, duration: 0.3 }, 4.3);
+      tl.from("#s2-new-domain", { scale: 1.3, opacity: 0, duration: 0.4, ease: "back.out(2)" }, 4.4);
+      tl.from("#s2-params", { backgroundColor: "rgba(16, 185, 129, 0.6)", scale: 1.1, duration: 0.4, ease: "power2.out" }, 4.8);
+
+      // Metrics entrance
+      tl.from("#s2-metrics .metric-box", { y: 24, opacity: 0, duration: 0.4, stagger: 0.15, ease: "power2.out" }, 5.2);
+      tl.to("#scene2-container", { scale: 0.96, opacity: 0, duration: 0.4, ease: "power2.in" }, 7.6);
+
+      // --- SCENE 3 (8.0s - 13.5s) ---
+      tl.from("#s3-heading", { y: 25, opacity: 0, duration: 0.5, ease: "power3.out" }, 8.05);
+      tl.from("#s3-sub", { y: 15, opacity: 0, duration: 0.4, ease: "power2.out" }, 8.2);
+      tl.from("#s3-card-1", { y: 40, opacity: 0, duration: 0.5, ease: "power3.out" }, 8.4);
+      tl.from("#s3-card-2", { y: 40, opacity: 0, duration: 0.5, ease: "power3.out" }, 8.8);
+      tl.from("#s3-card-3", { y: 40, opacity: 0, duration: 0.5, ease: "power3.out" }, 9.2);
+      tl.to("#scene3-container", { y: -30, opacity: 0, duration: 0.4, ease: "power2.in" }, 13.1);
+
+      // --- SCENE 4 (13.5s - 17.0s) ---
+      tl.from("#s4-heading", { y: 25, opacity: 0, duration: 0.5, ease: "power3.out" }, 13.55);
+      tl.from("#s4-dashboard", { scale: 0.95, opacity: 0, duration: 0.6, ease: "power3.out" }, 13.75);
+      tl.from(".dash-stat-card", { y: 20, opacity: 0, duration: 0.4, stagger: 0.12, ease: "power2.out" }, 14.0);
+      tl.from("#s4-callout", { opacity: 0, duration: 0.4, ease: "power2.out" }, 14.8);
+      tl.to("#scene4-container", { scale: 0.96, opacity: 0, duration: 0.35, ease: "power2.in" }, 16.65);
+
+      // --- SCENE 5 (17.0s - 20.0s) ---
+      tl.from("#s5-logo", { scale: 0.6, opacity: 0, duration: 0.6, ease: "back.out(1.8)" }, 17.05);
+      tl.from("#s5-title", { y: 30, opacity: 0, duration: 0.5, ease: "power3.out" }, 17.3);
+      tl.from("#s5-tagline", { y: 20, opacity: 0, duration: 0.4, ease: "power2.out" }, 17.55);
+      tl.from("#s5-badges .outro-badge", { y: 15, opacity: 0, duration: 0.35, stagger: 0.1, ease: "power2.out" }, 17.8);
+      tl.from("#s5-cta", { scale: 0.9, opacity: 0, duration: 0.4, ease: "back.out(1.6)" }, 18.2);
+      tl.from("#s5-repo", { opacity: 0, duration: 0.4 }, 18.5);
+
+      // Register timeline
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

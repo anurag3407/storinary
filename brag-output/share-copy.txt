@@ -1,0 +1,3 @@
+Tired of Cloudinary disabling your account and deleting your assets for overages? 
+
+Meet Storinary: a free, self-hosted media CDN with drop-in API compatibility, real-time on-the-fly transforms, client-side AI background removal, and zero cloud invoices.
