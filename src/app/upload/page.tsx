@@ -15,7 +15,7 @@ import { UploadIcon, GlobeIcon, ClipboardIcon, TrashIcon, LinkGlyphIcon, TagIcon
 import styles from './upload.module.css';
 
 export default function UploadPage() {
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => typeof window !== 'undefined');
   useEffect(() => {
     setMounted(true);
   }, []);
