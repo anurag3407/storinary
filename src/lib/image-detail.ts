@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { serializeImageVersion } from '@/lib/asset-versions';
 import { generateLinks, serializeImage } from '@/lib/utils';
@@ -23,7 +24,7 @@ export class ImageDetailError extends Error {
  * @returns the image detail, or `null` when no image with that id exists.
  * @throws {ImageDetailError} when the lookup fails for an infrastructure reason.
  */
-export async function getImageDetail(id: string): Promise<ImageDetailResponse | null> {
+export const getImageDetail = cache(async (id: string): Promise<ImageDetailResponse | null> => {
   let image;
   try {
     image = await prisma.image.findUnique({
@@ -52,4 +53,4 @@ export async function getImageDetail(id: string): Promise<ImageDetailResponse | 
     versions: image.versions.map(serializeImageVersion),
     links,
   };
-}
+});

@@ -30,6 +30,14 @@ export interface ClerkAuthResult {
   name?: string;
 }
 
+const sessionAuthCache = new Map<string, { result: ClerkAuthResult | null; expiresAt: number }>();
+const tenantSyncCache = new Map<string, number>();
+
+export function clearClerkTenantSyncCache(): void {
+  sessionAuthCache.clear();
+  tenantSyncCache.clear();
+}
+
 /**
  * Resolves Clerk auth state from a Request or Next.js headers.
  */
@@ -39,22 +47,58 @@ export async function getClerkAuth(request?: Request): Promise<ClerkAuthResult |
   }
 
   try {
+    let headerList: Headers | null = null;
+    if (request?.headers) {
+      headerList = request.headers;
+    } else {
+      try {
+        headerList = await headers();
+      } catch {}
+    }
+
+    // Fast path: Edge middleware already verified Clerk session and injected trusted claims
+    const userIdFromHeader = headerList?.get('x-clerk-auth-user-id');
+    if (userIdFromHeader) {
+      return {
+        userId: userIdFromHeader,
+        orgId: headerList?.get('x-clerk-auth-org-id') ?? null,
+        orgRole: headerList?.get('x-clerk-auth-org-role') ?? null,
+        orgSlug: headerList?.get('x-clerk-auth-org-slug') ?? null,
+        email: `${userIdFromHeader}@clerk.user`,
+        name: 'Clerk User',
+      };
+    }
+
+    // Cache lookup for session token to avoid repeated RSA verification across parallel requests
+    const cookieHeader = headerList?.get('cookie') || '';
+    const sessionTokenMatch = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
+    const sessionToken = sessionTokenMatch ? sessionTokenMatch[1] : null;
+
+    if (sessionToken && process.env.NODE_ENV !== 'test') {
+      const cached = sessionAuthCache.get(sessionToken);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.result;
+      }
+    }
+
     const client = getClerkBackendClient();
     let req = request;
 
     if (!req) {
-      const headerList = await headers();
       const origin =
-        headerList.get('x-forwarded-proto') && headerList.get('host')
+        headerList?.get('x-forwarded-proto') && headerList?.get('host')
           ? `${headerList.get('x-forwarded-proto')}://${headerList.get('host')}`
           : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       req = new Request(origin, {
-        headers: headerList,
+        headers: headerList || undefined,
       });
     }
 
     const state = await client.authenticateRequest(req);
     if (!state.isSignedIn) {
+      if (sessionToken && process.env.NODE_ENV !== 'test') {
+        sessionAuthCache.set(sessionToken, { result: null, expiresAt: Date.now() + 10_000 });
+      }
       return null;
     }
 
@@ -73,7 +117,7 @@ export async function getClerkAuth(request?: Request): Promise<ClerkAuthResult |
       (claims.full_name as string) ||
       'Clerk User';
 
-    return {
+    const result: ClerkAuthResult = {
       userId: authData.userId,
       orgId: authData.orgId ?? null,
       orgRole: authData.orgRole ?? null,
@@ -81,16 +125,16 @@ export async function getClerkAuth(request?: Request): Promise<ClerkAuthResult |
       email,
       name,
     };
+
+    if (sessionToken && process.env.NODE_ENV !== 'test') {
+      sessionAuthCache.set(sessionToken, { result, expiresAt: Date.now() + 60_000 });
+    }
+
+    return result;
   } catch (error) {
     console.error('[clerk-auth] Failed to authenticate request with Clerk:', error);
     return null;
   }
-}
-
-const tenantSyncCache = new Map<string, number>();
-
-export function clearClerkTenantSyncCache(): void {
-  tenantSyncCache.clear();
 }
 
 /**
@@ -210,6 +254,10 @@ export async function getClerkTenantId(request?: Request): Promise<string> {
     name: auth.name,
     role: auth.orgRole || 'owner',
   });
+
+  try {
+    enterTenantScope(tenantOrgId);
+  } catch {}
 
   return tenantOrgId;
 }

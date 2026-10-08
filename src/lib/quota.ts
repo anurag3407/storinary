@@ -44,7 +44,7 @@ export interface QuotaCheckResult {
 
 // In-memory cache for storage usage to protect Cloudflare Worker CPU limits (Free tier: 10-50ms)
 const quotaUsageCache = new Map<string, { data: AccountStorageUsage; expiresAt: number }>();
-const QUOTA_CACHE_TTL_MS = 60_000; // 60 seconds
+const QUOTA_CACHE_TTL_MS = 120_000; // 2 minutes
 
 export function invalidateQuotaCache(orgId?: string): void {
   if (orgId) {
@@ -71,6 +71,11 @@ export async function getAccountStorageUsage(
     }
   }
 
+  try {
+    const { enterTenantScope } = await import('@/lib/prisma-scope');
+    enterTenantScope(organizationId);
+  } catch {}
+
   const orgWhere = { organizationId };
   const db = prismaModule?.rawPrisma || prismaModule?.prisma;
 
@@ -79,11 +84,6 @@ export async function getAccountStorageUsage(
     imageVersionSumResult,
     imageCountResult,
     videoSumResult,
-    videoVersionSumResult,
-    videoRenditionSumResult,
-    videoHlsSumResult,
-    videoDashSumResult,
-    videoClipSumResult,
     videoCountResult,
     orgResult,
   ] = await Promise.allSettled([
@@ -104,31 +104,6 @@ export async function getAccountStorageUsage(
       _sum: { fileSize: true },
     }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
 
-    db?.videoVersion?.aggregate?.({
-      where: orgWhere,
-      _sum: { fileSize: true },
-    }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
-
-    db?.videoRendition?.aggregate?.({
-      where: orgWhere,
-      _sum: { fileSize: true },
-    }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
-
-    db?.videoHlsPackage?.aggregate?.({
-      where: orgWhere,
-      _sum: { totalFileSize: true },
-    }) ?? Promise.resolve({ _sum: { totalFileSize: 0 } }),
-
-    db?.videoDashPackage?.aggregate?.({
-      where: orgWhere,
-      _sum: { totalFileSize: true },
-    }) ?? Promise.resolve({ _sum: { totalFileSize: 0 } }),
-
-    db?.videoClip?.aggregate?.({
-      where: orgWhere,
-      _sum: { fileSize: true },
-    }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
-
     db?.video?.count?.({ where: orgWhere }) ?? Promise.resolve(0),
 
     db?.organization?.findUnique?.({
@@ -136,6 +111,54 @@ export async function getAccountStorageUsage(
       select: { metadata: true },
     }) ?? Promise.resolve(null),
   ]);
+
+  const hasVideos =
+    (videoCountResult.status === 'fulfilled' &&
+      typeof videoCountResult.value === 'number' &&
+      videoCountResult.value > 0) ||
+    (videoSumResult.status === 'fulfilled' &&
+      Boolean(videoSumResult.value?._sum?.fileSize));
+
+  const [
+    videoVersionSumResult,
+    videoRenditionSumResult,
+    videoHlsSumResult,
+    videoDashSumResult,
+    videoClipSumResult,
+  ] = hasVideos
+    ? await Promise.allSettled([
+        db?.videoVersion?.aggregate?.({
+          where: orgWhere,
+          _sum: { fileSize: true },
+        }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
+
+        db?.videoRendition?.aggregate?.({
+          where: orgWhere,
+          _sum: { fileSize: true },
+        }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
+
+        db?.videoHlsPackage?.aggregate?.({
+          where: orgWhere,
+          _sum: { totalFileSize: true },
+        }) ?? Promise.resolve({ _sum: { totalFileSize: 0 } }),
+
+        db?.videoDashPackage?.aggregate?.({
+          where: orgWhere,
+          _sum: { totalFileSize: true },
+        }) ?? Promise.resolve({ _sum: { totalFileSize: 0 } }),
+
+        db?.videoClip?.aggregate?.({
+          where: orgWhere,
+          _sum: { fileSize: true },
+        }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
+      ])
+    : [
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { totalFileSize: 0 } } } as PromiseSettledResult<{ _sum: { totalFileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { totalFileSize: 0 } } } as PromiseSettledResult<{ _sum: { totalFileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+      ];
 
   const imageSum =
     imageSumResult.status === 'fulfilled' && imageSumResult.value?._sum?.fileSize

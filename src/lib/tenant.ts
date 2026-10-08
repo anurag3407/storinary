@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { rawPrisma } from '@/lib/prisma';
-import { currentTenantScope } from '@/lib/prisma-scope';
+import { currentTenantScope, enterTenantScope } from '@/lib/prisma-scope';
 import { isClerkEnabled } from '@/lib/auth-config';
 import { getClerkAuth, getClerkTenantId } from '@/lib/clerk-auth';
 
@@ -42,11 +42,16 @@ export async function getTenantId(request?: Request): Promise<string> {
       where: { hashedKey: createHash('sha256').update(apiKeyHeader).digest('hex') },
       select: { organizationId: true, revokedAt: true },
     });
-    if (key && !key.revokedAt) return key.organizationId;
+    if (key && !key.revokedAt) {
+      try { enterTenantScope(key.organizationId); } catch {}
+      return key.organizationId;
+    }
   }
 
   if (isClerkEnabled()) {
-    return await getClerkTenantId(request);
+    const clerkTenantId = await getClerkTenantId(request);
+    try { enterTenantScope(clerkTenantId); } catch {}
+    return clerkTenantId;
   }
 
   const session = await auth.api.getSession({ headers: requestHeaders });
@@ -55,6 +60,7 @@ export async function getTenantId(request?: Request): Promise<string> {
   if (!session.user.emailVerified) {
     throw new TenantContextError('Verify your email before accessing media');
   }
+  try { enterTenantScope(organizationId); } catch {}
   return organizationId;
 }
 

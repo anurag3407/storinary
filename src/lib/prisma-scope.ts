@@ -131,7 +131,11 @@ async function resolveOrganizationId(): Promise<string> {
   const bound = currentTenantScope();
   if (bound) return bound;
   const { getTenantId } = await import('@/lib/tenant');
-  return getTenantId();
+  const tenantId = await getTenantId();
+  try {
+    enterTenantScope(tenantId);
+  } catch {}
+  return tenantId;
 }
 
 type Delegate = Record<string, unknown>;

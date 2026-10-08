@@ -21,7 +21,7 @@ export function formatStorage(bytes: number): string {
 
 // In-memory cache for dashboard stats to protect Cloudflare Worker Free tier (10ms-50ms CPU limit)
 const statsCache = new Map<string, { data: StatsResponse; expiresAt: number }>();
-const STATS_CACHE_TTL_MS = 60_000; // 60 seconds
+const STATS_CACHE_TTL_MS = 120_000; // 2 minutes
 
 export function invalidateStatsCache(tenantId?: string): void {
   if (tenantId) {
@@ -47,6 +47,12 @@ export async function getStats(): Promise<StatsResponse> {
     }
   }
 
+  // Pre-bind tenant scope so nested queries don't re-resolve auth
+  try {
+    const { enterTenantScope } = await import('@/lib/prisma-scope');
+    enterTenantScope(tenantId);
+  } catch {}
+
   const firstOfMonth = new Date();
   firstOfMonth.setDate(1);
   firstOfMonth.setHours(0, 0, 0, 0);
@@ -61,11 +67,6 @@ export async function getStats(): Promise<StatsResponse> {
     uploadsThisMonthResult,
     totalVideosResult,
     videoStorageResult,
-    videoVersionsStorageResult,
-    videoRenditionsStorageResult,
-    videoHlsStorageResult,
-    videoDashStorageResult,
-    videoClipStorageResult,
   ] = await Promise.allSettled([
     prisma.image?.count?.() ?? Promise.resolve(0),
     prisma.image?.aggregate?.({ _sum: { fileSize: true } }) ??
@@ -83,17 +84,39 @@ export async function getStats(): Promise<StatsResponse> {
     prisma.video?.count?.() ?? Promise.resolve(0),
     prisma.video?.aggregate?.({ _sum: { fileSize: true } }) ??
       Promise.resolve({ _sum: { fileSize: 0 } }),
-    prisma.videoVersion?.aggregate?.({ _sum: { fileSize: true } }) ??
-      Promise.resolve({ _sum: { fileSize: 0 } }),
-    prisma.videoRendition?.aggregate?.({ _sum: { fileSize: true } }) ??
-      Promise.resolve({ _sum: { fileSize: 0 } }),
-    prisma.videoHlsPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
-      Promise.resolve({ _sum: { totalFileSize: 0 } }),
-    prisma.videoDashPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
-      Promise.resolve({ _sum: { totalFileSize: 0 } }),
-    prisma.videoClip?.aggregate?.({ _sum: { fileSize: true } }) ??
-      Promise.resolve({ _sum: { fileSize: 0 } }),
   ]);
+
+  const hasVideos =
+    totalVideosResult.status === 'fulfilled' &&
+    typeof totalVideosResult.value === 'number' &&
+    totalVideosResult.value > 0;
+
+  const [
+    videoVersionsStorageResult,
+    videoRenditionsStorageResult,
+    videoHlsStorageResult,
+    videoDashStorageResult,
+    videoClipStorageResult,
+  ] = hasVideos
+    ? await Promise.allSettled([
+        prisma.videoVersion?.aggregate?.({ _sum: { fileSize: true } }) ??
+          Promise.resolve({ _sum: { fileSize: 0 } }),
+        prisma.videoRendition?.aggregate?.({ _sum: { fileSize: true } }) ??
+          Promise.resolve({ _sum: { fileSize: 0 } }),
+        prisma.videoHlsPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
+          Promise.resolve({ _sum: { totalFileSize: 0 } }),
+        prisma.videoDashPackage?.aggregate?.({ _sum: { totalFileSize: true } }) ??
+          Promise.resolve({ _sum: { totalFileSize: 0 } }),
+        prisma.videoClip?.aggregate?.({ _sum: { fileSize: true } }) ??
+          Promise.resolve({ _sum: { fileSize: 0 } }),
+      ])
+    : [
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { totalFileSize: 0 } } } as PromiseSettledResult<{ _sum: { totalFileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { totalFileSize: 0 } } } as PromiseSettledResult<{ _sum: { totalFileSize: number } }>,
+        { status: 'fulfilled', value: { _sum: { fileSize: 0 } } } as PromiseSettledResult<{ _sum: { fileSize: number } }>,
+      ];
 
   const totalImages = totalImagesResult.status === 'fulfilled' ? totalImagesResult.value : 0;
   const totalStorageBytes =

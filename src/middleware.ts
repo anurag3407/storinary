@@ -1,4 +1,4 @@
-import { NextFetchEvent, NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { checkRateLimit, getRateLimitRule } from '@/lib/rate-limit';
 import { isClerkEnabled, hasClerkPublishableKey } from '@/lib/auth-config';
@@ -46,7 +46,8 @@ function isProtectedPage(pathname: string): boolean {
 
 async function applyRateLimitAndRouteAuth(
   request: NextRequest,
-  clerkUserId?: string | null
+  clerkUserId?: string | null,
+  forwardHeaders?: Headers
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const rule = getRateLimitRule(pathname, request.method);
@@ -81,6 +82,14 @@ async function applyRateLimitAndRouteAuth(
     }
   }
 
+  if (forwardHeaders) {
+    return NextResponse.next({
+      request: {
+        headers: forwardHeaders,
+      },
+    });
+  }
+
   return NextResponse.next();
 }
 
@@ -89,7 +98,14 @@ const clerkHandler =
     ? clerkMiddleware(async (auth, req) => {
         try {
           const authObj = await auth();
-          return applyRateLimitAndRouteAuth(req, authObj?.userId);
+          const authHeaders = new Headers(req.headers);
+          if (authObj?.userId) {
+            authHeaders.set('x-clerk-auth-user-id', authObj.userId);
+            if (authObj.orgId) authHeaders.set('x-clerk-auth-org-id', authObj.orgId);
+            if (authObj.orgRole) authHeaders.set('x-clerk-auth-org-role', authObj.orgRole);
+            if (authObj.orgSlug) authHeaders.set('x-clerk-auth-org-slug', authObj.orgSlug);
+          }
+          return applyRateLimitAndRouteAuth(req, authObj?.userId, authHeaders);
         } catch {
           return applyRateLimitAndRouteAuth(req);
         }
@@ -100,14 +116,13 @@ const safeFetchEvent = {
   waitUntil: (promise: Promise<unknown>) => {
     void promise.catch(() => {});
   },
-} as unknown as NextFetchEvent;
+};
 
 export async function middleware(
-  request: NextRequest,
-  _event?: NextFetchEvent
+  request: NextRequest
 ): Promise<NextResponse> {
   if (clerkHandler) {
-    const clerkRes = await clerkHandler(request, safeFetchEvent);
+    const clerkRes = await clerkHandler(request, safeFetchEvent as never);
     return (clerkRes || NextResponse.next()) as NextResponse;
   }
   return applyRateLimitAndRouteAuth(request);
