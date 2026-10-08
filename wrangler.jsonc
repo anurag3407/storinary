@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	"main": "worker.mjs",
 	"name": "storinary",
 	"compatibility_date": "2026-09-29",
 	"compatibility_flags": [
@@ -23,6 +23,19 @@
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "storinary"
+		}
+	],
+	"hyperdrive": [
+		{
+			// Hyperdrive holds the encrypted, pooled connection to Supabase; the
+			// Worker never dials Postgres directly (see src/lib/prisma.ts).
+			"binding": "HYPERDRIVE",
+			"id": "0efb5bed1f5443ce96b13d113f92d77a",
+			// Placeholder so `wrangler dev`/`deploy` do not require database
+			// credentials. Point local development at a real database with
+			// CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE, which
+			// overrides this value (see CONTRIBUTING.md).
+			"localConnectionString": "postgres://postgres:postgres@127.0.0.1:5432/postgres"
 		}
 	],
 	"images": {

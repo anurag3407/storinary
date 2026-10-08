@@ -1,5 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
-import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  bindRequestScope,
+  currentRequestScope,
+  runInRequestScope,
+  type RequestScope,
+} from '@/lib/request-scope';
 
 /**
  * Models whose rows belong to exactly one organization. Every read and write
@@ -28,19 +33,68 @@ const READ_OPERATIONS = new Set([
 ]);
 const UNIQUE_WRITE_OPERATIONS = new Set(['update', 'delete', 'upsert']);
 
-const scopeStorage = new AsyncLocalStorage<string>();
-
 export function currentTenantScope(): string | undefined {
-  return scopeStorage.getStore();
+  return currentRequestScope()?.organizationId;
 }
 
-/** Bind the active organization for the remainder of the current async graph. */
+/**
+ * Bind the active organization for the remainder of the current request.
+ *
+ * The tenant is recorded on the request scope opened by the Worker entry (see
+ * `src/lib/request-scope.ts`); on Node, where no such scope exists, it is bound
+ * to the current async graph directly.
+ */
 export function enterTenantScope(organizationId: string): void {
-  scopeStorage.enterWith(organizationId);
+  const scope = currentRequestScope();
+  if (scope) {
+    scope.organizationId = organizationId;
+    return;
+  }
+  if (!bindRequestScope({ organizationId })) {
+    throw new Error(
+      'Tenant scope is unavailable in this runtime: requests must run through the Worker entry (worker.mjs).'
+    );
+  }
 }
 
+/** Run `callback` with the given organization active, restoring the previous one after. */
 export function runWithTenantScope<T>(organizationId: string, callback: () => T): T {
-  return scopeStorage.run(organizationId, callback);
+  const parent = currentRequestScope();
+  if (!parent) {
+    return runInRequestScope({ organizationId }, callback);
+  }
+
+  // Share one connection holder across parent and nested scopes so that any
+  // Prisma client instantiated inside a nested scope is cached on the parent request.
+  const connection = parent.connection ?? (parent.connection = { prisma: parent.prisma });
+
+  if (!Object.getOwnPropertyDescriptor(parent, 'prisma')?.get) {
+    Object.defineProperty(parent, 'prisma', {
+      get: () => connection.prisma,
+      set: (val: RequestScope['prisma']) => {
+        connection.prisma = val;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  const childScope: RequestScope = {
+    ...parent,
+    organizationId,
+    connection,
+  };
+
+  Object.defineProperty(childScope, 'prisma', {
+    get: () => connection.prisma,
+    set: (val: RequestScope['prisma']) => {
+      connection.prisma = val;
+    },
+    enumerable: true,
+    configurable: true,
+  });
+
+  return runInRequestScope(childScope, callback);
 }
 
 type DelegateCall = (args: unknown) => Promise<unknown>;
@@ -74,7 +128,7 @@ function withTenantUpsert(args: unknown, organizationId: string): ScopedArgs {
 }
 
 async function resolveOrganizationId(): Promise<string> {
-  const bound = scopeStorage.getStore();
+  const bound = currentTenantScope();
   if (bound) return bound;
   const { getTenantId } = await import('@/lib/tenant');
   return getTenantId();

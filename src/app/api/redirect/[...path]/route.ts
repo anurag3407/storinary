@@ -213,14 +213,18 @@ export async function GET(
   // Look up the migrated image — exact match first, then any format
   let image = null;
   if (ext) {
-    image = await prisma.image.findUnique({
-      where: { storagePath: `${publicId}.${ext}` },
-    });
+    image = await findOrNull(() =>
+      prisma.image.findUnique({
+        where: { storagePath: `${publicId}.${ext}` },
+      })
+    );
   }
   if (!image) {
-    image = await prisma.image.findFirst({
-      where: { storagePath: { startsWith: `${publicId}.` } },
-    });
+    image = await findOrNull(() =>
+      prisma.image.findFirst({
+        where: { storagePath: { startsWith: `${publicId}.` } },
+      })
+    );
   }
 
   if (!image) {
@@ -302,22 +306,41 @@ export async function GET(
   });
 }
 
+/**
+ * Cloudinary-compatible delivery answers "found" or "not found" — never an
+ * unhandled 500. A lookup that fails (database unreachable, schema drift, …)
+ * therefore resolves to `null`, exactly like an asset that does not exist.
+ */
+async function findOrNull<T>(query: () => Promise<T | null>): Promise<T | null> {
+  try {
+    return await query();
+  } catch (error) {
+    console.error('[redirect] asset lookup failed:', error);
+    return null;
+  }
+}
+
 async function serveCloudinaryVideo(
   request: NextRequest,
   input: { exactPath: string | null; prefixPath: string; requestedRendition: string | null }
 ) {
-  const video = await prisma.video.findFirst({
-    where: input.exactPath ? { storagePath: input.exactPath } : undefined,
-  });
+  const video = await findOrNull(() =>
+    prisma.video.findFirst({
+      where: input.exactPath ? { storagePath: input.exactPath } : undefined,
+    })
+  );
   if (!video) return new Response('Not found', { status: 404 });
 
   let rendition = null;
-  if (input.requestedRendition) {
-    rendition = await prisma.videoRendition.findUnique({
-      where: {
-        videoId_label: { videoId: video.id, label: input.requestedRendition },
-      },
-    });
+  const requestedRendition = input.requestedRendition;
+  if (requestedRendition) {
+    rendition = await findOrNull(() =>
+      prisma.videoRendition.findUnique({
+        where: {
+          videoId_label: { videoId: video.id, label: requestedRendition },
+        },
+      })
+    );
     if (!rendition) return new Response('Rendition not found', { status: 404 });
   }
 

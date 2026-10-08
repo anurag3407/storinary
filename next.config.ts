@@ -31,7 +31,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ['sharp', 'resend', 'nodemailer'],
+  // Prisma must stay external: its generated client is resolved at runtime
+  // (and is patched by OpenNext), so bundling it breaks on Workers.
+  serverExternalPackages: ['sharp', 'resend', 'nodemailer', '@prisma/client', '.prisma/client'],
 
   // Allow large uploads via server actions
   experimental: {
@@ -66,4 +68,14 @@ const nextConfig: NextConfig = {
 
 export default nextConfig;
 
-import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());
+// Local (Node) development: give dev bindings the same origin database the
+// Worker reaches through Hyperdrive, and never let this dev-only proxy break
+// `next build` when no connection string is configured (e.g. in CI).
+const hyperdriveLocalConn = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (hyperdriveLocalConn && !process.env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE) {
+  process.env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE = hyperdriveLocalConn;
+}
+
+import('@opennextjs/cloudflare')
+  .then(m => m.initOpenNextCloudflareForDev())
+  .catch(() => undefined);

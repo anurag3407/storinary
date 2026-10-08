@@ -25,8 +25,14 @@
 // DATABASE_URL must point at a PostgreSQL connection string, e.g.
 //   postgresql://user:pass@host:5432/db?sslmode=require
 
+// The client is generated *engine-less* (`engineType = "client"`) and talks to
+// Postgres through a driver adapter (`@prisma/adapter-pg`, see src/lib/prisma.ts).
+// This is required for Cloudflare Workers: workerd disables
+// `WebAssembly.compile()`, so the wasm query engine the default generator emits
+// cannot run there, and the native Rust engine is not even shippable.
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {

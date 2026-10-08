@@ -9,7 +9,18 @@
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import * as net from 'node:net';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// The app's Prisma client targets Postgres (see src/lib/prisma.ts). This check
+// migrates and queries SQLite, so it supplies its own client to the same code
+// paths — the ambient @prisma/client is the SQLite one (`npm run pretest`
+// generates it) while the app build generates the Postgres one.
+vi.mock('./prisma', async () => {
+  const { PrismaClient } = await import('@prisma/client');
+  const { createTenantScopedClient } = await import('./prisma-scope');
+  const rawPrisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+  return { rawPrisma, prisma: createTenantScopedClient(rawPrisma) };
+});
 
 const SMTP_CAPTURE_PORT = 2599;
 

@@ -51,6 +51,17 @@ Open http://localhost:3000.
 
 > **Note:** the app uses a Supabase service-role key server-side. Never commit `.env` — it's already gitignored.
 
+### Running the Cloudflare Worker locally
+
+`npm run preview` builds the same Worker bundle `npm run deploy` publishes. On Workers,
+Postgres is reached through Hyperdrive, which needs an origin connection string for local
+runs (it is never committed):
+
+```bash
+export CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgres://user:password@host:5432/postgres"
+npm run preview
+```
+
 ## Development workflow
 
 1. Fork the repo and create a feature branch:
