@@ -84,7 +84,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Publish to npm
-        if: steps.version.outputs.changed == 'true'
+        if: steps.version.outputs.changed == 'true' && secrets.NPM_TOKEN != ''
         working-directory: packages/storinary
         run: npm publish
         env:
