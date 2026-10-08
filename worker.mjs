@@ -16,6 +16,16 @@ export * from './.open-next/worker.js';
 
 export default {
   async fetch(request, env, ctx) {
-    return scope.run({}, () => openNextWorker.fetch(request, env, ctx));
+    const requestScope = {};
+    try {
+      return await scope.run(requestScope, () => openNextWorker.fetch(request, env, ctx));
+    } finally {
+      if (requestScope.prisma) {
+        const disconnectPromise = requestScope.prisma.$disconnect().catch(() => {});
+        if (ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(disconnectPromise);
+        }
+      }
+    }
   },
 };

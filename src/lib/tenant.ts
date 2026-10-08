@@ -105,8 +105,20 @@ export async function tenantStoragePath(organizationId: string, path: string): P
   return `${organization.slug}/${path.replace(/^\/+/, '')}`;
 }
 
+const tenantPathCache = new Map<string, { id: string; expiresAt: number }>();
+
+function cacheTenant(key: string, id: string): void {
+  if (tenantPathCache.size > 2000) tenantPathCache.clear();
+  tenantPathCache.set(key, { id, expiresAt: Date.now() + 5 * 60 * 1000 });
+}
+
 export async function resolveTenantFromPath(path: string): Promise<string> {
   const clean = path.replace(/^\/+/, '');
+  const cached = tenantPathCache.get(clean);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.id;
+  }
+
   const segments = clean.split('/');
 
   // 1. If the first path segment matches an organization slug, use it
@@ -116,7 +128,10 @@ export async function resolveTenantFromPath(path: string): Promise<string> {
       where: { slug },
       select: { id: true },
     }).catch(() => null);
-    if (organization) return organization.id;
+    if (organization) {
+      cacheTenant(clean, organization.id);
+      return organization.id;
+    }
   }
 
   // 2. Check if this key exists under an existing image
@@ -124,27 +139,32 @@ export async function resolveTenantFromPath(path: string): Promise<string> {
     where: { storagePath: clean },
     select: { organizationId: true },
   }).catch(() => null);
-  if (image?.organizationId) return image.organizationId;
+  if (image?.organizationId) {
+    cacheTenant(clean, image.organizationId);
+    return image.organizationId;
+  }
 
   // 3. Check if this key exists under an existing video
   const video = await rawPrisma.video?.findFirst?.({
     where: { storagePath: clean },
     select: { organizationId: true },
   }).catch(() => null);
-  if (video?.organizationId) return video.organizationId;
+  if (video?.organizationId) {
+    cacheTenant(clean, video.organizationId);
+    return video.organizationId;
+  }
 
-  // 4. Fallback to legacy organization if it exists
-  const legacyOrg = await rawPrisma.organization?.findUnique?.({
-    where: { id: 'legacy' },
-    select: { id: true },
-  }).catch(() => null);
-  if (legacyOrg) return legacyOrg.id;
+  // 4. Fallback to legacy organization for single-segment paths if it exists
+  if (segments.length === 1) {
+    const legacyOrg = await rawPrisma.organization?.findUnique?.({
+      where: { id: 'legacy' },
+      select: { id: true },
+    }).catch(() => null);
+    if (legacyOrg) {
+      cacheTenant(clean, legacyOrg.id);
+      return legacyOrg.id;
+    }
+  }
 
-  // 5. Fallback to any active organization
-  const anyOrg = await rawPrisma.organization?.findFirst?.({
-    select: { id: true },
-  }).catch(() => null);
-  if (anyOrg) return anyOrg.id;
-
-  return 'default';
+  throw new TenantContextError('Organization not found');
 }

@@ -21,6 +21,20 @@ import type { TransformParams } from '@/types';
 
 export const runtime = 'nodejs';
 
+let namedTransformsCache: { data: Record<string, any>; expiresAt: number } | null = null;
+async function getCachedNamedTransforms(): Promise<Record<string, any>> {
+  if (namedTransformsCache && namedTransformsCache.expiresAt > Date.now()) {
+    return namedTransformsCache.data;
+  }
+  const activeNamedTransforms = await prisma.namedTransformation.findMany({
+    where: { active: true },
+    select: { name: true, params: true },
+  }).catch(() => []);
+  const data = Object.fromEntries(activeNamedTransforms.map((row) => [row.name, row.params]));
+  namedTransformsCache = { data, expiresAt: Date.now() + 60 * 1000 };
+  return data;
+}
+
 const PUBLIC_CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=31536000, immutable',
   'CDN-Cache-Control': 'public, max-age=31536000, immutable',
@@ -77,24 +91,27 @@ export async function GET(
     return new Response('Forbidden', { status: 403, headers: { 'Cache-Control': 'no-store' } });
   }
 
-  const activeNamedTransforms = await prisma.namedTransformation.findMany({
-    where: { active: true },
-    select: { name: true, params: true },
-  });
-  const namedTransforms = Object.fromEntries(activeNamedTransforms.map((row) => [row.name, row.params]));
-  const queryParams = parseTransformParams(
-    request.nextUrl.searchParams,
-    namedTransforms
-  ) as TransformParams;
+  const hasPossibleTransforms =
+    Boolean(pathTransforms && Object.keys(pathTransforms).length > 0) ||
+    request.nextUrl.searchParams.toString().length > 0;
 
-  // Merge path-based Cloudinary transforms with query parameters (query params take priority)
-  const params: TransformParams = {
-    ...pathTransforms,
-    ...queryParams,
-    ...(pathTransforms.e || queryParams.e
-      ? { e: [...(pathTransforms.e || []), ...(queryParams.e || [])] }
-      : {}),
-  };
+  let params: TransformParams = pathTransforms || {};
+  if (hasPossibleTransforms) {
+    const namedTransforms = await getCachedNamedTransforms();
+    const queryParams = parseTransformParams(
+      request.nextUrl.searchParams,
+      namedTransforms
+    ) as TransformParams;
+
+    // Merge path-based Cloudinary transforms with query parameters (query params take priority)
+    params = {
+      ...pathTransforms,
+      ...queryParams,
+      ...(pathTransforms.e || queryParams.e
+        ? { e: [...(pathTransforms.e || []), ...(queryParams.e || [])] }
+        : {}),
+    };
+  }
   const hasTransforms = hasTransformParams(params);
 
   // ─── 1. SERVE ORIGINAL DIRECTLY (No Redirects) ───────────────
@@ -176,18 +193,13 @@ export async function GET(
       return new Response('Not found', { status: 404 });
     }
 
-    const original = await prisma.image.findUnique({
-      where: { storagePath: key },
-      select: { id: true, originalName: true },
-    }).catch(() => null);
-
     const etag = computeEtag(fetched.buffer);
     const entry = {
       buffer: fetched.buffer,
       contentType: fetched.contentType,
       etag,
-      imageId: original?.id,
-      originalName: original?.originalName,
+      imageId: key,
+      originalName: key,
     };
     transformCache.set(origCacheKey, entry);
     diskCache.set(origCacheKey, entry).catch(() => {});
@@ -201,7 +213,7 @@ export async function GET(
     }
 
     void recordImageDelivery({
-      imageId: original?.id || key,
+      imageId: key,
       kind: 'original',
       cacheStatus: 'miss',
       bytes: fetched.buffer.length,
@@ -383,3 +395,5 @@ export async function GET(
     return new Response('Not found', { status: error instanceof Error && 'status' in error ? Number((error as { status: number }).status) : 404 });
   }
 }
+
+export const HEAD = GET;

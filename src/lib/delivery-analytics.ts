@@ -24,17 +24,21 @@ export async function recordImageDelivery(input: {
   referer: string | null;
   userAgent: string | null;
 }): Promise<void> {
-  await prisma.deliveryEvent.create({
-    data: {
-      imageId: input.imageId || null,
-      videoId: null,
-      rendition: input.cacheStatus || 'hit',
-      kind: input.kind === 'transform' ? `image:${input.kind}` : 'image:original',
-      bytes: Math.max(0, Math.floor(input.bytes ?? 0)),
-      referer: truncateReferer(input.referer),
-      userAgent: truncateUserAgent(input.userAgent),
-    },
-  });
+  try {
+    await prisma.deliveryEvent.create({
+      data: {
+        imageId: input.imageId || null,
+        videoId: null,
+        rendition: input.cacheStatus || 'hit',
+        kind: input.kind === 'transform' ? `image:${input.kind}` : 'image:original',
+        bytes: Math.max(0, Math.floor(input.bytes ?? 0)),
+        referer: truncateReferer(input.referer),
+        userAgent: truncateUserAgent(input.userAgent),
+      },
+    });
+  } catch {
+    // Delivery event recording is best-effort and must not throw during edge requests
+  }
 }
 
 export async function recordVideoDelivery(input: {
@@ -44,17 +48,21 @@ export async function recordVideoDelivery(input: {
   referer: string | null;
   userAgent: string | null;
 }): Promise<void> {
-  await prisma.deliveryEvent.create({
-    data: {
-      imageId: null,
-      videoId: input.videoId,
-      rendition: input.label || null,
-      kind: input.label ? `video:rendition` : 'video:original',
-      bytes: Math.max(0, Math.floor(input.bytes ?? 0)),
-      referer: truncateReferer(input.referer),
-      userAgent: truncateUserAgent(input.userAgent),
-    },
-  });
+  try {
+    await prisma.deliveryEvent.create({
+      data: {
+        imageId: null,
+        videoId: input.videoId,
+        rendition: input.label || null,
+        kind: input.label ? `video:rendition` : 'video:original',
+        bytes: Math.max(0, Math.floor(input.bytes ?? 0)),
+        referer: truncateReferer(input.referer),
+        userAgent: truncateUserAgent(input.userAgent),
+      },
+    });
+  } catch {
+    // Best-effort
+  }
 }
 
 export type CacheAnalytics = {
