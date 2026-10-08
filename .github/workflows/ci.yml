@@ -76,7 +76,14 @@ jobs:
         run: npm run build:sdk
       - name: Check whether version changed
         id: version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "Publish skipped: NPM_TOKEN secret not configured"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           VERSION="$(node -p "require('./packages/storinary/package.json').version")"
           if npm view "@storinary/sdk@$VERSION" version --silent >/dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -84,7 +91,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Publish to npm
-        if: steps.version.outputs.changed == 'true' && secrets.NPM_TOKEN != ''
+        if: steps.version.outputs.changed == 'true'
         working-directory: packages/storinary
         run: npm publish
         env:
