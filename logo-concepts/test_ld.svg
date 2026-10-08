@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-ld">
+  <title id="title-ld">Logo Design Skill — Concept C: The LD Monogram</title>
+  <!-- Unified LD monogram: D bowl atop the extended base shelf of the L -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 56 48
+    H 136
+    A 56 56 0 0 1 192 104
+    A 56 56 0 0 1 136 160
+    H 192
+    L 208 176
+    V 192
+    L 192 208
+    H 72
+    L 56 192
+    Z
+    M 104 96
+    H 136
+    A 16 16 0 0 1 152 112
+    A 16 16 0 0 1 136 128
+    H 104
+    Z
+  "/>
+</svg>

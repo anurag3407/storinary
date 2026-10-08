@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo.png" alt="Storinary logo" width="240" />
+  <img src="public/logo.png" alt="Storinary logo" width="160" />
 </p>
 
 # Storinary — Self-Hosted Image CDN
@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue.svg" alt="License: GPL-3.0" /></a>
-  <img src="https://img.shields.io/badge/tests-639%20passing-brightgreen" alt="639 tests passing" />
+  <img src="https://img.shields.io/badge/tests-646%20passing-brightgreen" alt="646 tests passing" />
   <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/TypeScript-strict-3178c6" alt="TypeScript strict" />
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs welcome" /></a>

@@ -1,0 +1,36 @@
+# Concept B: The Monolith Drive with unified connected lightning bolt
+svg_b = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-b">
+  <title id="title-b">Storinary — Concept B: The Monolith Drive</title>
+  <!-- Rugged storage container with carabiner loop aperture and unified transform bolt -->
+  <path fill="#0C0A09" fill-rule="evenodd" d="
+    M 76 38
+    H 148
+    L 204 94
+    V 194
+    A 24 24 0 0 1 180 218
+    H 76
+    A 24 24 0 0 1 52 194
+    V 62
+    A 24 24 0 0 1 76 38
+    Z
+    M 164 64
+    A 12 12 0 0 1 176 76
+    V 84
+    A 12 12 0 0 1 164 96
+    A 12 12 0 0 1 152 84
+    V 76
+    A 12 12 0 0 1 164 64
+    Z
+    M 140 108
+    L 92 156
+    H 124
+    L 116 200
+    L 164 152
+    H 132
+    Z
+  "/>
+</svg>"""
+
+with open("/Users/jarvis/storinary-supabase/storinary-brand-concepts/concept-b.svg", "w") as f:
+    f.write(svg_b)
+

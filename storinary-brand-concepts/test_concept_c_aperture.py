@@ -1,0 +1,32 @@
+# Concept C: The Media Shutter / Transform Aperture
+# An abstract combination of twin high-speed delivery chevrons framing a central camera/media lens aperture.
+# Pure 45-degree geometry on 256x256 canvas. Center (128, 128).
+
+svg_c = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">Storinary — Concept C: The Transform Aperture</title>
+  <!-- Twin delivery chevrons framing an edge transformation aperture -->
+  <path fill="#0C0A09" fill-rule="evenodd" d="
+    M 52 108
+    L 128 32
+    L 204 108
+    H 156
+    L 128 80
+    L 100 108
+    Z
+    M 204 148
+    L 128 224
+    L 52 148
+    H 100
+    L 128 176
+    L 156 148
+    Z
+    M 128 104
+    A 24 24 0 1 0 128 152
+    A 24 24 0 1 0 128 104
+    Z
+  "/>
+</svg>"""
+
+with open("/Users/jarvis/storinary-supabase/storinary-brand-concepts/concept-c.svg", "w") as f:
+    f.write(svg_c)
+

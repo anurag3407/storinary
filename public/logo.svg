@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">Storinary Logo</title>
+  <path fill="#0C0A09" d="
+    M 52 108
+    L 128 32
+    L 204 108
+    H 156
+    L 128 80
+    L 100 108
+    Z
+    M 204 148
+    L 128 224
+    L 52 148
+    H 100
+    L 128 176
+    L 156 148
+    Z
+  "/>
+  <circle cx="128" cy="128" r="24" fill="#0047FF"/>
+</svg>

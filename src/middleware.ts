@@ -96,12 +96,18 @@ const clerkHandler =
       })
     : null;
 
+const safeFetchEvent = {
+  waitUntil: (promise: Promise<unknown>) => {
+    void promise.catch(() => {});
+  },
+} as unknown as NextFetchEvent;
+
 export async function middleware(
   request: NextRequest,
-  event?: NextFetchEvent
+  _event?: NextFetchEvent
 ): Promise<NextResponse> {
-  if (clerkHandler && event) {
-    const clerkRes = await clerkHandler(request, event);
+  if (clerkHandler) {
+    const clerkRes = await clerkHandler(request, safeFetchEvent);
     return (clerkRes || NextResponse.next()) as NextResponse;
   }
   return applyRateLimitAndRouteAuth(request);

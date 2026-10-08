@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-cube">
+  <title id="title-cube">Storinary — Concept C: The Sovereign Cube</title>
+  <!-- Isometric storage monolith split by an S-velocity delivery channel -->
+  <path fill="#0C0A09" fill-rule="evenodd" d="
+    M 128 44
+    L 204 88
+    V 124
+    L 128 80
+    L 68 114
+    V 96
+    Z
+    M 204 140
+    V 168
+    L 128 212
+    L 52 168
+    V 132
+    L 128 176
+    L 188 142
+    Z
+    M 128 92
+    L 192 128
+    L 128 164
+    L 64 128
+    Z
+  "/>
+</svg>

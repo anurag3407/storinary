@@ -87,6 +87,12 @@ export async function getClerkAuth(request?: Request): Promise<ClerkAuthResult |
   }
 }
 
+const tenantSyncCache = new Map<string, number>();
+
+export function clearClerkTenantSyncCache(): void {
+  tenantSyncCache.clear();
+}
+
 /**
  * Synchronizes Clerk organization and user into Prisma so Storinary's
  * relational tenancy, foreign keys, and media scoping work out-of-the-box.
@@ -100,6 +106,13 @@ export async function ensureClerkTenantInPrisma(data: {
   name?: string;
   role?: string;
 }): Promise<void> {
+  const cacheKey = `${data.organizationId}:${data.userId}`;
+  const now = Date.now();
+  const cachedTime = tenantSyncCache.get(cacheKey);
+  if (cachedTime && now - cachedTime < 300_000) {
+    return;
+  }
+
   const existingOrg = await rawPrisma.organization.findUnique({
     where: { id: data.organizationId },
     select: { id: true },
@@ -170,6 +183,8 @@ export async function ensureClerkTenantInPrisma(data: {
       });
     }
   }
+
+  tenantSyncCache.set(cacheKey, now);
 }
 
 /**

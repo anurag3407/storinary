@@ -1,5 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#FFDE59"/>
-  <rect x="4" y="4" width="56" height="56" rx="8" fill="none" stroke="#000000" stroke-width="5"/>
-  <text x="32" y="45" font-family="Arial Black, Arial, sans-serif" font-size="34" font-weight="900" text-anchor="middle" fill="#000000">S</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="title-icon">
+  <title id="title-icon">Storinary Icon</title>
+  <rect width="64" height="64" rx="14" fill="#0C0A09"/>
+  <g transform="translate(6, 6) scale(0.203125)">
+    <path fill="#FFFFFF" d="
+      M 52 108
+      L 128 32
+      L 204 108
+      H 156
+      L 128 80
+      L 100 108
+      Z
+      M 204 148
+      L 128 224
+      L 52 148
+      H 100
+      L 128 176
+      L 156 148
+      Z
+    "/>
+    <circle cx="128" cy="128" r="24" fill="#0047FF"/>
+  </g>
 </svg>
