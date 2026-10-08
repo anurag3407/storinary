@@ -171,7 +171,8 @@ export async function GET(
     let fetched;
     try {
       fetched = await getFromStorage(key);
-    } catch {
+    } catch (err) {
+      console.error('[Serve] Failed to get original from storage:', key, err);
       return new Response('Not found', { status: 404 });
     }
 
@@ -229,7 +230,8 @@ export async function GET(
   let fetched;
   try {
     fetched = await getFromStorage(key);
-  } catch {
+  } catch (err) {
+    console.error('[Serve] Failed to get transform source from storage:', key, err);
     return new Response('Not found', { status: 404 });
   }
 

@@ -1,28 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// ── Mock Supabase and Appwrite clients before importing module ──────────────
+// ── Mock Supabase client before importing module ──────────────
 const {
   getPublicUrlMock,
   removeMock,
   downloadMock,
   uploadMock,
   listMock,
-  appwriteCreateFileMock,
-  appwriteGetFileDownloadMock,
-  appwriteGetFileMock,
-  appwriteDeleteFileMock,
-  appwriteListFilesMock,
 } = vi.hoisted(() => ({
   getPublicUrlMock: vi.fn(),
   removeMock: vi.fn(),
   downloadMock: vi.fn(),
   uploadMock: vi.fn(),
   listMock: vi.fn(),
-  appwriteCreateFileMock: vi.fn(),
-  appwriteGetFileDownloadMock: vi.fn(),
-  appwriteGetFileMock: vi.fn(),
-  appwriteDeleteFileMock: vi.fn(),
-  appwriteListFilesMock: vi.fn(),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -38,35 +28,6 @@ vi.mock('@supabase/supabase-js', () => ({
     },
   })),
 }));
-
-vi.mock('node-appwrite', () => {
-  class Client {
-    setEndpoint = vi.fn().mockReturnThis();
-    setProject = vi.fn().mockReturnThis();
-    setKey = vi.fn().mockReturnThis();
-  }
-  class Storage {
-    createFile = appwriteCreateFileMock;
-    getFileDownload = appwriteGetFileDownloadMock;
-    getFile = appwriteGetFileMock;
-    deleteFile = appwriteDeleteFileMock;
-    listFiles = appwriteListFilesMock;
-  }
-  return {
-    Client,
-    Storage,
-    ID: { unique: () => 'unique_id_123' },
-  };
-});
-
-vi.mock('node-appwrite/file', () => {
-  class InputFile {
-    static fromBuffer = vi.fn((buf: unknown, filename: string) => ({ buffer: buf, filename }));
-  }
-  return {
-    InputFile,
-  };
-});
 
 import {
   BUCKET,
@@ -307,72 +268,117 @@ describe('Supabase Storage Operations', () => {
 });
 
 describe('Appwrite Storage Operations', () => {
+  const fetchMock = vi.fn();
+
   beforeEach(() => {
     process.env.STORAGE_PROVIDER = 'appwrite';
     process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
     process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID = 'my_project';
     process.env.APPWRITE_BUCKET_ID = 'storinary';
-    appwriteCreateFileMock.mockReset();
-    appwriteGetFileDownloadMock.mockReset();
-    appwriteGetFileMock.mockReset();
-    appwriteDeleteFileMock.mockReset();
-    appwriteListFilesMock.mockReset();
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   it('uploads file to Appwrite bucket and returns sanitized fileId', async () => {
-    appwriteCreateFileMock.mockResolvedValue({ $id: 'photo-123.webp' });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      json: async () => ({ $id: 'photo-123.webp' }),
+    } as Response);
+
     const fileId = await uploadToStorage(Buffer.from('appwrite-data'), 'photo-123.webp', 'image/webp');
     expect(fileId).toBe('photo-123.webp');
-    expect(appwriteCreateFileMock).toHaveBeenCalledWith(
-      'storinary',
-      'photo-123.webp',
-      expect.objectContaining({ filename: 'photo-123.webp' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'X-Appwrite-Project': 'my_project' }),
+      })
     );
   });
 
   it('handles 409 conflict on upload by deleting and recreating (upsert)', async () => {
-    appwriteCreateFileMock
-      .mockRejectedValueOnce({ code: 409, message: 'File already exists' })
-      .mockResolvedValueOnce({ $id: 'conflict.webp' });
-    appwriteDeleteFileMock.mockResolvedValue({});
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        text: async () => 'File already exists',
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        json: async () => ({ $id: 'conflict.webp' }),
+      } as Response);
 
     const fileId = await uploadToStorage(Buffer.from('new-data'), 'conflict.webp', 'image/webp');
     expect(fileId).toBe('conflict.webp');
-    expect(appwriteDeleteFileMock).toHaveBeenCalledWith('storinary', 'conflict.webp');
-    expect(appwriteCreateFileMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('downloads file from Appwrite', async () => {
     const encoder = new TextEncoder();
     const arrayBuf = encoder.encode('appwrite-image-bytes').buffer;
-    appwriteGetFileDownloadMock.mockResolvedValue(arrayBuf);
-    appwriteGetFileMock.mockResolvedValue({ mimeType: 'image/webp' });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'image/webp' }),
+      arrayBuffer: async () => arrayBuf,
+    } as unknown as Response);
 
     const result = await getFromStorage('photo-123.webp');
     expect(result.contentType).toBe('image/webp');
     expect(result.buffer.toString()).toBe('appwrite-image-bytes');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/photo-123.webp/download',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Appwrite-Project': 'my_project' }),
+      })
+    );
   });
 
   it('deletes single file and bulk deletes from Appwrite', async () => {
-    appwriteDeleteFileMock.mockResolvedValue({});
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 204,
+    } as Response);
+
     await deleteFromStorage('photo-123.webp');
-    expect(appwriteDeleteFileMock).toHaveBeenCalledWith('storinary', 'photo-123.webp');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/photo-123.webp',
+      expect.objectContaining({ method: 'DELETE' })
+    );
 
     await bulkDeleteFromStorage(['a.webp', 'b.webp']);
-    expect(appwriteDeleteFileMock).toHaveBeenCalledWith('storinary', 'a.webp');
-    expect(appwriteDeleteFileMock).toHaveBeenCalledWith('storinary', 'b.webp');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/a.webp',
+      expect.objectContaining({ method: 'DELETE' })
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cloud.appwrite.io/v1/storage/buckets/storinary/files/b.webp',
+      expect.objectContaining({ method: 'DELETE' })
+    );
   });
 
   it('lists objects from Appwrite', async () => {
-    appwriteListFilesMock.mockResolvedValue({
-      files: [
-        {
-          $id: 'file-1.webp',
-          sizeOriginal: 2048,
-          $createdAt: '2026-08-24T00:00:00.000Z',
-        },
-      ],
-    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        total: 1,
+        files: [
+          {
+            $id: 'file-1.webp',
+            sizeOriginal: 2048,
+            $createdAt: '2026-08-24T00:00:00.000Z',
+          },
+        ],
+      }),
+    } as Response);
 
     const result = await listStorageObjects();
     expect(result.objects).toHaveLength(1);

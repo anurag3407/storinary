@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Client as AppwriteClient, Storage as AppwriteStorage } from 'node-appwrite';
-import { InputFile } from 'node-appwrite/file';
+
 
 export type StorageProviderType = 'backblaze' | 'appwrite' | 'supabase';
 
@@ -206,23 +205,14 @@ export function getAppwriteConfig() {
   return { endpoint, projectId, apiKey, bucketId };
 }
 
-let appwriteStorageInstance: AppwriteStorage | null = null;
-export function getAppwriteStorage(): {
-  storage: AppwriteStorage;
-  config: ReturnType<typeof getAppwriteConfig>;
-} {
-  const config = getAppwriteConfig();
-  if (!appwriteStorageInstance) {
-    const client = new AppwriteClient()
-      .setEndpoint(config.endpoint)
-      .setProject(config.projectId);
-
-    if (config.apiKey) {
-      client.setKey(config.apiKey);
-    }
-    appwriteStorageInstance = new AppwriteStorage(client);
+export function getAppwriteHeaders(config: ReturnType<typeof getAppwriteConfig>): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-Appwrite-Project': config.projectId,
+  };
+  if (config.apiKey) {
+    headers['X-Appwrite-Key'] = config.apiKey;
   }
-  return { storage: appwriteStorageInstance, config };
+  return headers;
 }
 
 // ── Backblaze B2 Client Helpers ──────────────────────────────
@@ -422,27 +412,43 @@ export async function uploadToStorage(
   }
 
   if (provider === 'appwrite') {
-    const { storage, config } = getAppwriteStorage();
+    const config = getAppwriteConfig();
     const fileId = sanitizeAppwriteFileId(key);
     const filename = key.split('/').pop() || `${fileId}.${contentType.split('/')[1] || 'bin'}`;
-    const inputFile = InputFile.fromBuffer(buffer, filename);
 
-    try {
-      await storage.createFile(config.bucketId, fileId, inputFile);
-    } catch (err: unknown) {
-      const error = err as { code?: number; message?: string };
-      // 409 Conflict: File already exists -> delete and recreate (upsert behavior)
-      if (error?.code === 409) {
-        try {
-          await storage.deleteFile(config.bucketId, fileId);
-        } catch {
-          // ignore deletion failure if race
-        }
-        await storage.createFile(config.bucketId, fileId, inputFile);
-      } else {
-        throw new Error(`Upload failed: ${error?.message || String(err)}`);
+    const executeUpload = async () => {
+      const formData = new FormData();
+      formData.append('fileId', fileId);
+      const blob = new Blob([new Uint8Array(buffer)], { type: contentType || 'application/octet-stream' });
+      formData.append('file', blob, filename);
+
+      return await fetch(`${config.endpoint}/storage/buckets/${config.bucketId}/files`, {
+        method: 'POST',
+        headers: getAppwriteHeaders(config),
+        body: formData,
+      });
+    };
+
+    let res = await executeUpload();
+
+    // 409 Conflict: File already exists -> delete and recreate (upsert behavior)
+    if (res.status === 409) {
+      try {
+        await fetch(`${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}`, {
+          method: 'DELETE',
+          headers: getAppwriteHeaders(config),
+        });
+      } catch {
+        // ignore deletion failure if race
       }
+      res = await executeUpload();
     }
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Upload failed: Appwrite upload error (${res.status}): ${errText}`);
+    }
+
     return fileId;
   }
 
@@ -494,30 +500,28 @@ export async function getFromStorage(key: string): Promise<StorageDownloadResult
   }
 
   if (provider === 'appwrite') {
-    const { storage, config } = getAppwriteStorage();
+    const config = getAppwriteConfig();
     const fileId = sanitizeAppwriteFileId(key);
 
-    try {
-      const arrayBuffer = await storage.getFileDownload(config.bucketId, fileId);
-      let contentType = 'application/octet-stream';
-
-      try {
-        const metadata = await storage.getFile(config.bucketId, fileId);
-        if (metadata.mimeType) {
-          contentType = metadata.mimeType;
-        }
-      } catch {
-        // Fallback to extension or octet-stream
+    const res = await fetch(
+      `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/download`,
+      {
+        headers: getAppwriteHeaders(config),
       }
+    );
 
-      return {
-        buffer: Buffer.from(arrayBuffer),
-        contentType,
-      };
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      throw new Error(`Download failed: ${error?.message || String(err)}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Download failed: Appwrite download error (${res.status}): ${errText}`);
     }
+
+    const arrayBuffer = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') || 'application/octet-stream';
+
+    return {
+      buffer: Buffer.from(arrayBuffer),
+      contentType,
+    };
   }
 
   // Supabase
@@ -565,19 +569,53 @@ export async function getVideoFromStorage(
     };
   }
 
-  const full =
-    provider === 'appwrite'
-      ? await getFromStorage(key)
-      : await (async () => {
-          const supabase = getSupabaseClient();
-          const bucket = getSupabaseBucket();
-          const { data, error } = await supabase.storage.from(bucket).download(key);
-          if (error || !data) throw new Error(`Video download failed: ${error?.message || 'No data'}`);
-          return {
-            buffer: Buffer.from(await data.arrayBuffer()),
-            contentType: data.type || 'video/mp4',
-          };
-        })();
+  if (provider === 'appwrite') {
+    const config = getAppwriteConfig();
+    const fileId = sanitizeAppwriteFileId(key);
+    const headers: Record<string, string> = {
+      ...getAppwriteHeaders(config),
+      ...(rangeHeader ? { Range: rangeHeader } : {}),
+    };
+
+    const response = await fetch(
+      `${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}/download`,
+      {
+        headers,
+      }
+    );
+
+    if (!response.ok && response.status !== 206) {
+      const errText = await response.text();
+      throw new Error(`Video download failed (${response.status}): ${errText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = response.headers.get('content-type') || 'video/mp4';
+    const contentRange = response.headers.get('content-range') || undefined;
+    const totalSize = Number(
+      contentRange?.split('/')[1] ?? response.headers.get('content-length') ?? buffer.length
+    );
+
+    return {
+      buffer,
+      contentType,
+      totalSize,
+      rangeStatus: response.status,
+      contentRange,
+    };
+  }
+
+  const full = await (async () => {
+    const supabase = getSupabaseClient();
+    const bucket = getSupabaseBucket();
+    const { data, error } = await supabase.storage.from(bucket).download(key);
+    if (error || !data) throw new Error(`Video download failed: ${error?.message || 'No data'}`);
+    return {
+      buffer: Buffer.from(await data.arrayBuffer()),
+      contentType: data.type || 'video/mp4',
+    };
+  })();
 
   const totalSize = full.buffer.length;
   const match = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader) : null;
@@ -666,13 +704,15 @@ export async function deleteFromStorage(key: string): Promise<void> {
   }
 
   if (provider === 'appwrite') {
-    const { storage, config } = getAppwriteStorage();
+    const config = getAppwriteConfig();
     const fileId = sanitizeAppwriteFileId(key);
-    try {
-      await storage.deleteFile(config.bucketId, fileId);
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      throw new Error(`Delete failed: ${error?.message || String(err)}`);
+    const res = await fetch(`${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}`, {
+      method: 'DELETE',
+      headers: getAppwriteHeaders(config),
+    });
+    if (!res.ok && res.status !== 404) {
+      const errText = await res.text();
+      throw new Error(`Delete failed: Appwrite delete error (${res.status}): ${errText}`);
     }
     return;
   }
@@ -703,17 +743,16 @@ export async function bulkDeleteFromStorage(keys: string[]): Promise<void> {
   }
 
   if (provider === 'appwrite') {
-    const { storage, config } = getAppwriteStorage();
+    const config = getAppwriteConfig();
     const promises = keys.map(async (k) => {
       const fileId = sanitizeAppwriteFileId(k);
-      try {
-        await storage.deleteFile(config.bucketId, fileId);
-      } catch (err: unknown) {
-        const error = err as { code?: number; message?: string };
-        // Ignore 404 if file was already removed
-        if (error?.code !== 404) {
-          throw err;
-        }
+      const res = await fetch(`${config.endpoint}/storage/buckets/${config.bucketId}/files/${fileId}`, {
+        method: 'DELETE',
+        headers: getAppwriteHeaders(config),
+      });
+      if (!res.ok && res.status !== 404) {
+        const errText = await res.text();
+        throw new Error(`Delete failed: Appwrite delete error (${res.status}): ${errText}`);
       }
     });
 
@@ -782,22 +821,46 @@ export async function listStorageObjects(
   }
 
   if (provider === 'appwrite') {
-    const { storage, config } = getAppwriteStorage();
-    try {
-      const response = await storage.listFiles(config.bucketId);
-      const objects = (response.files || []).map((file) => ({
-        key: file.$id,
-        size: file.sizeOriginal || 0,
-        lastModified: new Date(file.$createdAt || Date.now()),
-      }));
-      return {
-        objects,
-        nextOffset: response.files.length === limit ? offset + objects.length : undefined,
-      };
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      throw new Error(`List failed: ${error?.message || String(err)}`);
+    const config = getAppwriteConfig();
+    const queryParams = new URLSearchParams();
+    if (limit) {
+      queryParams.append('queries[0]', JSON.stringify({ method: 'limit', values: [limit] }));
     }
+    if (offset) {
+      queryParams.append('queries[1]', JSON.stringify({ method: 'offset', values: [offset] }));
+    }
+
+    const url = `${config.endpoint}/storage/buckets/${config.bucketId}/files${
+      queryParams.toString() ? `?${queryParams.toString()}` : ''
+    }`;
+    const res = await fetch(url, {
+      headers: getAppwriteHeaders(config),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`List failed: Appwrite list error (${res.status}): ${errText}`);
+    }
+
+    const response = (await res.json()) as {
+      total: number;
+      files: Array<{
+        $id: string;
+        sizeOriginal?: number;
+        $createdAt?: string;
+      }>;
+    };
+
+    const objects = (response.files || []).map((file) => ({
+      key: file.$id,
+      size: file.sizeOriginal || 0,
+      lastModified: new Date(file.$createdAt || Date.now()),
+    }));
+
+    return {
+      objects,
+      nextOffset: response.files.length === limit ? offset + objects.length : undefined,
+    };
   }
 
   // Supabase
