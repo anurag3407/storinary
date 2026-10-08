@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeImage } from '@/lib/utils';
 import { getStorageProviderInfo } from '@/lib/storage';
-import { getAccountStorageUsage } from '@/lib/quota';
 import { getTenantIdOrNull } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
 
@@ -167,10 +166,9 @@ export async function getStats(): Promise<StatsResponse> {
   const allStorageBytes = totalStorageBytes + totalVideoBytes;
   const providerInfo = getStorageProviderInfo();
 
-  const quota = await getAccountStorageUsage().catch(() => null);
-  const storageLimitBytes = quota?.limitBytes ?? 100 * 1024 * 1024;
-  const storageLimitFormatted = quota?.limitFormatted ?? '100 MB';
-  const planName = quota?.planName ?? 'Free Developer Tier';
+  const storageLimitBytes = 100 * 1024 * 1024;
+  const storageLimitFormatted = '100 MB';
+  const planName = 'Free Developer Tier';
   const storageRemainingBytes = Math.max(0, storageLimitBytes - allStorageBytes);
   const storagePercentage = Number(
     Math.min(100, Math.max(0, (allStorageBytes / storageLimitBytes) * 100)).toFixed(1)

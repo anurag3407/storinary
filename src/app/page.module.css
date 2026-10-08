@@ -22,3 +22,43 @@
     grid-template-columns: 1fr;
   }
 }
+
+.skeletonStatCard {
+  height: 120px;
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonSection {
+  height: 160px;
+  background-color: var(--ui-surface);
+  border: 1px solid var(--ui-border-subtle);
+  border-radius: var(--ui-radius-lg);
+  margin-bottom: var(--ui-space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeletonStatCard::after,
+.skeletonSection::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: dashboardShimmer 1.6s var(--ui-ease-out) infinite;
+}
+
+@keyframes dashboardShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
