@@ -111,6 +111,10 @@ async function captureVideoPoster(file: File): Promise<File | null> {
 }
 
 export default function VideosPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { toast } = useToast();
   const { copy } = useClipboard();
   const [videos, setVideos] = useState<VideoRecord[]>([]);
@@ -486,6 +490,21 @@ export default function VideosPage() {
       setClipBusyId('');
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className={styles.page}>
+        <Header
+          title="Videos"
+          description="Upload and stream MP4 or WebM assets with range requests."
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem 0' }}>
+          <div style={{ height: '48px', background: 'var(--border, #2a2a2a)', borderRadius: '8px' }} />
+          <div style={{ height: '240px', background: 'var(--card-bg, #1a1a1a)', borderRadius: '12px' }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

@@ -141,6 +141,10 @@ interface ActiveOrgData {
 }
 
 export default function SettingsPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const { toast } = useToast();
   const router = useRouter();
   const { copy } = useClipboard();
@@ -712,6 +716,21 @@ export default function SettingsPage() {
     orphanConfirmation.trim().toUpperCase() === `DELETE ${orphanAudit!.orphans.length} FILES`;
 
   const deleteConfirmed = deleteInput.trim().toUpperCase() === 'DELETE ALL';
+
+  if (!mounted) {
+    return (
+      <div>
+        <Header
+          title="Settings"
+          description="Configure your storage provider (Backblaze / Appwrite / Supabase) and default upload options."
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem 0' }}>
+          <div style={{ height: '50px', background: 'var(--ui-surface, #1e1e1e)', borderRadius: '8px' }} />
+          <div style={{ height: '300px', background: 'var(--ui-surface, #1e1e1e)', borderRadius: '8px' }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

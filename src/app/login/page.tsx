@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,6 +13,10 @@ import { AlertIcon, EyeOffIcon, ZapIcon, GlobeIcon, FolderIcon, EyeIcon, LockIco
 type Mode = 'sign-in' | 'sign-up';
 
 function LoginForm() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>(
@@ -87,6 +91,16 @@ function LoginForm() {
       setLoading(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className={styles.pageContainer}>
+        <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '32px', height: '32px', border: '2px solid #333', borderTopColor: '#ff4d4d', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.pageContainer}>

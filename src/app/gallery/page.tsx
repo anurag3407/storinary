@@ -20,6 +20,10 @@ import type { FolderRecord } from '@/lib/folders';
 import type { MetadataFieldRecord } from '@/lib/structured-metadata';
 
 export default function GalleryPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const {
     images,
     pagination,
@@ -250,6 +254,21 @@ export default function GalleryPage() {
       setIsManagingFolders(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <div className={styles.page}>
+        <Header
+          title="Gallery"
+          description="Search, filter, and manage your image library."
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem 0' }}>
+          <div style={{ height: '48px', background: 'var(--border, #2a2a2a)', borderRadius: '8px' }} />
+          <div style={{ height: '350px', background: 'var(--card-bg, #1a1a1a)', borderRadius: '12px' }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>

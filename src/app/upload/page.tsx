@@ -15,6 +15,10 @@ import { UploadIcon, GlobeIcon, ClipboardIcon, TrashIcon, LinkGlyphIcon, TagIcon
 import styles from './upload.module.css';
 
 export default function UploadPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const {
     state,
     addFiles,
@@ -212,6 +216,21 @@ export default function UploadPage() {
     const ok = await copy(text);
     toast.success(ok ? 'Links copied!' : 'Copy failed');
   };
+
+  if (!mounted) {
+    return (
+      <div className={styles.page}>
+        <Header
+          title="Upload Images"
+          description="Drag, drop, or paste images. Compress and remove backgrounds before they hit your CDN."
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem 0' }}>
+          <div style={{ height: '140px', background: 'var(--ui-surface, #1e1e1e)', borderRadius: '8px' }} />
+          <div style={{ height: '220px', background: 'var(--ui-surface, #1e1e1e)', borderRadius: '8px' }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
