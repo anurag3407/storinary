@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
   try {
     const quota = await getAccountStorageUsage(auth.organizationId);
 
+    const isPro = Boolean(quota.planName?.toLowerCase().includes('pro'));
+
     const plans = [
       {
         id: 'free',
@@ -25,7 +27,7 @@ export async function GET(request: NextRequest) {
         storageLimitBytes: ACCOUNT_STORAGE_LIMIT_BYTES,
         price: '$0',
         billing: 'Forever Free',
-        current: true,
+        current: !isPro,
         features: [
           '100 MB High-Speed Cloud Storage',
           'Real-Time Image Transformations (Resize, Crop, WebP/AVIF, Fill)',
@@ -42,8 +44,8 @@ export async function GET(request: NextRequest) {
         storageLimitBytes: 50 * 1024 * 1024 * 1024,
         price: '$19',
         billing: 'per month',
-        current: false,
-        status: 'coming_soon',
+        current: isPro,
+        status: isPro ? 'active' : 'coming_soon',
         features: [
           '50 GB High-Speed Cloud Storage',
           'Custom CDN Domains & CNAME',

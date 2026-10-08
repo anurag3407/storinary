@@ -78,8 +78,23 @@ export type DeliveryAnalytics = {
   referrers: Array<{ origin: string; events: number }>;
 };
 
+// In-memory cache to protect Cloudflare Worker CPU limits from aggregating 140k+ delivery events
+const deliveryAnalyticsCache = new Map<string, { data: DeliveryAnalytics; expiresAt: number }>();
+const DELIVERY_CACHE_TTL_MS = 60_000; // 60 seconds
+
+export function invalidateDeliveryAnalyticsCache(): void {
+  deliveryAnalyticsCache.clear();
+}
+
 export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnalytics> {
   const days = Math.min(MAX_DAYS, Math.max(1, Number.isFinite(daysInput) ? daysInput : 30));
+  const cacheKey = `${days}`;
+  const now = Date.now();
+  const cached = deliveryAnalyticsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.data;
+  }
+
   const from = new Date();
   from.setHours(0, 0, 0, 0);
   from.setDate(from.getDate() - (days - 1));
@@ -229,7 +244,7 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
     return `Archived Asset (${id.slice(0, 8)})`;
   };
 
-  return {
+  const result: DeliveryAnalytics = {
     range: { days, from: from.toISOString() },
     totals: {
       events: totalAggregate._count,
@@ -277,4 +292,11 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
       events: row._count,
     })),
   };
+
+  deliveryAnalyticsCache.set(cacheKey, {
+    data: result,
+    expiresAt: Date.now() + DELIVERY_CACHE_TTL_MS,
+  });
+
+  return result;
 }

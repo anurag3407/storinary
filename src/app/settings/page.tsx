@@ -726,19 +726,25 @@ export default function SettingsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h2 className={styles.cardTitle} style={{ margin: 0 }}>SaaS Plan & Storage Quota</h2>
-              <Badge variant="success">Active Plan</Badge>
+              <Badge variant={quota?.planName?.toLowerCase().includes('pro') ? 'info' : 'default'}>
+                {quota?.planName || 'Active Plan'}
+              </Badge>
             </div>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<ZapIcon size={16} />}
-              onClick={() => setIsUpgradeModalOpen(true)}
-            >
-              Upgrade Plan
-            </Button>
+            {!quota?.planName?.toLowerCase().includes('pro') && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<ZapIcon size={16} />}
+                onClick={() => setIsUpgradeModalOpen(true)}
+              >
+                Upgrade Plan
+              </Button>
+            )}
           </div>
           <p className={styles.cardDescription}>
-            Every Storinary account is provisioned with <strong>100 MB of free storage</strong>. Payment integration (Stripe &amp; Razorpay) is in development to unlock higher tiers.
+            {quota?.planName?.toLowerCase().includes('pro')
+              ? 'Your workspace is provisioned with 50 GB high-speed Pro cloud storage and unlimited transformations.'
+              : 'Every Storinary account is provisioned with 100 MB of free storage. Payment integration (Stripe & Razorpay) is in development to unlock higher tiers.'}
           </p>
 
           <div
@@ -1680,6 +1686,7 @@ export default function SettingsPage() {
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
         currentUsageFormatted={quota?.usedFormatted || '0 B'}
+        planName={quota?.planName}
       />
     </div>
   );

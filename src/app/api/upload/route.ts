@@ -11,7 +11,8 @@ import { authorizeDashboardOrApiKey } from '@/lib/media-auth';
 import { recordApiKeyUsage } from '@/lib/api-keys';
 import { dispatchWebhooks } from '@/lib/webhooks';
 import { recordInitialImageVersion } from '@/lib/asset-versions';
-import { checkStorageQuota, releasePendingBytes } from '@/lib/quota';
+import { checkStorageQuota, invalidateQuotaCache, releasePendingBytes } from '@/lib/quota';
+import { invalidateStatsCache } from '@/lib/stats';
 import type { UploadResponse } from '@/types';
 import type { ModerationResult } from '@/types';
 
@@ -245,6 +246,11 @@ export async function POST(request: NextRequest) {
         errors: errors.length,
         bytes: images.reduce((total, image) => total + image.fileSize, 0),
       });
+    }
+
+    if (images.length > 0) {
+      invalidateQuotaCache(tenantId);
+      invalidateStatsCache(tenantId);
     }
 
     return NextResponse.json(

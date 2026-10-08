@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { useAppAuth } from '@/components/auth/AuthProvider';
 import { UserButton } from '@clerk/nextjs';
@@ -111,9 +111,16 @@ export function Sidebar() {
     }
   };
 
-  // Fetch real storage stats on navigation and on quota update events
+  const lastStatsFetchRef = useRef<number>(0);
+
+  // Fetch real storage stats on navigation and on quota update events with 15s throttle
   useEffect(() => {
-    const fetchStats = () => {
+    const fetchStats = (force = false) => {
+      const now = Date.now();
+      if (!force && lastStatsFetchRef.current > 0 && now - lastStatsFetchRef.current < 15_000) {
+        return;
+      }
+      lastStatsFetchRef.current = now;
       fetch('/api/stats')
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
@@ -128,7 +135,7 @@ export function Sidebar() {
 
     fetchStats();
 
-    const handleQuotaUpdated = () => fetchStats();
+    const handleQuotaUpdated = () => fetchStats(true);
     const handleOpenUpgrade = () => setIsUpgradeModalOpen(true);
 
     window.addEventListener('storinary:quota-updated', handleQuotaUpdated);
@@ -264,16 +271,20 @@ export function Sidebar() {
           <div className={styles.storageHeader}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span className={styles.storageLabel}>PLAN</span>
-              <span className={styles.planBadge}>FREE TIER</span>
+              <span className={styles.planBadge}>
+                {stats?.planName?.toUpperCase().includes('PRO') ? 'PRO TIER' : 'FREE TIER'}
+              </span>
             </div>
-            <button
-              type="button"
-              className={styles.upgradeBtn}
-              onClick={() => setIsUpgradeModalOpen(true)}
-              title="Upgrade storage plan"
-            >
-              Upgrade
-            </button>
+            {!stats?.planName?.toUpperCase().includes('PRO') && (
+              <button
+                type="button"
+                className={styles.upgradeBtn}
+                onClick={() => setIsUpgradeModalOpen(true)}
+                title="Upgrade storage plan"
+              >
+                Upgrade
+              </button>
+            )}
           </div>
           <span className={styles.storageValue}>
             {usedFormatted} / {limitFormatted}
@@ -298,7 +309,7 @@ export function Sidebar() {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
             <span style={{ fontSize: '11px', color: pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : 'var(--ui-text-subtle)' }}>
-              {pct >= 100 ? 'Quota Reached' : pct >= 80 ? 'Approaching Limit' : '100 MB Limit'}
+              {pct >= 100 ? 'Quota Reached' : pct >= 80 ? 'Approaching Limit' : `${limitFormatted} Limit`}
             </span>
             <span className={styles.storageSub} style={{ margin: 0 }}>{pct}%</span>
           </div>
@@ -308,6 +319,7 @@ export function Sidebar() {
           isOpen={isUpgradeModalOpen}
           onClose={() => setIsUpgradeModalOpen(false)}
           currentUsageFormatted={usedFormatted}
+          planName={stats?.planName}
         />
       </aside>
     </>

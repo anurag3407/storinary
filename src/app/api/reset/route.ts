@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { invalidateQuotaCache } from '@/lib/quota';
+import { invalidateStatsCache } from '@/lib/stats';
 
 export const runtime = 'nodejs';
 
@@ -10,6 +12,8 @@ export const runtime = 'nodejs';
 export async function DELETE() {
   try {
     await prisma.image.deleteMany({});
+    invalidateQuotaCache();
+    invalidateStatsCache();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'Reset failed' }, { status: 500 });

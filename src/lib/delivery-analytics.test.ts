@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getDeliveryAnalytics,
+  invalidateDeliveryAnalyticsCache,
   recordImageDelivery,
   recordVideoDelivery,
 } from './delivery-analytics';
@@ -20,6 +21,7 @@ vi.mock('@/lib/prisma', () => ({ prisma }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  invalidateDeliveryAnalyticsCache();
   prisma.image.findMany.mockResolvedValue([{ id: 'img', originalName: 'image.png' }]);
   prisma.video.findMany.mockResolvedValue([{ id: 'vid', originalName: 'video.mp4' }]);
 });

@@ -9,6 +9,8 @@ import { getTenantIdOrNull } from '@/lib/tenant';
 export const ACCOUNT_STORAGE_LIMIT_BYTES = 100 * 1024 * 1024; // 104,857,600 bytes
 export const ACCOUNT_STORAGE_LIMIT_MB = 100;
 export const ACCOUNT_DEFAULT_PLAN = 'Free Developer Tier';
+export const PRO_STORAGE_LIMIT_BYTES = 50 * 1024 * 1024 * 1024; // 50 GB
+export const PRO_PLAN_NAME = 'Pro Developer';
 
 export interface AccountStorageUsage {
   organizationId: string;
@@ -40,6 +42,18 @@ export interface QuotaCheckResult {
   error?: string;
 }
 
+// In-memory cache for storage usage to protect Cloudflare Worker CPU limits (Free tier: 10-50ms)
+const quotaUsageCache = new Map<string, { data: AccountStorageUsage; expiresAt: number }>();
+const QUOTA_CACHE_TTL_MS = 60_000; // 60 seconds
+
+export function invalidateQuotaCache(orgId?: string): void {
+  if (orgId) {
+    quotaUsageCache.delete(orgId);
+  } else {
+    quotaUsageCache.clear();
+  }
+}
+
 /**
  * Calculates current real storage usage for a given organization across
  * images, image versions, videos, renditions, and streaming packages.
@@ -48,6 +62,15 @@ export async function getAccountStorageUsage(
   orgId?: string
 ): Promise<AccountStorageUsage> {
   const organizationId = orgId || (await getTenantIdOrNull()) || 'legacy';
+
+  const now = Date.now();
+  if (process.env.NODE_ENV !== 'test') {
+    const cached = quotaUsageCache.get(organizationId);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+  }
+
   const orgWhere = { organizationId };
   const db = prismaModule?.rawPrisma || prismaModule?.prisma;
 
@@ -62,6 +85,7 @@ export async function getAccountStorageUsage(
     videoDashSumResult,
     videoClipSumResult,
     videoCountResult,
+    orgResult,
   ] = await Promise.allSettled([
     db?.image?.aggregate?.({
       where: orgWhere,
@@ -106,6 +130,11 @@ export async function getAccountStorageUsage(
     }) ?? Promise.resolve({ _sum: { fileSize: 0 } }),
 
     db?.video?.count?.({ where: orgWhere }) ?? Promise.resolve(0),
+
+    db?.organization?.findUnique?.({
+      where: { id: organizationId },
+      select: { metadata: true },
+    }) ?? Promise.resolve(null),
   ]);
 
   const imageSum =
@@ -170,7 +199,19 @@ export async function getAccountStorageUsage(
     videoClipSum;
   const usedBytes = imageBytes + videoBytes;
 
-  const limitBytes = ACCOUNT_STORAGE_LIMIT_BYTES;
+  const orgData = orgResult.status === 'fulfilled' ? (orgResult.value as { metadata?: string | null } | null) : null;
+  let isPro = false;
+  if (orgData?.metadata) {
+    try {
+      const parsed = typeof orgData.metadata === 'string' ? JSON.parse(orgData.metadata) : orgData.metadata;
+      if (parsed?.plan === 'pro' || parsed?.planName?.toLowerCase().includes('pro')) {
+        isPro = true;
+      }
+    } catch {}
+  }
+
+  const limitBytes = isPro ? PRO_STORAGE_LIMIT_BYTES : ACCOUNT_STORAGE_LIMIT_BYTES;
+  const planName = isPro ? PRO_PLAN_NAME : ACCOUNT_DEFAULT_PLAN;
   const remainingBytes = Math.max(0, limitBytes - usedBytes);
   const percentage = Number(
     Math.min(100, Math.max(0, (usedBytes / limitBytes) * 100)).toFixed(1)
@@ -178,9 +219,9 @@ export async function getAccountStorageUsage(
   const isExceeded = usedBytes >= limitBytes;
   const isNearLimit = percentage >= 80;
 
-  return {
+  const result: AccountStorageUsage = {
     organizationId,
-    planName: ACCOUNT_DEFAULT_PLAN,
+    planName,
     limitBytes,
     limitFormatted: formatStorage(limitBytes),
     usedBytes,
@@ -197,6 +238,13 @@ export async function getAccountStorageUsage(
     isExceeded,
     isNearLimit,
   };
+
+  quotaUsageCache.set(organizationId, {
+    data: result,
+    expiresAt: Date.now() + QUOTA_CACHE_TTL_MS,
+  });
+
+  return result;
 }
 
 // In-flight bytes reservation per tenant to eliminate race conditions during concurrent parallel uploads
@@ -225,6 +273,7 @@ export function releasePendingBytes(organizationId: string, bytes: number): void
 
 export function resetPendingBytes(): void {
   inFlightBytesByOrg.clear();
+  quotaUsageCache.clear();
 }
 
 /**

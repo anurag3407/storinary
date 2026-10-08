@@ -11,15 +11,18 @@ interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUsageFormatted?: string;
+  planName?: string;
 }
 
 export function UpgradeModal({
   isOpen,
   onClose,
   currentUsageFormatted = '0 B',
+  planName = 'Free Developer Tier',
 }: UpgradeModalProps) {
   const { toast } = useToast();
   const [joined, setJoined] = useState(false);
+  const isPro = Boolean(planName?.toLowerCase().includes('pro'));
 
   const handleJoinPro = () => {
     setJoined(true);
@@ -49,8 +52,8 @@ export function UpgradeModal({
 
       <div className={styles.tiersGrid}>
         {/* Free Plan */}
-        <div className={`${styles.tierCard} ${styles.tierCardActive}`}>
-          <span className={`${styles.tierBadge} ${styles.tierBadgeCurrent}`}>Active Plan</span>
+        <div className={`${styles.tierCard} ${!isPro ? styles.tierCardActive : ''}`}>
+          {!isPro && <span className={`${styles.tierBadge} ${styles.tierBadgeCurrent}`}>Active Plan</span>}
           <div className={styles.tierHeader}>
             <div className={styles.tierName}>Free Developer</div>
             <div className={styles.tierPriceContainer}>
@@ -85,14 +88,16 @@ export function UpgradeModal({
           </ul>
           <div className={styles.tierAction}>
             <div className={styles.currentBtn}>
-              Currently Active ({currentUsageFormatted} used)
+              {!isPro ? `Currently Active (${currentUsageFormatted} used)` : 'Previous Plan (100 MB Limit)'}
             </div>
           </div>
         </div>
 
         {/* Pro Plan */}
-        <div className={`${styles.tierCard} ${styles.tierCardFeatured}`}>
-          <span className={styles.tierBadge}>Coming Soon</span>
+        <div className={`${styles.tierCard} ${styles.tierCardFeatured} ${isPro ? styles.tierCardActive : ''}`}>
+          <span className={`${styles.tierBadge} ${isPro ? styles.tierBadgeCurrent : ''}`}>
+            {isPro ? 'Active Plan' : 'Coming Soon'}
+          </span>
           <div className={styles.tierHeader}>
             <div className={styles.tierName}>Pro Creator</div>
             <div className={styles.tierPriceContainer}>
@@ -126,15 +131,21 @@ export function UpgradeModal({
             </li>
           </ul>
           <div className={styles.tierAction}>
-            <Button
-              variant="primary"
-              icon={<ZapIcon size={16} />}
-              onClick={handleJoinPro}
-              disabled={joined}
-              fullWidth
-            >
-              {joined ? 'Priority Granted' : 'Join Pro Waitlist'}
-            </Button>
+            {isPro ? (
+              <div className={styles.currentBtn}>
+                Currently Active ({currentUsageFormatted} used)
+              </div>
+            ) : (
+              <Button
+                variant="primary"
+                icon={<ZapIcon size={16} />}
+                onClick={handleJoinPro}
+                disabled={joined}
+                fullWidth
+              >
+                {joined ? 'Priority Granted' : 'Join Pro Waitlist'}
+              </Button>
+            )}
           </div>
         </div>
 

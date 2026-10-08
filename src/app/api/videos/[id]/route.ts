@@ -17,6 +17,9 @@ import {
   serializeVideoVersion,
 } from '@/lib/asset-versions';
 
+import { invalidateQuotaCache } from '@/lib/quota';
+import { invalidateStatsCache } from '@/lib/stats';
+
 export const runtime = 'nodejs';
 
 export async function DELETE(
@@ -68,6 +71,8 @@ export async function DELETE(
   }
 
   await prisma.video.delete({ where: { id } });
+  invalidateQuotaCache();
+  invalidateStatsCache();
   void dispatchWebhooks('video.deleted', { id: video.id, video });
   return NextResponse.json({ success: true, deleted: video.id });
 }

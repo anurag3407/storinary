@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { serializeImage } from '@/lib/utils';
 import { getStorageProviderInfo } from '@/lib/storage';
+import { getAccountStorageUsage } from '@/lib/quota';
+import { getTenantIdOrNull } from '@/lib/tenant';
 import type { StatsResponse } from '@/types';
 
 export function formatStorage(bytes: number): string {
@@ -17,11 +19,34 @@ export function formatStorage(bytes: number): string {
   return `${formatted} ${sizes[i]}`;
 }
 
+// In-memory cache for dashboard stats to protect Cloudflare Worker Free tier (10ms-50ms CPU limit)
+const statsCache = new Map<string, { data: StatsResponse; expiresAt: number }>();
+const STATS_CACHE_TTL_MS = 60_000; // 60 seconds
+
+export function invalidateStatsCache(tenantId?: string): void {
+  if (tenantId) {
+    statsCache.delete(tenantId);
+  } else {
+    statsCache.clear();
+  }
+}
+
 /**
  * Helper to query dashboard statistics directly from the database using Promise.allSettled
  * for parallel execution and fault tolerance in serverless environments.
+ * Caches in-memory in production to stay strictly within Cloudflare Worker free tier CPU limits.
  */
 export async function getStats(): Promise<StatsResponse> {
+  const tenantId = (await getTenantIdOrNull().catch(() => null)) || 'default';
+  const now = Date.now();
+
+  if (process.env.NODE_ENV !== 'test') {
+    const cached = statsCache.get(tenantId);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+  }
+
   const firstOfMonth = new Date();
   firstOfMonth.setDate(1);
   firstOfMonth.setHours(0, 0, 0, 0);
@@ -119,27 +144,29 @@ export async function getStats(): Promise<StatsResponse> {
   const allStorageBytes = totalStorageBytes + totalVideoBytes;
   const providerInfo = getStorageProviderInfo();
 
-  // 100 MB free quota limit per SaaS account/workspace
-  const storageLimitBytes = 100 * 1024 * 1024;
+  const quota = await getAccountStorageUsage().catch(() => null);
+  const storageLimitBytes = quota?.limitBytes ?? 100 * 1024 * 1024;
+  const storageLimitFormatted = quota?.limitFormatted ?? '100 MB';
+  const planName = quota?.planName ?? 'Free Developer Tier';
   const storageRemainingBytes = Math.max(0, storageLimitBytes - allStorageBytes);
   const storagePercentage = Number(
     Math.min(100, Math.max(0, (allStorageBytes / storageLimitBytes) * 100)).toFixed(1)
   );
   const isQuotaExceeded = allStorageBytes >= storageLimitBytes;
 
-  return {
+  const response: StatsResponse = {
     totalImages,
     totalVideos,
     totalVideoBytes,
     totalStorageBytes: allStorageBytes,
     totalStorageFormatted: formatStorage(allStorageBytes),
     storageLimitBytes,
-    storageLimitFormatted: '100 MB',
+    storageLimitFormatted,
     storageRemainingBytes,
     storageRemainingFormatted: formatStorage(storageRemainingBytes),
     storagePercentage,
     isQuotaExceeded,
-    planName: 'Free Developer Tier',
+    planName,
     imagesByFormat: Object.fromEntries(
       imagesByFormat.map((g) => [g.format, g._count])
     ),
@@ -155,4 +182,11 @@ export async function getStats(): Promise<StatsResponse> {
     isConfigured: providerInfo.isConfigured,
     supabaseBucket: providerInfo.bucket,
   };
+
+  statsCache.set(tenantId, {
+    data: response,
+    expiresAt: Date.now() + STATS_CACHE_TTL_MS,
+  });
+
+  return response;
 }

@@ -6,6 +6,8 @@ import { serializeImage } from '@/lib/utils';
 import { authorizeDashboardOrReadApiKey } from '@/lib/media-auth';
 import { recordApiKeyUsage } from '@/lib/api-keys';
 import { dispatchWebhooks } from '@/lib/webhooks';
+import { invalidateQuotaCache } from '@/lib/quota';
+import { invalidateStatsCache } from '@/lib/stats';
 import type { BulkDeleteResponse, ImagesListResponse } from '@/types';
 
 export const runtime = 'nodejs';
@@ -75,6 +77,27 @@ export async function GET(request: NextRequest) {
         orderBy: { [sort]: order } as Prisma.ImageOrderByWithRelationInput,
         skip: (page - 1) * limit,
         take: limit,
+        select: {
+          organizationId: true,
+          id: true,
+          originalName: true,
+          storagePath: true,
+          publicUrl: true,
+          width: true,
+          height: true,
+          fileSize: true,
+          format: true,
+          mimeType: true,
+          folder: true,
+          tags: true,
+          altText: true,
+          bgRemoved: true,
+          compressed: true,
+          aiModerated: true,
+          aiModerationScore: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       prisma.image.count({ where }),
     ]);
@@ -142,6 +165,8 @@ export async function DELETE(request: NextRequest) {
   });
 
   if (result.count > 0) {
+    invalidateQuotaCache();
+    invalidateStatsCache();
     void dispatchWebhooks('image.deleted', {
       ids: images.map((image) => image.id),
       count: result.count,
