@@ -21,8 +21,8 @@ import type { TransformParams } from '@/types';
 
 export const runtime = 'nodejs';
 
-let namedTransformsCache: { data: Record<string, any>; expiresAt: number } | null = null;
-async function getCachedNamedTransforms(): Promise<Record<string, any>> {
+let namedTransformsCache: { data: Record<string, string>; expiresAt: number } | null = null;
+async function getCachedNamedTransforms(): Promise<Record<string, string>> {
   if (namedTransformsCache && namedTransformsCache.expiresAt > Date.now()) {
     return namedTransformsCache.data;
   }
