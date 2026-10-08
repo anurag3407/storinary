@@ -157,7 +157,7 @@ describe('GET /api/serve/[...path]', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(imageFindUniqueMock).toHaveBeenNthCalledWith(2, {
+    expect(imageFindUniqueMock).toHaveBeenCalledWith({
       where: { id: 'overlay-1' },
       select: { storagePath: true },
     });

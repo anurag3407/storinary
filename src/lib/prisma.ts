@@ -91,8 +91,12 @@ function createClient(): PrismaClient {
     ? { ssl: { ca: process.env.DATABASE_CA_CERT, rejectUnauthorized: true } }
     : undefined;
 
+  const isWorker = isCloudflareWorker();
   const adapter = new PrismaPg({
     connectionString,
+    max: isWorker ? 1 : 10,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 1000,
     ...(sslConfig ? sslConfig : {}),
   });
 

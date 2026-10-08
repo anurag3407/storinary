@@ -233,12 +233,6 @@ export async function GET(
   }
 
   // ─── 2. SERVE ON-THE-FLY TRANSFORMS ─────────────────────────
-  const image = await prisma.image.findUnique({
-    where: { storagePath: key },
-    select: { id: true, fileSize: true, originalName: true },
-  });
-  if (!image) return new Response('Not found', { status: 404 });
-
   let fetched;
   try {
     fetched = await getFromStorage(key);
@@ -284,7 +278,7 @@ export async function GET(
       });
     }
     void recordImageDelivery({
-      imageId: image.id,
+      imageId: key,
       kind: 'transform',
       cacheStatus: 'hit:memory',
       bytes: cached.buffer.length,
@@ -311,8 +305,8 @@ export async function GET(
       buffer: diskCached.buffer,
       contentType: diskCached.contentType,
       etag,
-      imageId: image.id,
-      originalName: image.originalName,
+      imageId: key,
+      originalName: key,
     });
     if (isNotModified(request, etag)) {
       return createNotModifiedResponse(etag, {
@@ -323,7 +317,7 @@ export async function GET(
       });
     }
     void recordImageDelivery({
-      imageId: image.id,
+      imageId: key,
       kind: 'transform',
       cacheStatus: 'hit:disk',
       bytes: diskCached.buffer.length,
@@ -351,8 +345,8 @@ export async function GET(
         buffer: result.buffer,
         contentType: result.contentType,
         etag,
-        imageId: image.id,
-        originalName: image.originalName,
+        imageId: key,
+        originalName: key,
       };
       transformCache.set(cacheKey, entry);
       diskCache.set(cacheKey, entry).catch(() => {});
@@ -372,7 +366,7 @@ export async function GET(
   }
 
   void recordImageDelivery({
-    imageId: image.id,
+    imageId: key,
     kind: 'transform',
     cacheStatus: 'miss',
     bytes: resultEntry.buffer.length,
