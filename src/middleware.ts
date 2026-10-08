@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clerkMiddleware } from '@clerk/nextjs/server';
 import { checkRateLimit, getRateLimitRule } from '@/lib/rate-limit';
-import { isClerkEnabled, hasClerkPublishableKey } from '@/lib/auth-config';
+import { isClerkEnabled } from '@/lib/auth-config';
 
 function getSessionToken(request: NextRequest): string | null {
   if (isClerkEnabled()) {
@@ -93,39 +92,62 @@ async function applyRateLimitAndRouteAuth(
   return NextResponse.next();
 }
 
-const clerkHandler =
-  isClerkEnabled() && hasClerkPublishableKey()
-    ? clerkMiddleware(async (auth, req) => {
-        try {
-          const authObj = await auth();
-          const authHeaders = new Headers(req.headers);
-          if (authObj?.userId) {
-            authHeaders.set('x-clerk-auth-user-id', authObj.userId);
-            if (authObj.orgId) authHeaders.set('x-clerk-auth-org-id', authObj.orgId);
-            if (authObj.orgRole) authHeaders.set('x-clerk-auth-org-role', authObj.orgRole);
-            if (authObj.orgSlug) authHeaders.set('x-clerk-auth-org-slug', authObj.orgSlug);
-          }
-          return applyRateLimitAndRouteAuth(req, authObj?.userId, authHeaders);
-        } catch {
-          return applyRateLimitAndRouteAuth(req);
-        }
-      })
-    : null;
+interface ClerkJwtPayload {
+  sub?: string;
+  org_id?: string;
+  org_role?: string;
+  org_slug?: string;
+  exp?: number;
+}
 
-const safeFetchEvent = {
-  waitUntil: (promise: Promise<unknown>) => {
-    void promise.catch(() => {});
-  },
-};
+function parseClerkJwt(token: string): ClerkJwtPayload | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(base64);
+    const payload = JSON.parse(json) as ClerkJwtPayload;
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      return null;
+    }
+    return payload;
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(
   request: NextRequest
 ): Promise<NextResponse> {
-  if (clerkHandler) {
-    const clerkRes = await clerkHandler(request, safeFetchEvent as never);
-    return (clerkRes || NextResponse.next()) as NextResponse;
+  let clerkUserId: string | null = null;
+  let authHeaders: Headers | undefined;
+
+  if (isClerkEnabled()) {
+    const sessionToken =
+      request.cookies.get('__session')?.value ||
+      request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+
+    if (sessionToken) {
+      const claims = parseClerkJwt(sessionToken);
+      if (claims?.sub) {
+        clerkUserId = claims.sub;
+        authHeaders = new Headers(request.headers);
+        authHeaders.set('x-clerk-auth-user-id', claims.sub);
+        if (claims.org_id) authHeaders.set('x-clerk-auth-org-id', claims.org_id);
+        if (claims.org_role) authHeaders.set('x-clerk-auth-org-role', claims.org_role);
+        if (claims.org_slug) authHeaders.set('x-clerk-auth-org-slug', claims.org_slug);
+      }
+    }
   }
-  return applyRateLimitAndRouteAuth(request);
+
+  return applyRateLimitAndRouteAuth(request, clerkUserId, authHeaders);
 }
 
-export const config = { matcher: ['/((?!_next|favicon\\.ico).*)'] };
+export const config = {
+  matcher: [
+    // Skip Next.js internals, static files, images, icons, CSS, and JS chunks
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+};

@@ -80,7 +80,7 @@ export type DeliveryAnalytics = {
 
 // In-memory cache to protect Cloudflare Worker CPU limits from aggregating 140k+ delivery events
 const deliveryAnalyticsCache = new Map<string, { data: DeliveryAnalytics; expiresAt: number }>();
-const DELIVERY_CACHE_TTL_MS = 60_000; // 60 seconds
+const DELIVERY_CACHE_TTL_MS = 120_000; // 2 minutes
 
 export function invalidateDeliveryAnalyticsCache(): void {
   deliveryAnalyticsCache.clear();
@@ -94,6 +94,14 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
   if (cached && cached.expiresAt > now) {
     return cached.data;
   }
+
+  // Pre-bind tenant scope so nested queries don't re-resolve auth
+  try {
+    const { getTenantIdOrNull } = await import('@/lib/tenant');
+    const { enterTenantScope } = await import('@/lib/prisma-scope');
+    const tenantId = (await getTenantIdOrNull().catch(() => null)) || 'default';
+    enterTenantScope(tenantId);
+  } catch {}
 
   const from = new Date();
   from.setHours(0, 0, 0, 0);
@@ -128,7 +136,7 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
     }),
     isPostgres
       ? prisma.$queryRaw<Array<{ day: string; events: number | bigint; bytes: number | bigint }>>(Prisma.sql`
-          SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') AS day, COUNT(*)::int AS events, COALESCE(SUM("bytes"), 0)::int AS bytes
+          SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') AS day, COUNT(*)::bigint AS events, COALESCE(SUM("bytes"), 0)::bigint AS bytes
           FROM "DeliveryEvent" WHERE "createdAt" >= ${from} GROUP BY TO_CHAR("createdAt", 'YYYY-MM-DD')
         `).catch(() => [] as Array<{ day: string; events: number; bytes: number }>)
       : prisma.$queryRaw<Array<{ day: string; events: number | bigint; bytes: number | bigint }>>(Prisma.sql`
