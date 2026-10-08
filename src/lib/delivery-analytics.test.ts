@@ -69,7 +69,7 @@ describe('getDeliveryAnalytics', () => {
       .mockResolvedValueOnce({ _count: 3, _sum: { bytes: 30 } })
       .mockResolvedValueOnce({ _count: 2, _sum: { bytes: 20 } })
       .mockResolvedValueOnce({ _count: 1, _sum: { bytes: 10 } });
-    prisma.$queryRaw.mockResolvedValue([{ day: '2026-08-24', events: 3, bytes: 30 }]);
+    prisma.$queryRaw.mockResolvedValue([{ day: '2026-08-25', events: 3, bytes: 30 }]);
     prisma.deliveryEvent.groupBy
       .mockResolvedValueOnce([
         { imageId: 'img', _count: 2, _sum: { bytes: 20 } },

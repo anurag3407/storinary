@@ -104,8 +104,8 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
   } catch {}
 
   const from = new Date();
-  from.setHours(0, 0, 0, 0);
-  from.setDate(from.getDate() - (days - 1));
+  from.setUTCHours(0, 0, 0, 0);
+  from.setUTCDate(from.getUTCDate() - (days - 1));
 
   const isPostgres = Boolean(
     process.env.DATABASE_URL &&
@@ -204,7 +204,7 @@ export async function getDeliveryAnalytics(daysInput = 30): Promise<DeliveryAnal
   const dayBuckets = new Map<string, { events: number; bytes: number }>();
   for (let index = 0; index < days; index += 1) {
     const date = new Date(from);
-    date.setDate(date.getDate() + index);
+    date.setUTCDate(date.getUTCDate() + index);
     dayBuckets.set(date.toISOString().slice(0, 10), { events: 0, bytes: 0 });
   }
   for (const row of rawGroupedDays) {

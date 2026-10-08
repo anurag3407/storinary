@@ -1,0 +1,94 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Worker (Prisma Client)
+        run: npm run prepare:worker
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Create .dev.vars configuration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          APPWRITE_BUCKET_ID: ${{ secrets.APPWRITE_BUCKET_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
+          NEXT_PUBLIC_APPWRITE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_ID }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const vars = [
+              "NEXTJS_ENV=production",
+              `DATABASE_URL=${process.env.DATABASE_URL}`,
+              `BETTER_AUTH_SECRET=${process.env.BETTER_AUTH_SECRET}`,
+              "isclerk=true",
+              `NEXT_PUBLIC_APP_URL=${process.env.NEXT_PUBLIC_APP_URL}`,
+              "STORAGE_PROVIDER=appwrite",
+              `APPWRITE_BUCKET_ID=${process.env.APPWRITE_BUCKET_ID}`,
+              `APPWRITE_API_KEY=${process.env.APPWRITE_API_KEY}`,
+              `NEXT_PUBLIC_APPWRITE_ENDPOINT=${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}`,
+              `NEXT_PUBLIC_APPWRITE_PROJECT_ID=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`,
+              `CLERK_SECRET_KEY=${process.env.CLERK_SECRET_KEY}`,
+              `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}`,
+              "CLERK_TELEMETRY_DISABLED=1",
+              "NEXT_PUBLIC_CLERK_TELEMETRY_DISABLED=1"
+            ].join("\n");
+            fs.writeFileSync(".dev.vars", vars + "\n");
+          '
+
+      - name: Build OpenNext Cloudflare bundle
+        run: npx opennextjs-cloudflare build
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ secrets.NEXT_PUBLIC_APPWRITE_ENDPOINT }}
+          NEXT_PUBLIC_APPWRITE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_APPWRITE_PROJECT_ID }}
+          CLERK_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_CLERK_TELEMETRY_DISABLED: "1"
+
+      - name: Deploy to Cloudflare Workers
+        run: npx opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Sync Worker Secrets
+        run: npx wrangler secret bulk .dev.vars --name storinary
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Clean up temporary files
+        if: always()
+        run: rm -f .dev.vars
