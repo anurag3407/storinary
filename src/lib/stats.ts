@@ -66,6 +66,7 @@ export async function getStats(): Promise<StatsResponse> {
     uploadsThisMonthResult,
     totalVideosResult,
     videoStorageResult,
+    orgResult,
   ] = await Promise.allSettled([
     prisma.image?.count?.() ?? Promise.resolve(0),
     prisma.image?.aggregate?.({ _sum: { fileSize: true } }) ??
@@ -83,12 +84,19 @@ export async function getStats(): Promise<StatsResponse> {
     prisma.video?.count?.() ?? Promise.resolve(0),
     prisma.video?.aggregate?.({ _sum: { fileSize: true } }) ??
       Promise.resolve({ _sum: { fileSize: 0 } }),
+    tenantId && tenantId !== 'default'
+      ? prisma.organization?.findUnique?.({
+          where: { id: tenantId },
+          select: { metadata: true },
+        }) ?? Promise.resolve(null)
+      : Promise.resolve(null),
   ]);
 
   const hasVideos =
     totalVideosResult.status === 'fulfilled' &&
     typeof totalVideosResult.value === 'number' &&
     totalVideosResult.value > 0;
+
 
   const [
     videoVersionsStorageResult,
@@ -166,9 +174,21 @@ export async function getStats(): Promise<StatsResponse> {
   const allStorageBytes = totalStorageBytes + totalVideoBytes;
   const providerInfo = getStorageProviderInfo();
 
-  const storageLimitBytes = 100 * 1024 * 1024;
-  const storageLimitFormatted = '100 MB';
-  const planName = 'Free Developer Tier';
+  let isPro = false;
+  if (orgResult?.status === 'fulfilled' && orgResult.value?.metadata) {
+    try {
+      const meta = typeof orgResult.value.metadata === 'string'
+        ? JSON.parse(orgResult.value.metadata)
+        : orgResult.value.metadata;
+      if (meta?.plan === 'pro' || meta?.planName?.toLowerCase().includes('pro')) {
+        isPro = true;
+      }
+    } catch {}
+  }
+
+  const storageLimitBytes = isPro ? 50 * 1024 * 1024 * 1024 : 100 * 1024 * 1024;
+  const storageLimitFormatted = isPro ? '50 GB' : '100 MB';
+  const planName = isPro ? 'Pro Developer' : 'Free Developer Tier';
   const storageRemainingBytes = Math.max(0, storageLimitBytes - allStorageBytes);
   const storagePercentage = Number(
     Math.min(100, Math.max(0, (allStorageBytes / storageLimitBytes) * 100)).toFixed(1)
